@@ -358,8 +358,18 @@ namespace TTG_Tools.Texts
                     byte[] tmpActorName = Methods.EncodeGameText(landb.landbs[i].actorName, landb.isUnicode);
                     if (MainMenu.settings.supportTwdNintendoSwitch && landb.isUnicode)
                     {
-                        bool useUtf8ForActorName = !Methods.IsTextRepresentableInActiveEncoding(landb.landbs[i].actorName)
-                            || Methods.ShouldForceUtf8ForLandbString(inputFileName, landb.landbs[i].actorName, openingCreditsReplacementMode);
+                        bool useUtf8ForActorName = true;
+
+                        if (Methods.IsSeasonStatsTextProp(inputFileName))
+                        {
+                            useUtf8ForActorName = false;
+                        }
+
+                        if (Methods.ShouldForceUtf8ForLandbString(inputFileName, landb.landbs[i].actorName, openingCreditsReplacementMode))
+                        {
+                            useUtf8ForActorName = true;
+                        }
+
                         tmpActorName = Methods.EncodeGameText(landb.landbs[i].actorName, useUtf8ForActorName);
                     }
                     landb.landbs[i].actorNameSize = tmpActorName.Length;
@@ -387,8 +397,18 @@ namespace TTG_Tools.Texts
                         }
                         else
                         {
-                            bool useUtf8ForSpeech = !Methods.IsTextRepresentableInActiveEncoding(speechText)
-                                || Methods.ShouldForceUtf8ForLandbString(inputFileName, speechText, openingCreditsReplacementMode);
+                            bool useUtf8ForSpeech = true;
+
+                            if (Methods.IsSeasonStatsTextProp(inputFileName))
+                            {
+                                useUtf8ForSpeech = false;
+                            }
+
+                            if (Methods.ShouldForceUtf8ForLandbString(inputFileName, speechText, openingCreditsReplacementMode))
+                            {
+                                useUtf8ForSpeech = true;
+                            }
+
                             tmpActorSpeech = Methods.EncodeGameText(speechText, useUtf8ForSpeech);
                         }
                     }

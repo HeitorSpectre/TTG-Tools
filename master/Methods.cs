@@ -29,7 +29,7 @@ namespace TTG_Tools
             if (!MainMenu.settings.supportTwdNintendoSwitch) return false;
 
             string safeName = Path.GetFileName(fileName ?? "");
-            return safeName.Equals("seasonStatsText.prop", StringComparison.OrdinalIgnoreCase);
+            return safeName.Equals("checkpoint_text.prop", StringComparison.OrdinalIgnoreCase);
         }
 
         public static bool IsLandbExcludedFromTwdSwitchAnsi(string fileName)

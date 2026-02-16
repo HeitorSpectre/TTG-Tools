@@ -311,6 +311,8 @@ namespace TTG_Tools
             {
                 byte[] header = br.ReadBytes(4);
                 bw.Write(header);
+                bool useUtf8ForReinsert = MainMenu.settings.supportTwdNintendoSwitch && !forceAnsiForSeasonStats;
+                if (!useUtf8ForReinsert) useUtf8ForReinsert = Encoding.ASCII.GetString(header) == "6VSM";
                 if ((Encoding.ASCII.GetString(header) == "5VSM") || (Encoding.ASCII.GetString(header) == "6VSM"))
                 {
                     blHeadSize = br.ReadInt32();
@@ -395,7 +397,7 @@ namespace TTG_Tools
                         bl = br.ReadBytes(blLen);
                         blockSize += 4;
                         blHeadSize += 4;
-                        bl = Methods.EncodeGameText(strs[c], Encoding.ASCII.GetString(header) == "6VSM");
+                        bl = Methods.EncodeGameText(strs[c], useUtf8ForReinsert);
                         blLen = bl.Length;
                         bw.Write(blLen);
                         bw.Write(bl);
@@ -427,7 +429,7 @@ namespace TTG_Tools
                         {
                             blLen = br.ReadInt32();
                             bl = br.ReadBytes(blLen);
-                            bl = Methods.EncodeGameText(strs[c], Encoding.ASCII.GetString(header) == "6VSM");
+                            bl = Methods.EncodeGameText(strs[c], useUtf8ForReinsert);
                             blLen = bl.Length;
                             bw.Write(blLen);
                             bw.Write(bl);
