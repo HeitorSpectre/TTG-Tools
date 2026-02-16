@@ -176,6 +176,7 @@ namespace TTG_Tools
             }
 
             if (safeName.Equals("dairyexterior_lee_andy_english.landb", StringComparison.OrdinalIgnoreCase)
+                || safeName.Equals("dairyexterior_lee_brenda_english.landb", StringComparison.OrdinalIgnoreCase)
                 || safeName.Equals("dairyexterior_lee_lilly_english.landb", StringComparison.OrdinalIgnoreCase)
                 || safeName.Equals("env_dairyexterior_atthedairy_english.landb", StringComparison.OrdinalIgnoreCase)
                 || safeName.Equals("env_dairymeatlocker_english.landb", StringComparison.OrdinalIgnoreCase)
