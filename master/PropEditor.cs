@@ -17,26 +17,59 @@ namespace TTG_Tools
 
         private string currentPropPath;
 
+        private static readonly Dictionary<string, string> SupportedGames = new Dictionary<string, string>
+        {
+            { "Fables", "The Wolf Among Us" },
+            { "WD2", "The Walking Dead: Season 2" },
+            { "Borderlands", "Tales from the Borderlands" },
+            { "GameOfThrones", "Game of Thrones" },
+            { "MCSM", "Minecraft: Story Mode - Season One" },
+            { "WDM", "The Walking Dead: Michonne" },
+            { "BAT", "Batman: The Telltale Series" },
+            { "WD3", "The Walking Dead: A New Frontier" },
+            { "GoG", "Marvel's Guardians of the Galaxy" },
+            { "MC2", "Minecraft: Story Mode - Season Two" },
+            { "BAT2", "Batman: The Enemy Within" },
+            { "WD4", "The Walking Dead: The Final Season" },
+            { "WDC", "The Walking Dead: The Definitive Series" },
+            { "SM1", "Sam & Max Save the World Remastered" }
+        };
+
         public PropEditor()
         {
             Text = "Prop Editor";
-            Width = 900;
-            Height = 600;
+            Width = 980;
+            Height = 640;
             StartPosition = FormStartPosition.CenterScreen;
 
-            openBtn = new Button { Text = "Abrir .prop", Left = 12, Top = 12, Width = 120 };
-            saveBtn = new Button { Text = "Salvar", Left = 140, Top = 12, Width = 120, Enabled = false };
-            saveAsBtn = new Button { Text = "Salvar como", Left = 268, Top = 12, Width = 120, Enabled = false };
-            gameLbl = new Label { Left = 400, Top = 17, Width = 470, AutoEllipsis = true };
-            gameSelector = new ComboBox { Left = 400, Top = 40, Width = 470, DropDownStyle = ComboBoxStyle.DropDownList };
-            statusLbl = new Label { Left = 12, Top = 48, Width = 380, Height = 22 };
+            openBtn = new Button { Text = "Open .prop", Left = 12, Top = 12, Width = 120 };
+            saveBtn = new Button { Text = "Save", Left = 140, Top = 12, Width = 120, Enabled = false };
+            saveAsBtn = new Button { Text = "Save As", Left = 268, Top = 12, Width = 120, Enabled = false };
+
+            gameLbl = new Label
+            {
+                Left = 402,
+                Top = 16,
+                Width = 560,
+                Text = "Compatible games (same scope as Inspector Prop Editor):"
+            };
+
+            gameSelector = new ComboBox
+            {
+                Left = 402,
+                Top = 38,
+                Width = 560,
+                DropDownStyle = ComboBoxStyle.DropDownList
+            };
+
+            statusLbl = new Label { Left = 12, Top = 50, Width = 380, Height = 22, Text = "Ready." };
 
             entriesGrid = new DataGridView
             {
                 Left = 12,
-                Top = 76,
-                Width = 860,
-                Height = 470,
+                Top = 78,
+                Width = 950,
+                Height = 510,
                 Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right,
                 AllowUserToAddRows = false,
                 AllowUserToDeleteRows = false,
@@ -47,14 +80,15 @@ namespace TTG_Tools
             {
                 Name = "EntryIndex",
                 HeaderText = "#",
-                FillWeight = 12,
+                FillWeight = 10,
                 ReadOnly = true
             });
+
             entriesGrid.Columns.Add(new DataGridViewTextBoxColumn
             {
                 Name = "EntryText",
-                HeaderText = "Texto",
-                FillWeight = 88
+                HeaderText = "Text",
+                FillWeight = 90
             });
 
             openBtn.Click += OpenBtn_Click;
@@ -69,8 +103,7 @@ namespace TTG_Tools
             Controls.Add(statusLbl);
             Controls.Add(entriesGrid);
 
-            gameLbl.Text = "Jogos suportados (Telltale Inspector / TelltaleToolLib):";
-            foreach (var game in SupportedGames)
+            foreach (KeyValuePair<string, string> game in SupportedGames)
             {
                 gameSelector.Items.Add(string.Format("{0} ({1})", game.Value, game.Key));
             }
@@ -81,79 +114,14 @@ namespace TTG_Tools
             }
         }
 
-
-
-        private static readonly Dictionary<string, string> SupportedGames = new Dictionary<string, string>
-        {
-            { "texasholdem", "Telltale Texas Hold'em" },
-            { "boneville", "Bone: Out from Boneville" },
-            { "csi3dimensions", "CSI: 3 Dimensions of Murder" },
-            { "cowrace", "Bone: The Great Cow Race" },
-            { "sammax101", "Sam and Max: S1E1" },
-            { "sammax102", "Sam and Max: S1E2" },
-            { "sammax103", "Sam and Max: S1E3" },
-            { "sammax104", "Sam and Max: S1E4" },
-            { "sammax105", "Sam and Max: S1E5" },
-            { "sammax106", "Sam and Max: S1E6" },
-            { "csihard", "CSI: Hard Evidence" },
-            { "sammax201", "Sam and Max: S2E1" },
-            { "sammax202", "Sam and Max: S2E2" },
-            { "sammax203", "Sam and Max: S2E3" },
-            { "sammax204", "Sam and Max: S2E4" },
-            { "sammax205", "Sam and Max: S2E5" },
-            { "sbcg4ap101", "Strong Bad CG4AP S1E1" },
-            { "sbcg4ap102", "Strong Bad CG4AP S1E2" },
-            { "sbcg4ap103", "Strong Bad CG4AP S1E3" },
-            { "sbcg4ap104", "Strong Bad CG4AP S1E4" },
-            { "sbcg4ap105", "Strong Bad CG4AP S1E5" },
-            { "wag101", "Wallace And Gromit: S1E1" },
-            { "wag102", "Wallace And Gromit: S1E2" },
-            { "wag103", "Wallace And Gromit: S1E3" },
-            { "wag104", "Wallace And Gromit: S1E4" },
-            { "monkeyisland101", "Tales of Monkey Island S1E1" },
-            { "monkeyisland102", "Tales of Monkey Island S1E2" },
-            { "monkeyisland103", "Tales of Monkey Island S1E3" },
-            { "monkeyisland104", "Tales of Monkey Island S1E4" },
-            { "monkeyisland105", "Tales of Monkey Island S1E5" },
-            { "csideadly", "CSI: Deadly Intent" },
-            { "hector101", "Hector: Badge of Carnage E1" },
-            { "hector102", "Hector: Badge of Carnage E2" },
-            { "hector103", "Hector: Badge of Carnage E3" },
-            { "sammax301", "Sam and Max: S3E1" },
-            { "sammax302", "Sam and Max: S3E2" },
-            { "sammax303", "Sam and Max: S3E3" },
-            { "sammax304", "Sam and Max: S3E4" },
-            { "sammax305", "Sam and Max: S3E5" },
-            { "grickle101", "Puzzle Agent 1" },
-            { "csifatal", "CSI: Fatal Conspiracy" },
-            { "celebritypoker", "Poker Night 1" },
-            { "bttf101", "Back to the Future S1E1" },
-            { "bttf102", "Back to the Future S1E2" },
-            { "bttf103", "Back to the Future S1E3" },
-            { "bttf104", "Back to the Future S1E4" },
-            { "bttf105", "Back to the Future S1E5" },
-            { "grickle102", "Puzzle Agent 2" },
-            { "jurassicpark", "Jurassic Park" },
-            { "lawandorder", "Law and Order" },
-            { "TWD1", "The Walking Dead: Season 1" },
-            { "celebritypoker2", "Poker Night 2" },
-            { "Fables", "The Wolf Among Us S1" },
-            { "WD2", "The Walking Dead: Season 2" },
-            { "Borderlands", "Tales from the Borderlands" },
-            { "GameOfThrones", "Game of Thrones" },
-            { "MCSM", "Minecraft Story Mode: Season 1" },
-            { "WDM", "The Walking Dead: Michonne" },
-            { "BAT", "Batman: Season 1" },
-            { "WD3", "The Walking Dead: Season 3" },
-            { "GoG", "Marvel's Guardians of the Galaxy" },
-            { "MC2", "Minecraft Story Mode: Season 2" },
-            { "BAT2", "Batman: Season 2" },
-            { "WD4", "The Walking Dead: Season 4" },
-            { "WDC", "The Walking Dead: Definitive Series" },
-            { "SM1", "Sam and Max: Remastered" }
-        };
         private void OpenBtn_Click(object sender, EventArgs e)
         {
+            if (gameSelector.SelectedIndex < 0)
+            {
+                MessageBox.Show("Please select a game first.", "Prop Editor", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
             OpenFileDialog ofd = new OpenFileDialog
             {
                 Filter = "PROP files (*.prop)|*.prop|All files (*.*)|*.*",
@@ -208,13 +176,15 @@ namespace TTG_Tools
             try
             {
                 ForThreads worker = new ForThreads();
+                worker.ReportForWork += _ => { };
+
                 string txtName = Path.GetFileNameWithoutExtension(propPath) + ".txt";
                 worker.ExportPROP(new FileInfo(propPath), txtName, tempDir);
 
                 string txtPath = Path.Combine(tempDir, txtName);
                 if (!File.Exists(txtPath))
                 {
-                    throw new InvalidDataException("Não foi possível exportar o PROP para edição.");
+                    throw new InvalidDataException("This PROP file could not be exported by the current editor pipeline.");
                 }
 
                 string[] lines = File.ReadAllLines(txtPath);
@@ -229,11 +199,12 @@ namespace TTG_Tools
 
                 saveBtn.Enabled = true;
                 saveAsBtn.Enabled = true;
-                statusLbl.Text = "Arquivo carregado: " + propPath;
+                statusLbl.Text = "Loaded: " + propPath;
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Erro ao abrir PROP: " + ex.Message, "Prop Editor", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("Failed to open PROP file: " + ex.Message, "Prop Editor", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                statusLbl.Text = "Open failed.";
             }
             finally
             {
@@ -271,12 +242,28 @@ namespace TTG_Tools
                 File.WriteAllLines(txtPath, exportLines.ToArray());
 
                 ForThreads worker = new ForThreads();
+                worker.ReportForWork += _ => { };
+
                 List<string> failed = new List<string>();
                 string targetFolder = Path.GetDirectoryName(savePath);
+                if (string.IsNullOrEmpty(targetFolder))
+                {
+                    throw new InvalidOperationException("Invalid target path.");
+                }
 
                 worker.ImportTXTinPROP(new FileInfo(currentPropPath), new FileInfo(txtPath), targetFolder, failed);
 
+                if (failed.Count > 0)
+                {
+                    throw new InvalidOperationException("Import failed for: " + string.Join(", ", failed.ToArray()));
+                }
+
                 string generatedPath = Path.Combine(targetFolder, Path.GetFileName(currentPropPath));
+                if (!File.Exists(generatedPath))
+                {
+                    throw new FileNotFoundException("The editor could not generate the output PROP file.", generatedPath);
+                }
+
                 if (!string.Equals(generatedPath, savePath, StringComparison.OrdinalIgnoreCase))
                 {
                     if (File.Exists(savePath))
@@ -287,11 +274,12 @@ namespace TTG_Tools
                     File.Copy(generatedPath, savePath);
                 }
 
-                statusLbl.Text = "Arquivo salvo: " + savePath;
+                statusLbl.Text = "Saved: " + savePath;
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Erro ao salvar PROP: " + ex.Message, "Prop Editor", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("Failed to save PROP file: " + ex.Message, "Prop Editor", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                statusLbl.Text = "Save failed.";
             }
             finally
             {
