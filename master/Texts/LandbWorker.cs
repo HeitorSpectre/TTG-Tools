@@ -160,7 +160,7 @@ namespace TTG_Tools.Texts
                     landb.landbs[i].actorNameSize = br.ReadInt32();
                     tmp = br.ReadBytes(landb.landbs[i].actorNameSize);
                     landb.landbs[i].actorName = Methods.DecodeGameText(tmp, landb.isUnicode);
-                    if (landb.isUnicode && (MainMenu.settings.unicodeSettings == 2))
+                    if (MainMenu.settings.supportTwdNintendoSwitch && landb.isUnicode && (MainMenu.settings.unicodeSettings == 2))
                     {
                         landb.landbs[i].actorName = Methods.isUTF8String(tmp)
                             ? Encoding.UTF8.GetString(tmp)
@@ -174,7 +174,7 @@ namespace TTG_Tools.Texts
                     landb.landbs[i].actorSpeechSize = br.ReadInt32();
                     tmp = br.ReadBytes(landb.landbs[i].actorSpeechSize);
                     landb.landbs[i].actorSpeech = Methods.DecodeGameText(tmp, landb.isUnicode);
-                    if (landb.isUnicode && (MainMenu.settings.unicodeSettings == 2))
+                    if (MainMenu.settings.supportTwdNintendoSwitch && landb.isUnicode && (MainMenu.settings.unicodeSettings == 2))
                     {
                         landb.landbs[i].actorSpeech = Methods.isUTF8String(tmp)
                             ? Encoding.UTF8.GetString(tmp)
@@ -356,7 +356,7 @@ namespace TTG_Tools.Texts
                     bw.Write(landb.landbs[i].zero2);
 
                     byte[] tmpActorName = Methods.EncodeGameText(landb.landbs[i].actorName, landb.isUnicode);
-                    if (landb.isUnicode && (MainMenu.settings.unicodeSettings == 2))
+                    if (MainMenu.settings.supportTwdNintendoSwitch && landb.isUnicode && (MainMenu.settings.unicodeSettings == 2))
                     {
                         bool useUtf8ForActorName = !Methods.IsTextRepresentableInActiveEncoding(landb.landbs[i].actorName);
                         tmpActorName = Methods.EncodeGameText(landb.landbs[i].actorName, useUtf8ForActorName);
@@ -367,7 +367,7 @@ namespace TTG_Tools.Texts
                     landb.newLandbFileSize += 4 + landb.landbs[i].actorNameSize;
 
                     byte[] tmpActorSpeech = Methods.EncodeGameText(landb.landbs[i].actorSpeech, landb.isUnicode);
-                    if (landb.isUnicode && (MainMenu.settings.unicodeSettings == 2))
+                    if (MainMenu.settings.supportTwdNintendoSwitch && landb.isUnicode && (MainMenu.settings.unicodeSettings == 2))
                     {
                         string speechText = landb.landbs[i].actorSpeech;
                         bool endsUtf8Marker = (speechText.IndexOf("(utf8)") > 0) && (speechText.IndexOf("(utf8)") == speechText.Length - 6);

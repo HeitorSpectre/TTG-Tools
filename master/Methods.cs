@@ -26,12 +26,16 @@ namespace TTG_Tools
 
         public static bool IsSeasonStatsTextProp(string fileName)
         {
+            if (!MainMenu.settings.supportTwdNintendoSwitch) return false;
+
             string safeName = Path.GetFileName(fileName ?? "");
             return safeName.Equals("seasonStatsText.prop", StringComparison.OrdinalIgnoreCase);
         }
 
         public static bool IsLandbExcludedFromTwdSwitchAnsi(string fileName)
         {
+            if (!MainMenu.settings.supportTwdNintendoSwitch) return false;
+
             string safeName = Path.GetFileName(fileName ?? "");
 
             return safeName.Equals("ui_menu_english.landb", StringComparison.OrdinalIgnoreCase);
@@ -39,6 +43,8 @@ namespace TTG_Tools
 
         public static bool ShouldMapOpeningCreditsReplacement(string fileName, byte[] originalFileBytes)
         {
+            if (!MainMenu.settings.supportTwdNintendoSwitch) return false;
+
             string safeName = Path.GetFileName(fileName ?? "");
 
             if (!safeName.Equals("ui_openingcredits_english.landb", StringComparison.OrdinalIgnoreCase)) return false;
