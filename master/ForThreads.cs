@@ -125,7 +125,19 @@ namespace TTG_Tools
                                                 show[0] = true;
                                                 break;
                                             case ".landb":
-                                                result = Texts.LandbWorker.DoWork(inputFiles[i].FullName, fileDestination[j].FullName, false, encKey, version);
+                                                bool skipAnsiForSpecificLandbImport = Methods.IsLandbExcludedFromTwdSwitchAnsi(inputFiles[i].Name);
+                                                bool previousLandbImportForceAnsiState = Methods.GetForceAnsiForCurrentOperation();
+                                                if (skipAnsiForSpecificLandbImport) Methods.SetForceAnsiForCurrentOperation(false);
+
+                                                try
+                                                {
+                                                    result = Texts.LandbWorker.DoWork(inputFiles[i].FullName, fileDestination[j].FullName, false, encKey, version);
+                                                }
+                                                finally
+                                                {
+                                                    if (skipAnsiForSpecificLandbImport) Methods.SetForceAnsiForCurrentOperation(previousLandbImportForceAnsiState);
+                                                }
+
                                                 ReportForWork(result);
                                                 emptyFiles = false;
                                                 show[1] = true;
@@ -638,7 +650,19 @@ namespace TTG_Tools
 
                                     case ".landb":
                                         // Usa config global
-                                        message = Texts.LandbWorker.DoWork(inputFiles[i].FullName, "", true, key, version);
+                                        bool skipAnsiForSpecificLandbExport = Methods.IsLandbExcludedFromTwdSwitchAnsi(inputFiles[i].Name);
+                                        bool previousLandbExportForceAnsiState = Methods.GetForceAnsiForCurrentOperation();
+                                        if (skipAnsiForSpecificLandbExport) Methods.SetForceAnsiForCurrentOperation(false);
+
+                                        try
+                                        {
+                                            message = Texts.LandbWorker.DoWork(inputFiles[i].FullName, "", true, key, version);
+                                        }
+                                        finally
+                                        {
+                                            if (skipAnsiForSpecificLandbExport) Methods.SetForceAnsiForCurrentOperation(previousLandbExportForceAnsiState);
+                                        }
+
                                         ReportForWork(message);
                                         extractedFormat[2] = 2;
                                         break;

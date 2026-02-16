@@ -30,6 +30,16 @@ namespace TTG_Tools
             return safeName.Equals("seasonStatsText.prop", StringComparison.OrdinalIgnoreCase);
         }
 
+        public static bool IsLandbExcludedFromTwdSwitchAnsi(string fileName)
+        {
+            string safeName = Path.GetFileName(fileName ?? "");
+
+            return safeName.Equals("tutorial_english.landb", StringComparison.OrdinalIgnoreCase)
+                || safeName.Equals("aliased_english.landb", StringComparison.OrdinalIgnoreCase)
+                || safeName.Equals("choice_notification_english.landb", StringComparison.OrdinalIgnoreCase)
+                || safeName.Equals("ui_menu_english.landb", StringComparison.OrdinalIgnoreCase);
+        }
+
         public static bool ShouldUseTwdNintendoSwitchAnsi(string versionOfGame)
         {
             if (!MainMenu.settings.supportTwdNintendoSwitch) return false;
