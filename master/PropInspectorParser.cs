@@ -7,7 +7,7 @@ namespace TTG_Tools
 {
     internal static class PropInspectorParser
     {
-        internal sealed class PropNode
+        internal class PropNode
         {
             public string Name { get; set; }
             public string Value { get; set; }
@@ -44,11 +44,11 @@ namespace TTG_Tools
 
             if (header == "5VSM" || header == "6VSM")
             {
-                root.Children.Add(ReadInt32(br, "Block Size"));
+                root.Children.Add(ReadInt32Node(br, "Block Size"));
                 root.Children.Add(ReadInt64(br, "Sub Block Size"));
             }
 
-            int countHeaders = ReadInt32(br, "Header Entries Count", root).Item2;
+            int countHeaders = ReadInt32AndAppend(br, "Header Entries Count", root);
 
             PropNode headersNode = new PropNode();
             headersNode.Name = "Header Entries";
@@ -61,27 +61,28 @@ namespace TTG_Tools
                 entry.Name = "Entry " + i;
                 headersNode.Children.Add(entry);
                 entry.Children.Add(ReadBytesNode(br, "CRC64", 8));
-                entry.Children.Add(ReadInt32(br, "Value"));
+                entry.Children.Add(ReadInt32Node(br, "Value"));
             }
 
-            root.Children.Add(ReadInt32(br, "One"));
-            root.Children.Add(ReadInt32(br, "SomeValue1"));
+            root.Children.Add(ReadInt32Node(br, "One"));
+            root.Children.Add(ReadInt32Node(br, "SomeValue1"));
 
             if (header != "6VSM")
             {
-                int blSize1 = ReadInt32(br, "Block1Size", root).Item2;
+                int blSize1 = ReadInt32AndAppend(br, "Block1Size", root);
                 root.Children.Add(ReadBytesNode(br, "Block1Data", Math.Max(0, blSize1 - 4)));
             }
 
-            root.Children.Add(ReadInt32(br, "Block2Size"));
-            root.Children.Add(ReadInt32(br, "One1"));
+            root.Children.Add(ReadInt32Node(br, "Block2Size"));
+            root.Children.Add(ReadInt32Node(br, "One1"));
             if (header == "6VSM")
             {
-                root.Children.Add(ReadInt32(br, "One2"));
+                root.Children.Add(ReadInt32Node(br, "One2"));
             }
 
-            byte[] typeMarker = ReadBytesNode(br, "Primary Marker", 8).ValueBytes;
-            root.Children.Add(CreateBytesNode("Primary Marker", typeMarker, br.BaseStream.Position - typeMarker.Length));
+            long markerOffset = br.BaseStream.Position;
+            byte[] typeMarker = br.ReadBytes(8);
+            root.Children.Add(CreateBytesNode("Primary Marker", typeMarker, markerOffset));
 
             string marker = BitConverter.ToString(typeMarker);
 
@@ -103,52 +104,58 @@ namespace TTG_Tools
 
         private static void ParseStringBlock(BinaryReader br, PropNode parent, string header)
         {
-            PropNode blockNode = new PropNode { Name = "String Block (Marker B4-F4-5A-5F-60-6E-9C-CD)", Value = string.Empty };
+            PropNode blockNode = new PropNode();
+            blockNode.Name = "String Block (Marker B4-F4-5A-5F-60-6E-9C-CD)";
+            blockNode.Value = string.Empty;
             parent.Children.Add(blockNode);
 
             if (header == "ERTM")
             {
-                blockNode.Children.Add(ReadInt32(br, "Optional One"));
+                blockNode.Children.Add(ReadInt32Node(br, "Optional One"));
             }
 
-            int countBlocks = ReadInt32(br, "Entries Count", blockNode).Item2;
+            int countBlocks = ReadInt32AndAppend(br, "Entries Count", blockNode);
             for (int i = 0; i < countBlocks; i++)
             {
-                PropNode entry = new PropNode { Name = "Entry " + i };
+                PropNode entry = new PropNode();
+                entry.Name = "Entry " + i;
                 blockNode.Children.Add(entry);
                 entry.Children.Add(ReadBytesNode(br, "Name CRC64", 8));
 
                 if (header == "ERTM")
                 {
-                    entry.Children.Add(ReadInt32(br, "Optional One"));
+                    entry.Children.Add(ReadInt32Node(br, "Optional One"));
                 }
 
-                int len = ReadInt32(br, "String Length", entry).Item2;
+                int len = ReadInt32AndAppend(br, "String Length", entry);
                 entry.Children.Add(ReadStringByHeader(br, "String", len, header));
             }
         }
 
         private static void ParseNestedStringBlock(BinaryReader br, PropNode parent, string header)
         {
-            PropNode blockNode = new PropNode { Name = "Nested Block (Marker 25-03-C6-1F-D8-64-1B-4F)", Value = string.Empty };
+            PropNode blockNode = new PropNode();
+            blockNode.Name = "Nested Block (Marker 25-03-C6-1F-D8-64-1B-4F)";
+            blockNode.Value = string.Empty;
             parent.Children.Add(blockNode);
 
-            int count = ReadInt32(br, "Blocks Count", blockNode).Item2;
+            int count = ReadInt32AndAppend(br, "Blocks Count", blockNode);
             for (int i = 0; i < count; i++)
             {
-                PropNode block = new PropNode { Name = "Block " + i };
+                PropNode block = new PropNode();
+                block.Name = "Block " + i;
                 blockNode.Children.Add(block);
                 block.Children.Add(ReadBytesNode(br, "Block CRC64", 8));
 
                 if (header == "ERTM")
                 {
-                    block.Children.Add(ReadInt32(br, "Optional One"));
+                    block.Children.Add(ReadInt32Node(br, "Optional One"));
                 }
 
-                int subCount = ReadInt32(br, "Sub Count", block).Item2;
+                int subCount = ReadInt32AndAppend(br, "Sub Count", block);
                 for (int j = 0; j < subCount * 2; j++)
                 {
-                    int len = ReadInt32(br, "Value Length " + j, block).Item2;
+                    int len = ReadInt32AndAppend(br, "Value Length " + j, block);
                     block.Children.Add(ReadStringByHeader(br, "Value " + j, len, header));
                 }
             }
@@ -171,23 +178,11 @@ namespace TTG_Tools
             return node;
         }
 
-        private sealed class BytesNodeResult : PropNode
-        {
-            public byte[] ValueBytes { get; set; }
-        }
-
-        private static BytesNodeResult ReadBytesNode(BinaryReader br, string name, int length)
+        private static PropNode ReadBytesNode(BinaryReader br, string name, int length)
         {
             long offset = br.BaseStream.Position;
             byte[] bytes = br.ReadBytes(length);
-            return new BytesNodeResult
-            {
-                Name = name,
-                Value = BitConverter.ToString(bytes),
-                Offset = offset,
-                Length = bytes.Length,
-                ValueBytes = bytes
-            };
+            return CreateBytesNode(name, bytes, offset);
         }
 
         private static PropNode CreateBytesNode(string name, byte[] bytes, long offset)
@@ -200,33 +195,56 @@ namespace TTG_Tools
             return node;
         }
 
-        private static System.Tuple<PropNode, int> ReadInt32(BinaryReader br, string name, PropNode appendTo)
+        private static int ReadInt32AndAppend(BinaryReader br, string name, PropNode appendTo)
         {
-            System.Tuple<PropNode, int> result = ReadInt32(br, name);
-            appendTo.Children.Add(result.Item1);
-            return result;
+            int value;
+            appendTo.Children.Add(ReadInt32Node(br, name, out value));
+            return value;
         }
 
-        private static System.Tuple<PropNode, int> ReadInt32(BinaryReader br, string name)
+        private static PropNode ReadInt32Node(BinaryReader br, string name)
+        {
+            int dummy;
+            return ReadInt32Node(br, name, out dummy);
+        }
+
+        private static PropNode ReadInt32Node(BinaryReader br, string name, out int value)
         {
             long offset = br.BaseStream.Position;
-            int val = br.ReadInt32();
-            PropNode node = new PropNode { Name = name, Value = val.ToString(), Offset = offset, Length = 4 };
-            return new System.Tuple<PropNode, int>(node, val);
+            value = br.ReadInt32();
+
+            PropNode node = new PropNode();
+            node.Name = name;
+            node.Value = value.ToString();
+            node.Offset = offset;
+            node.Length = 4;
+            return node;
         }
 
         private static PropNode ReadInt64(BinaryReader br, string name)
         {
             long offset = br.BaseStream.Position;
             long val = br.ReadInt64();
-            return new PropNode { Name = name, Value = val.ToString(), Offset = offset, Length = 8 };
+
+            PropNode node = new PropNode();
+            node.Name = name;
+            node.Value = val.ToString();
+            node.Offset = offset;
+            node.Length = 8;
+            return node;
         }
 
         private static PropNode ReadAscii(BinaryReader br, string name, int length)
         {
             long offset = br.BaseStream.Position;
             byte[] bytes = br.ReadBytes(length);
-            return new PropNode { Name = name, Value = Encoding.ASCII.GetString(bytes), Offset = offset, Length = bytes.Length };
+
+            PropNode node = new PropNode();
+            node.Name = name;
+            node.Value = Encoding.ASCII.GetString(bytes);
+            node.Offset = offset;
+            node.Length = bytes.Length;
+            return node;
         }
     }
 }
