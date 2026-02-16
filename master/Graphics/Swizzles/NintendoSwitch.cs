@@ -124,10 +124,69 @@ namespace TTG_Tools.Graphics.Swizzles
             return address;
         }
 
+        private static int GetRequiredSwizzledSize(int originWidth, int originHeight, int bpp, int paddedWidth, int xb, int yb, int xBase)
+        {
+            int maxPos = 0;
+
+            for (int y = 0; y < originHeight; y++)
+            {
+                for (int x = 0; x < originWidth; x++)
+                {
+                    int pos = getAddress(x, y, xb, yb, paddedWidth, xBase) * bpp;
+
+                    if (pos > maxPos)
+                    {
+                        maxPos = pos;
+                    }
+                }
+            }
+
+            return maxPos + bpp;
+        }
+
+        public static int GetSwizzledMipSize(int width, int height, int code)
+        {
+            int bpp = GetBpp(bpps, code);
+
+            if (bpp == 0)
+            {
+                return 0;
+            }
+
+            int originWidth = width;
+            int originHeight = height;
+
+            if (code >= 0x40 && code <= 0x42)
+            {
+                originHeight = (originHeight + 3) / 4;
+                originWidth = (originWidth + 3) / 4;
+            }
+
+            int xb = CountZeros(pow2RoundUp(originWidth));
+            int yb = CountZeros(pow2RoundUp(originHeight));
+
+            int hh = pow2RoundUp(originHeight) >> 1;
+
+            if (!isPow2(originHeight) && (originHeight <= (hh + (hh / 3))) && (yb > 3))
+            {
+                yb--;
+            }
+
+            int paddedWidth = RoundSize(originWidth, GetData(padds, bpp));
+            int xBase = GetData(xBases, bpp);
+
+            return GetRequiredSwizzledSize(originWidth, originHeight, bpp, paddedWidth, xb, yb, xBase);
+        }
+
         public static byte[] NintendoSwizzle(byte[] content, int width, int height, int code, bool deswizzle)
         {
             int pos_ = 0;
             int bpp = GetBpp(bpps, code);
+
+            if (bpp == 0)
+            {
+                return content;
+            }
 
             int origin_width = width;
             int origin_height = height;
@@ -150,7 +209,11 @@ namespace TTG_Tools.Graphics.Swizzles
 
             int xBase = GetData(xBases, bpp);
 
-            byte[] result = new byte[content.Length];
+            int requiredSwizzledSize = GetRequiredSwizzledSize(origin_width, origin_height, bpp, width, xb, yb, xBase);
+
+            int resultLength = deswizzle ? content.Length : Math.Max(content.Length, requiredSwizzledSize);
+
+            byte[] result = new byte[resultLength];
 
             for(int y = 0; y < origin_height; y++)
             {
@@ -160,14 +223,14 @@ namespace TTG_Tools.Graphics.Swizzles
 
                     if (deswizzle)
                     {
-                        if ((pos_ + bpp <= content.Length) && (pos + bpp <= content.Length))
+                        if ((pos_ + bpp <= result.Length) && (pos + bpp <= content.Length))
                         {
                             Array.Copy(content, pos, result, pos_, bpp);
                         }
                     }
                     else
                     {
-                        if ((pos + bpp <= content.Length) && (pos_ + bpp <= content.Length))
+                        if ((pos + bpp <= result.Length) && (pos_ + bpp <= content.Length))
                         {
                             Array.Copy(content, pos_, result, pos, bpp);
                         }
