@@ -53,6 +53,7 @@ namespace TTG_Tools
         private bool _swizzlePS4;
         private bool _swizzleXbox360;
         private bool _swizzlePSVita;
+        private bool _supportTwdNintendoSwitch;
 
         private int _languageIndex;
 
@@ -512,6 +513,19 @@ namespace TTG_Tools
             }
         }
 
+        [XmlAttribute("supportTwdNintendoSwitch")]
+        public bool supportTwdNintendoSwitch
+        {
+            get
+            {
+                return _supportTwdNintendoSwitch;
+            }
+            set
+            {
+                _supportTwdNintendoSwitch = value;
+            }
+        }
+
         public Settings(
             string _pathForInputFolder,
             string _pathForOutputFolder,
@@ -547,7 +561,8 @@ namespace TTG_Tools
             bool _swizzlePS4,
             bool _swizzleXbox360,
             bool _swizzlePSVita,
-            int _languageIndex)
+            int _languageIndex,
+            bool _supportTwdNintendoSwitch)
         {
             this.ASCII_N = _ASCII_N;
             this.pathForInputFolder = _pathForInputFolder;
@@ -584,6 +599,7 @@ namespace TTG_Tools
             this.swizzleXbox360 = _swizzleXbox360;
             this.swizzlePSVita = _swizzlePSVita;
             this.languageIndex = _languageIndex;
+            this.supportTwdNintendoSwitch = _supportTwdNintendoSwitch;
         }
 
         public Settings()

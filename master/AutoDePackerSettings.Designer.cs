@@ -48,6 +48,7 @@
             this.cbIgnoreEmptyStrings = new System.Windows.Forms.CheckBox();
             this.groupBox2 = new System.Windows.Forms.GroupBox();
             this.rbNewBttF = new System.Windows.Forms.RadioButton();
+            this.rbTwdNintendoSwitch = new System.Windows.Forms.RadioButton();
             this.rbNonNormalUnicode2 = new System.Windows.Forms.RadioButton();
             this.rbNormalUnicode = new System.Windows.Forms.RadioButton();
             this.groupBox3.SuspendLayout();
@@ -172,7 +173,7 @@
             // 
             // textBoxOutputFolder
             // 
-            this.textBoxOutputFolder.Location = new System.Drawing.Point(11, 244);
+            this.textBoxOutputFolder.Location = new System.Drawing.Point(11, 261);
             this.textBoxOutputFolder.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
             this.textBoxOutputFolder.Name = "textBoxOutputFolder";
             this.textBoxOutputFolder.ReadOnly = true;
@@ -181,7 +182,7 @@
             // 
             // textBoxInputFolder
             // 
-            this.textBoxInputFolder.Location = new System.Drawing.Point(11, 215);
+            this.textBoxInputFolder.Location = new System.Drawing.Point(11, 232);
             this.textBoxInputFolder.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
             this.textBoxInputFolder.Name = "textBoxInputFolder";
             this.textBoxInputFolder.ReadOnly = true;
@@ -190,7 +191,7 @@
             // 
             // buttonOutputFolder
             // 
-            this.buttonOutputFolder.Location = new System.Drawing.Point(335, 242);
+            this.buttonOutputFolder.Location = new System.Drawing.Point(335, 259);
             this.buttonOutputFolder.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
             this.buttonOutputFolder.Name = "buttonOutputFolder";
             this.buttonOutputFolder.Size = new System.Drawing.Size(90, 23);
@@ -201,7 +202,7 @@
             // 
             // buttonInputFolder
             // 
-            this.buttonInputFolder.Location = new System.Drawing.Point(335, 213);
+            this.buttonInputFolder.Location = new System.Drawing.Point(335, 230);
             this.buttonInputFolder.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
             this.buttonInputFolder.Name = "buttonInputFolder";
             this.buttonInputFolder.Size = new System.Drawing.Size(90, 23);
@@ -212,7 +213,7 @@
             // 
             // okBtn
             // 
-            this.okBtn.Location = new System.Drawing.Point(216, 348);
+            this.okBtn.Location = new System.Drawing.Point(216, 365);
             this.okBtn.Name = "okBtn";
             this.okBtn.Size = new System.Drawing.Size(75, 23);
             this.okBtn.TabIndex = 26;
@@ -222,7 +223,7 @@
             // 
             // cancelBtn
             // 
-            this.cancelBtn.Location = new System.Drawing.Point(317, 348);
+            this.cancelBtn.Location = new System.Drawing.Point(317, 365);
             this.cancelBtn.Name = "cancelBtn";
             this.cancelBtn.Size = new System.Drawing.Size(75, 23);
             this.cancelBtn.TabIndex = 27;
@@ -233,7 +234,7 @@
             // checkBoxChangeLangFlags
             // 
             this.checkBoxChangeLangFlags.AutoSize = true;
-            this.checkBoxChangeLangFlags.Location = new System.Drawing.Point(276, 310);
+            this.checkBoxChangeLangFlags.Location = new System.Drawing.Point(276, 327);
             this.checkBoxChangeLangFlags.Name = "checkBoxChangeLangFlags";
             this.checkBoxChangeLangFlags.Size = new System.Drawing.Size(135, 17);
             this.checkBoxChangeLangFlags.TabIndex = 28;
@@ -243,7 +244,7 @@
             // cbIgnoreEmptyStrings
             // 
             this.cbIgnoreEmptyStrings.AutoSize = true;
-            this.cbIgnoreEmptyStrings.Location = new System.Drawing.Point(11, 331);
+            this.cbIgnoreEmptyStrings.Location = new System.Drawing.Point(11, 348);
             this.cbIgnoreEmptyStrings.Name = "cbIgnoreEmptyStrings";
             this.cbIgnoreEmptyStrings.Size = new System.Drawing.Size(120, 17);
             this.cbIgnoreEmptyStrings.TabIndex = 29;
@@ -252,6 +253,7 @@
             // 
             // groupBox2
             // 
+            this.groupBox2.Controls.Add(this.rbTwdNintendoSwitch);
             this.groupBox2.Controls.Add(this.rbNewBttF);
             this.groupBox2.Controls.Add(this.rbNonNormalUnicode2);
             this.groupBox2.Controls.Add(this.rbNormalUnicode);
@@ -259,7 +261,7 @@
             this.groupBox2.Margin = new System.Windows.Forms.Padding(2);
             this.groupBox2.Name = "groupBox2";
             this.groupBox2.Padding = new System.Windows.Forms.Padding(2);
-            this.groupBox2.Size = new System.Drawing.Size(354, 97);
+            this.groupBox2.Size = new System.Drawing.Size(354, 114);
             this.groupBox2.TabIndex = 30;
             this.groupBox2.TabStop = false;
             this.groupBox2.Text = "Coding for new games (From \"Tales From the Borderlands\" game)";
@@ -274,6 +276,18 @@
             this.rbNewBttF.TabStop = true;
             this.rbNewBttF.Text = "ASCII support for Back to the Future Xbox360 and PS4 versions";
             this.rbNewBttF.UseVisualStyleBackColor = true;
+            // 
+            // 
+            // rbTwdNintendoSwitch
+            // 
+            this.rbTwdNintendoSwitch.AutoSize = true;
+            this.rbTwdNintendoSwitch.Location = new System.Drawing.Point(5, 88);
+            this.rbTwdNintendoSwitch.Name = "rbTwdNintendoSwitch";
+            this.rbTwdNintendoSwitch.Size = new System.Drawing.Size(251, 17);
+            this.rbTwdNintendoSwitch.TabIndex = 4;
+            this.rbTwdNintendoSwitch.TabStop = true;
+            this.rbTwdNintendoSwitch.Text = "Support for The Walking Dead Nintendo Switch";
+            this.rbTwdNintendoSwitch.UseVisualStyleBackColor = true;
             // 
             // rbNonNormalUnicode2
             // 
@@ -304,7 +318,7 @@
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(433, 388);
+            this.ClientSize = new System.Drawing.Size(433, 405);
             this.Controls.Add(this.groupBox2);
             this.Controls.Add(this.cbIgnoreEmptyStrings);
             this.Controls.Add(this.checkBoxChangeLangFlags);
@@ -356,6 +370,7 @@
         private System.Windows.Forms.CheckBox cbIgnoreEmptyStrings;
         private System.Windows.Forms.GroupBox groupBox2;
         private System.Windows.Forms.RadioButton rbNewBttF;
+        private System.Windows.Forms.RadioButton rbTwdNintendoSwitch;
         private System.Windows.Forms.RadioButton rbNonNormalUnicode2;
         private System.Windows.Forms.RadioButton rbNormalUnicode;
     }

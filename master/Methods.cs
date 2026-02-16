@@ -12,6 +12,207 @@ namespace TTG_Tools
 {
     class Methods
     {
+        private static bool _forceAnsiForCurrentOperation = false;
+
+        public static void SetForceAnsiForCurrentOperation(bool enabled)
+        {
+            _forceAnsiForCurrentOperation = enabled;
+        }
+
+        public static bool GetForceAnsiForCurrentOperation()
+        {
+            return _forceAnsiForCurrentOperation;
+        }
+
+        public static bool IsCheckpointPropAnsiException(string fileName)
+        {
+            if (!MainMenu.settings.supportTwdNintendoSwitch) return false;
+
+            string safeName = Path.GetFileName(fileName ?? "");
+            return safeName.Equals("checkpoint_text.prop", StringComparison.OrdinalIgnoreCase);
+        }
+
+        public static bool ShouldUseUtf8ForPropReinsert(string fileName, bool headerIs6VSM)
+        {
+            if (MainMenu.settings.supportTwdNintendoSwitch)
+            {
+                // New requested strategy for Switch mode:
+                // all PROP reinsertion in UTF-8, except checkpoint_text.prop in ANSI.
+                return !IsCheckpointPropAnsiException(fileName);
+            }
+
+            return headerIs6VSM;
+        }
+
+        public static bool ShouldForceAnsiForSeasonStatsPropLine(string fileName, string text)
+        {
+            if (!MainMenu.settings.supportTwdNintendoSwitch) return false;
+
+            string safeName = Path.GetFileName(fileName ?? "");
+            if (!safeName.Equals("seasonStatsText.prop", StringComparison.OrdinalIgnoreCase)) return false;
+
+            return String.Equals(
+                text,
+                "Il est mort quand ils ont attaqué le drugstore.",
+                StringComparison.Ordinal);
+        }
+
+        public static bool IsLandbExcludedFromTwdSwitchAnsi(string fileName)
+        {
+            if (!MainMenu.settings.supportTwdNintendoSwitch) return false;
+
+            string safeName = Path.GetFileName(fileName ?? "");
+
+            return safeName.Equals("ui_menu_english.landb", StringComparison.OrdinalIgnoreCase);
+        }
+
+        public static bool ShouldMapOpeningCreditsReplacement(string fileName, byte[] originalFileBytes)
+        {
+            if (!MainMenu.settings.supportTwdNintendoSwitch) return false;
+
+            string safeName = Path.GetFileName(fileName ?? "");
+
+            if (!safeName.Equals("ui_openingcredits_english.landb", StringComparison.OrdinalIgnoreCase)) return false;
+            if (originalFileBytes == null || originalFileBytes.Length < 3) return false;
+
+            for (int i = 0; i < originalFileBytes.Length - 2; i++)
+            {
+                if ((originalFileBytes[i] == 0xEF) && (originalFileBytes[i + 1] == 0xBF) && (originalFileBytes[i + 2] == 0xBD))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        public static string MapReplacementCharToCopyright(string text, bool enabled)
+        {
+            if (!enabled || text == null) return text;
+            return text.Replace('\uFFFD', '©').Replace("ï¿½", "©");
+        }
+
+        public static string MapCopyrightToReplacementChar(string text, bool enabled)
+        {
+            if (!enabled || text == null) return text;
+            return text.Replace('©', '\uFFFD');
+        }
+
+        public static int GetActiveTextCodePage()
+        {
+            int codePage = MainMenu.settings.ASCII_N;
+            if (MainMenu.settings.supportTwdNintendoSwitch)
+            {
+                codePage = 1252;
+            }
+
+            return codePage;
+        }
+
+        public static bool IsTextRepresentableInActiveEncoding(string text)
+        {
+            if (text == null) return true;
+
+            Encoding enc = Encoding.GetEncoding(
+                GetActiveTextCodePage(),
+                EncoderFallback.ExceptionFallback,
+                DecoderFallback.ExceptionFallback);
+
+            try
+            {
+                enc.GetBytes(text);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        public static bool ContainsNonAscii(string text)
+        {
+            if (String.IsNullOrEmpty(text)) return false;
+
+            for (int i = 0; i < text.Length; i++)
+            {
+                if (text[i] > 0x7F) return true;
+            }
+
+            return false;
+        }
+
+        public static bool ContainsJapaneseCharacters(string text)
+        {
+            if (String.IsNullOrEmpty(text)) return false;
+
+            for (int i = 0; i < text.Length; i++)
+            {
+                char c = text[i];
+
+                // Hiragana, Katakana, CJK Unified Ideographs, Halfwidth Katakana
+                if ((c >= '\u3040' && c <= '\u309F')
+                    || (c >= '\u30A0' && c <= '\u30FF')
+                    || (c >= '\u4E00' && c <= '\u9FFF')
+                    || (c >= '\uFF66' && c <= '\uFF9D'))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        public static bool ShouldForceUtf8ForLandbString(string fileName, string text, bool openingCreditsReplacementMode)
+        {
+            if (!MainMenu.settings.supportTwdNintendoSwitch) return false;
+            if (String.IsNullOrEmpty(text)) return false;
+
+            if (ContainsJapaneseCharacters(text)) return true;
+
+            string safeName = Path.GetFileName(fileName ?? "");
+
+            if (safeName.Equals("ui_openingcredits_english.landb", StringComparison.OrdinalIgnoreCase) && text.Contains('©'))
+            {
+                return true;
+            }
+
+            if (openingCreditsReplacementMode && text.Contains('©')) return true;
+
+            if (safeName.Equals("choice_notification_english.landb", StringComparison.OrdinalIgnoreCase))
+            {
+                return text.Contains("Mark lo notó");
+            }
+
+            if (safeName.Equals("ui_menu_english.landb", StringComparison.OrdinalIgnoreCase))
+            {
+                return text.Contains('®') || ContainsNonAscii(text);
+            }
+
+            if (safeName.Equals("dairyexterior_lee_andy_english.landb", StringComparison.OrdinalIgnoreCase)
+                || safeName.Equals("dairyexterior_lee_brenda_english.landb", StringComparison.OrdinalIgnoreCase)
+                || safeName.Equals("dairyexterior_lee_lilly_english.landb", StringComparison.OrdinalIgnoreCase)
+                || safeName.Equals("env_dairyexterior_atthedairy_english.landb", StringComparison.OrdinalIgnoreCase)
+                || safeName.Equals("env_dairymeatlocker_english.landb", StringComparison.OrdinalIgnoreCase)
+                || safeName.Equals("env_forestabandonedcamp_english.landb", StringComparison.OrdinalIgnoreCase)
+                || safeName.Equals("env_forestjolenescamp_english.landb", StringComparison.OrdinalIgnoreCase)
+                || safeName.Equals("env_motorinn_backatthemotel_english.landb", StringComparison.OrdinalIgnoreCase)
+                || safeName.Equals("motorinn_lee_kenny_english.landb", StringComparison.OrdinalIgnoreCase))
+            {
+                return ContainsNonAscii(text);
+            }
+
+            return false;
+        }
+
+        public static bool ShouldUseTwdNintendoSwitchAnsi(string versionOfGame)
+        {
+            if (!MainMenu.settings.supportTwdNintendoSwitch) return false;
+            if (String.IsNullOrEmpty(versionOfGame)) return false;
+
+            return versionOfGame == "The Walking Dead: Season One"
+                || versionOfGame == "The Walking Dead: The Telltale Definitive Series";
+        }
+
         public static bool IsNumeric(string str)
         {
             try
@@ -79,6 +280,54 @@ namespace TTG_Tools
             return str;
         }
 
+        public static string DecodeGameText(byte[] bytes, bool useUtf8)
+        {
+            int codePage = GetActiveTextCodePage();
+
+            // Some files contain mixed ANSI/UTF-8 strings in the same block.
+            // Try strict UTF-8 first and fall back to ANSI only when bytes are not valid UTF-8.
+            string decodedUtf8 = null;
+            try
+            {
+                Encoding strictUtf8 = Encoding.GetEncoding(
+                    Encoding.UTF8.CodePage,
+                    EncoderFallback.ExceptionFallback,
+                    DecoderFallback.ExceptionFallback);
+
+                decodedUtf8 = strictUtf8.GetString(bytes);
+            }
+            catch
+            {
+                decodedUtf8 = null;
+            }
+
+            if (useUtf8)
+            {
+                return decodedUtf8 ?? Encoding.GetEncoding(codePage).GetString(bytes);
+            }
+
+            if (_forceAnsiForCurrentOperation && decodedUtf8 != null)
+            {
+                return decodedUtf8;
+            }
+
+            return Encoding.GetEncoding(codePage).GetString(bytes);
+        }
+
+        public static byte[] EncodeGameText(string text, bool useUtf8)
+        {
+            // If caller explicitly requests UTF-8 for this string,
+            // always honor that to preserve non-ANSI content (e.g. kanji).
+            if (useUtf8)
+            {
+                return Encoding.UTF8.GetBytes(text);
+            }
+
+            int codePage = GetActiveTextCodePage();
+
+            return Encoding.GetEncoding(codePage).GetBytes(text);
+        }
+
         public static UInt64 pad_it(UInt64 num, UInt64 pad)
         {
             UInt64 t;
@@ -98,20 +347,50 @@ namespace TTG_Tools
         //For tests
         public static bool isUTF8String(byte[] arr)
         {
-            bool result = false;
+            if (arr == null || arr.Length == 0) return false;
+
+            bool sawMultibyte = false;
             int i = 0;
 
-            while (i < arr.Length - 4)
+            while (i < arr.Length)
             {
-                if (arr[i] <= 0x7f) { i++; continue; }
-                if (arr[i] >= 0xc2 && arr[i] < 0xe0 && arr[i + 1] >= 0x80 && arr[i + 1] < 0xc0) { i += 2; result = true; continue; }
-                if (arr[i] >= 0xe0 && arr[i] < 0xf0 && arr[i + 1] >= 0x80 && arr[i + 1] < 0xc0 && arr[i + 2] >= 0x80 && arr[i + 2] < 0xc0) { i += 3; result = true; continue; }
-                if (arr[i] >= 0xf0 && arr[i] < 0xf5 && arr[i + 1] >= 0x80 && arr[i + 1] < 0xc0 && arr[i + 2] >= 0x80 && arr[i + 2] < 0xc0 && arr[i + 3] >= 0x80 && arr[i + 3] < 0xc0) { i += 4; result = true; continue; }
-                result = false;
-                break;
+                if (arr[i] <= 0x7f)
+                {
+                    i++;
+                    continue;
+                }
+
+                if ((arr[i] >= 0xc2) && (arr[i] < 0xe0))
+                {
+                    if ((i + 1) >= arr.Length) return false;
+                    if (arr[i + 1] < 0x80 || arr[i + 1] >= 0xc0) return false;
+                    i += 2;
+                    sawMultibyte = true;
+                    continue;
+                }
+
+                if ((arr[i] >= 0xe0) && (arr[i] < 0xf0))
+                {
+                    if ((i + 2) >= arr.Length) return false;
+                    if (arr[i + 1] < 0x80 || arr[i + 1] >= 0xc0 || arr[i + 2] < 0x80 || arr[i + 2] >= 0xc0) return false;
+                    i += 3;
+                    sawMultibyte = true;
+                    continue;
+                }
+
+                if ((arr[i] >= 0xf0) && (arr[i] < 0xf5))
+                {
+                    if ((i + 3) >= arr.Length) return false;
+                    if (arr[i + 1] < 0x80 || arr[i + 1] >= 0xc0 || arr[i + 2] < 0x80 || arr[i + 2] >= 0xc0 || arr[i + 3] < 0x80 || arr[i + 3] >= 0xc0) return false;
+                    i += 4;
+                    sawMultibyte = true;
+                    continue;
+                }
+
+                return false;
             }
 
-            return result;
+            return sawMultibyte;
         }
         public static void getSizeAndKratnost(int width, int height, int code, ref int ddsContentLength, ref int kratnost)
         {

@@ -33,6 +33,9 @@ namespace TTG_Tools
             bool FullEncrypt = param[7] == "True";
             bool isNewEngine = param[8] == "True";
             byte[] encKey = Methods.stringToKey(param[9]);
+            bool useTwdNintendoSwitchAnsi = Methods.ShouldUseTwdNintendoSwitchAnsi(versionOfGame);
+
+            Methods.SetForceAnsiForCurrentOperation(useTwdNintendoSwitchAnsi);
 
             bool[] show = { false, false, false, false, false, false, false };
 
@@ -122,7 +125,19 @@ namespace TTG_Tools
                                                 show[0] = true;
                                                 break;
                                             case ".landb":
-                                                result = Texts.LandbWorker.DoWork(inputFiles[i].FullName, fileDestination[j].FullName, false, encKey, version);
+                                                bool skipAnsiForSpecificLandbImport = Methods.IsLandbExcludedFromTwdSwitchAnsi(inputFiles[i].Name);
+                                                bool previousLandbImportForceAnsiState = Methods.GetForceAnsiForCurrentOperation();
+                                                if (skipAnsiForSpecificLandbImport) Methods.SetForceAnsiForCurrentOperation(false);
+
+                                                try
+                                                {
+                                                    result = Texts.LandbWorker.DoWork(inputFiles[i].FullName, fileDestination[j].FullName, false, encKey, version);
+                                                }
+                                                finally
+                                                {
+                                                    if (skipAnsiForSpecificLandbImport) Methods.SetForceAnsiForCurrentOperation(previousLandbImportForceAnsiState);
+                                                }
+
                                                 ReportForWork(result);
                                                 emptyFiles = false;
                                                 show[1] = true;
@@ -264,6 +279,8 @@ namespace TTG_Tools
             }
             finally
             {
+                Methods.SetForceAnsiForCurrentOperation(false);
+
                 // RESTAURAR: Garante que o caminho original volte ao normal, mesmo se der erro
                 MainMenu.settings.pathForOutputFolder = originalGlobalOutputPath;
             }
@@ -285,10 +302,16 @@ namespace TTG_Tools
             if (File.Exists(destFilePath)) File.Delete(destFilePath);
             FileStream fs = new FileStream(destFilePath, FileMode.CreateNew);
             BinaryWriter bw = new BinaryWriter(fs);
+
+            bool forceAnsiForCheckpointProp = Methods.IsCheckpointPropAnsiException(inputFile.Name);
+            bool previousForceAnsiState = Methods.GetForceAnsiForCurrentOperation();
+            if (forceAnsiForCheckpointProp) Methods.SetForceAnsiForCurrentOperation(true);
+
             try
             {
                 byte[] header = br.ReadBytes(4);
                 bw.Write(header);
+                bool useUtf8ForReinsert = Methods.ShouldUseUtf8ForPropReinsert(inputFile.Name, Encoding.ASCII.GetString(header) == "6VSM");
                 if ((Encoding.ASCII.GetString(header) == "5VSM") || (Encoding.ASCII.GetString(header) == "6VSM"))
                 {
                     blHeadSize = br.ReadInt32();
@@ -373,7 +396,10 @@ namespace TTG_Tools
                         bl = br.ReadBytes(blLen);
                         blockSize += 4;
                         blHeadSize += 4;
-                        bl = Encoding.ASCII.GetString(header) == "6VSM" ? Encoding.UTF8.GetBytes(strs[c]) : Encoding.GetEncoding(MainMenu.settings.ASCII_N).GetBytes(strs[c]);
+                        bool useUtf8ForCurrentString = useUtf8ForReinsert
+                            && !Methods.ShouldForceAnsiForSeasonStatsPropLine(inputFile.Name, strs[c]);
+
+                        bl = Methods.EncodeGameText(strs[c], useUtf8ForCurrentString);
                         blLen = bl.Length;
                         bw.Write(blLen);
                         bw.Write(bl);
@@ -405,7 +431,10 @@ namespace TTG_Tools
                         {
                             blLen = br.ReadInt32();
                             bl = br.ReadBytes(blLen);
-                            bl = Encoding.ASCII.GetString(header) == "6VSM" ? Encoding.UTF8.GetBytes(strs[c]) : Encoding.GetEncoding(MainMenu.settings.ASCII_N).GetBytes(strs[c]);
+                            bool useUtf8ForCurrentString = useUtf8ForReinsert
+                                && !Methods.ShouldForceAnsiForSeasonStatsPropLine(inputFile.Name, strs[c]);
+
+                            bl = Methods.EncodeGameText(strs[c], useUtf8ForCurrentString);
                             blLen = bl.Length;
                             bw.Write(blLen);
                             bw.Write(bl);
@@ -426,6 +455,7 @@ namespace TTG_Tools
                 fs.Close();
                 br.Close();
                 ms.Close();
+                if (forceAnsiForCheckpointProp) Methods.SetForceAnsiForCurrentOperation(previousForceAnsiState);
                 ReportForWork("File " + DestinationFile.Name + " imported in " + inputFile.Name + ".");
             }
             catch
@@ -435,6 +465,7 @@ namespace TTG_Tools
                 if (bw != null) bw.Close();
                 if (fs != null) fs.Close();
 
+                if (forceAnsiForCheckpointProp) Methods.SetForceAnsiForCurrentOperation(previousForceAnsiState);
                 string errorMsg = "Something wrong with file " + inputFile.Name;
                 failedList.Add(inputFile.Name);
                 ReportForWork(errorMsg);
@@ -452,6 +483,11 @@ namespace TTG_Tools
             if (File.Exists(fullDestPath)) File.Delete(fullDestPath);
             FileStream fsw = new FileStream(fullDestPath, FileMode.CreateNew);
             StreamWriter sw = new StreamWriter(fsw);
+
+            bool forceAnsiForCheckpointProp = Methods.IsCheckpointPropAnsiException(inputFile.Name);
+            bool previousForceAnsiState = Methods.GetForceAnsiForCurrentOperation();
+            if (forceAnsiForCheckpointProp) Methods.SetForceAnsiForCurrentOperation(true);
+
             try
             {
                 //Read for checkpoint_text.prop and statsInfo_text.prop files
@@ -493,8 +529,7 @@ namespace TTG_Tools
                         if (Encoding.ASCII.GetString(header) == "ERTM") one1 = br.ReadInt32();
                         int len = br.ReadInt32();
                         bValue = br.ReadBytes(len);
-                        strs[i] = Encoding.GetEncoding(MainMenu.settings.ASCII_N).GetString(bValue);
-                        if (Encoding.ASCII.GetString(header) == "6VSM") strs[i] = Encoding.UTF8.GetString(bValue);
+                        strs[i] = Methods.DecodeGameText(bValue, Encoding.ASCII.GetString(header) == "6VSM");
                         sw.WriteLine(Convert.ToString(c_str) + ")");
                         sw.WriteLine(strs[i]);
                         c_str++;
@@ -517,8 +552,7 @@ namespace TTG_Tools
                         {
                             int len = br.ReadInt32();
                             bValue = br.ReadBytes(len);
-                            strs[i][j] = Encoding.GetEncoding(MainMenu.settings.ASCII_N).GetString(bValue);
-                            if (Encoding.ASCII.GetString(header) == "6VSM") strs[i][j] = Encoding.UTF8.GetString(bValue);
+                            strs[i][j] = Methods.DecodeGameText(bValue, Encoding.ASCII.GetString(header) == "6VSM");
                             sw.WriteLine(Convert.ToString(c_str) + ")");
                             sw.WriteLine(strs[i][j]);
                             c_str++;
@@ -530,6 +564,7 @@ namespace TTG_Tools
                 fs.Close();
                 sw.Close();
                 fsw.Close();
+                if (forceAnsiForCheckpointProp) Methods.SetForceAnsiForCurrentOperation(previousForceAnsiState);
             }
             catch
             {
@@ -537,6 +572,7 @@ namespace TTG_Tools
                 if (fs != null) fs.Close();
                 if (sw != null) sw.Close();
                 if (fsw != null) fsw.Close();
+                if (forceAnsiForCheckpointProp) Methods.SetForceAnsiForCurrentOperation(previousForceAnsiState);
                 ReportForWork("Something wrong with file " + inputFile.Name);
             }
         }
@@ -550,6 +586,9 @@ namespace TTG_Tools
             string versionOfGame = param[2];
             byte[] key = Methods.stringToKey(param[3]);
             int version = Convert.ToInt32(param[4]);
+            bool useTwdNintendoSwitchAnsi = Methods.ShouldUseTwdNintendoSwitchAnsi(versionOfGame);
+
+            Methods.SetForceAnsiForCurrentOperation(useTwdNintendoSwitchAnsi);
 
             // Salvar o caminho original para restaurar depois
             string originalGlobalOutputPath = MainMenu.settings.pathForOutputFolder;
@@ -618,7 +657,19 @@ namespace TTG_Tools
 
                                     case ".landb":
                                         // Usa config global
-                                        message = Texts.LandbWorker.DoWork(inputFiles[i].FullName, "", true, key, version);
+                                        bool skipAnsiForSpecificLandbExport = Methods.IsLandbExcludedFromTwdSwitchAnsi(inputFiles[i].Name);
+                                        bool previousLandbExportForceAnsiState = Methods.GetForceAnsiForCurrentOperation();
+                                        if (skipAnsiForSpecificLandbExport) Methods.SetForceAnsiForCurrentOperation(false);
+
+                                        try
+                                        {
+                                            message = Texts.LandbWorker.DoWork(inputFiles[i].FullName, "", true, key, version);
+                                        }
+                                        finally
+                                        {
+                                            if (skipAnsiForSpecificLandbExport) Methods.SetForceAnsiForCurrentOperation(previousLandbExportForceAnsiState);
+                                        }
+
                                         ReportForWork(message);
                                         extractedFormat[2] = 2;
                                         break;
@@ -681,6 +732,8 @@ namespace TTG_Tools
             }
             finally
             {
+                Methods.SetForceAnsiForCurrentOperation(false);
+
                 // Restaurar configuração original
                 MainMenu.settings.pathForOutputFolder = originalGlobalOutputPath;
             }

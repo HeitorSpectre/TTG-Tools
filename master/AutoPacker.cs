@@ -95,7 +95,7 @@ namespace TTG_Tools
 
             EncVersion = comboBox2.SelectedIndex != 1 ? 2 : 7;
 
-            string versionOfGame = " ";
+            string versionOfGame = MainMenu.gamelist[comboBox1.SelectedIndex].gamename;
             numKey = comboBox1.SelectedIndex;
             selected_index = comboBox2.SelectedIndex;
             byte[] encKey = MainMenu.settings.customKey ? Methods.stringToKey(MainMenu.settings.encCustomKey) : MainMenu.gamelist[numKey].key;
@@ -128,7 +128,7 @@ namespace TTG_Tools
         {
             if (MainMenu.settings.clearMessages) listBox1.Items.Clear();
 
-            string versionOfGame = " ";
+            string versionOfGame = MainMenu.gamelist[comboBox1.SelectedIndex].gamename;
             numKey = comboBox1.SelectedIndex;
             selected_index = comboBox2.SelectedIndex;
 
@@ -399,4 +399,4 @@ namespace TTG_Tools
         {
         }
     }
-}
+}
