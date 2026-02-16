@@ -164,6 +164,9 @@
     <Compile Include="TextEditor.Designer.cs">
       <DependentUpon>TextEditor.cs</DependentUpon>
     </Compile>
+    <Compile Include="PropEditor.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="MainMenu.cs">
       <SubType>Form</SubType>
     </Compile>

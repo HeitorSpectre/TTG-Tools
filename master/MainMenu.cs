@@ -352,5 +352,14 @@ namespace TTG_Tools
                 arcUnpackerForm.Show();
             }
         }
+
+        private void propEditorBtn_Click(object sender, EventArgs e)
+        {
+            if (Application.OpenForms.OfType<PropEditor>().Count() == 0)
+            {
+                Form propEditor = new PropEditor();
+                propEditor.Show();
+            }
+        }
     }
-}
+}

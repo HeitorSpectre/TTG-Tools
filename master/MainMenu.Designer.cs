@@ -39,6 +39,7 @@
             this.settingsBtn = new System.Windows.Forms.Button();
             this.archivePackerBtn = new System.Windows.Forms.Button();
             this.arcUnpackerBtn = new System.Windows.Forms.Button();
+            this.propEditorBtn = new System.Windows.Forms.Button();
             this.SuspendLayout();
             // 
             // autopackerBtn
@@ -119,11 +120,22 @@
             this.arcUnpackerBtn.UseVisualStyleBackColor = true;
             this.arcUnpackerBtn.Click += new System.EventHandler(this.arcUnpackerBtn_Click);
             // 
+            // propEditorBtn
+            // 
+            this.propEditorBtn.Location = new System.Drawing.Point(127, 108);
+            this.propEditorBtn.Name = "propEditorBtn";
+            this.propEditorBtn.Size = new System.Drawing.Size(112, 23);
+            this.propEditorBtn.TabIndex = 14;
+            this.propEditorBtn.Text = "Prop Editor";
+            this.propEditorBtn.UseVisualStyleBackColor = true;
+            this.propEditorBtn.Click += new System.EventHandler(this.propEditorBtn_Click);
+            // 
             // MainMenu
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(370, 191);
+            this.Controls.Add(this.propEditorBtn);
             this.Controls.Add(this.arcUnpackerBtn);
             this.Controls.Add(this.archivePackerBtn);
             this.Controls.Add(this.settingsBtn);
@@ -153,5 +165,6 @@
         private System.Windows.Forms.Button settingsBtn;
         private System.Windows.Forms.Button archivePackerBtn;
         private System.Windows.Forms.Button arcUnpackerBtn;
+        private System.Windows.Forms.Button propEditorBtn;
     }
 }
