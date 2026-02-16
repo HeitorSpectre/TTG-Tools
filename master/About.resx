@@ -146,9 +146,18 @@ Maybe some games doesn't work.
 ===
 [Version history]
 
+v.1.15.7 (16.02.2026)
++ Auto(De)Packer
+Add Nintendo Switch-specific text encoding mode for TWD (.prop/.landb)
+Fix texture swizzle bug for Nintendo Switch
++ Font Editor: 
+Added support for The Walking Dead Season One on Nintendo Switch
+
 v.1.15.6 (16.02.2026)
-+ Archive Packer and Font Editor:
++ Archive Packer 
 Added support for The Walking Dead Season One on PS Vita
++ Font Editor: 
+Add live texture preview overlay to Font Editor
 
 v.1.15.5 (13.02.2026)
 + Archive Packer
