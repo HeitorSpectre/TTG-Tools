@@ -1496,6 +1496,34 @@ namespace TTG_Tools.Graphics
                 }
             }
             // ====================================================================================
+            // CORREÇÃO DE ALINHAMENTO NINTENDO SWITCH (swizzle padding para NPOT)
+            // Alguns mips no Switch exigem stride/alinhamento maior no bloco swizzled.
+            // Sem ajustar MipSize/TexSize para o tamanho swizzled real, os bytes finais
+            // da borda direita podem ficar fora da leitura no jogo.
+            // ====================================================================================
+            if (tex.platform.platform == 15)
+            {
+                int switchW = tex.Width;
+                int switchH = tex.Height;
+
+                tex.Tex.TexSize = 0;
+
+                for (int i = 0; i < tex.Tex.MipCount; i++)
+                {
+                    int switchMipSize = NintendoSwitch.GetSwizzledMipSize(switchW, switchH, (int)tex.TextureFormat);
+
+                    if (switchMipSize > tex.Tex.Textures[i].MipSize)
+                    {
+                        tex.Tex.Textures[i].MipSize = switchMipSize;
+                    }
+
+                    tex.Tex.TexSize += (uint)tex.Tex.Textures[i].MipSize;
+
+                    if (switchW > 1) switchW /= 2;
+                    if (switchH > 1) switchH /= 2;
+                }
+            }
+            // ====================================================================================
 
             if (mode == 1 || mode == 2)
             {
@@ -1697,9 +1725,17 @@ namespace TTG_Tools.Graphics
 
                         for (int i = 0; i < tex.Tex.MipCount; i++)
                         {
+                            int switchMipSize = NintendoSwitch.GetSwizzledMipSize(w, h, (int)tex.TextureFormat);
+
                             tex.Tex.Textures[i].Block = NintendoSwitch.NintendoSwizzle(tex.Tex.Textures[i].Block, w, h, (int)tex.TextureFormat, false);
-                            bw.Write(tex.Tex.Textures[i].Block);
-                            tex.textureSize += (uint)tex.Tex.Textures[i].Block.Length;
+
+                            if (switchMipSize > 0 && tex.Tex.Textures[i].Block.Length >= switchMipSize)
+                            {
+                                tex.Tex.Textures[i].MipSize = switchMipSize;
+                            }
+
+                            bw.Write(tex.Tex.Textures[i].Block, 0, tex.Tex.Textures[i].MipSize);
+                            tex.textureSize += (uint)tex.Tex.Textures[i].MipSize;
 
                             if (w > 1) w /= 2;
                             if (h > 1) h /= 2;
