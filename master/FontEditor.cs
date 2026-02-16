@@ -247,6 +247,14 @@ namespace TTG_Tools
 
                     case 15:
                         NewTex.Tex.Textures[i].Block = NintendoSwitch.NintendoSwizzle(NewTex.Tex.Textures[i].Block, w, h, (int)NewTex.TextureFormat, false);
+
+                        // Nintendo Switch NPOT textures can also grow after swizzle padding.
+                        // Keep mip/header sizes synchronized to avoid cutting glyphs stored
+                        // in the last rows of the atlas (common with accented characters).
+                        if (NewTex.Tex.Textures[i].Block != null)
+                        {
+                            NewTex.Tex.Textures[i].MipSize = NewTex.Tex.Textures[i].Block.Length;
+                        }
                         break;
                     case 4:
                         int texelBytePitch;
