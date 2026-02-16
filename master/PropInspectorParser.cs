@@ -11,8 +11,6 @@ namespace TTG_Tools
         {
             public string Name { get; set; }
             public string Value { get; set; }
-            public long Offset { get; set; }
-            public long Length { get; set; }
             public List<PropNode> Children { get; private set; }
 
             public PropNode()
@@ -21,230 +19,238 @@ namespace TTG_Tools
             }
         }
 
+        private static readonly HashSet<string> LanguageNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "French", "English", "Japanese", "German", "Spanish", "Portuguese", "Italian", "Russian", "Polish",
+            "Chinese", "Korean", "Dutch", "Czech", "Arabic", "Turkish", "Thai", "Hungarian"
+        };
+
         public static PropNode Parse(string filePath)
         {
             PropNode root = new PropNode();
             root.Name = Path.GetFileName(filePath);
-            root.Value = "PROP file";
+            root.Value = "Properties";
 
-            using (FileStream fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read))
-            using (BinaryReader br = new BinaryReader(fs))
+            List<string> strings = ExtractPropStrings(filePath);
+
+            PropNode properties = new PropNode();
+            properties.Name = "Properties";
+            properties.Value = string.Empty;
+            root.Children.Add(properties);
+
+            if (strings.Count == 0)
             {
-                ParseCore(br, root);
+                PropNode none = new PropNode();
+                none.Name = "(No property strings found)";
+                none.Value = string.Empty;
+                properties.Children.Add(none);
+                return root;
             }
+
+            AddLocalizedView(properties, strings);
+            AddFlatEntriesView(properties, strings);
 
             return root;
         }
 
-        private static void ParseCore(BinaryReader br, PropNode root)
+        private static void AddLocalizedView(PropNode properties, List<string> strings)
         {
-            PropNode headerNode = ReadAscii(br, "Header", 4);
-            root.Children.Add(headerNode);
-            string header = headerNode.Value;
+            PropNode localized = new PropNode();
+            localized.Name = "Localized Text";
+            localized.Value = string.Empty;
 
-            if (header == "5VSM" || header == "6VSM")
+            Dictionary<string, List<string>> valuesByLang = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+
+            for (int i = 0; i < strings.Count - 1; i++)
             {
-                root.Children.Add(ReadInt32Node(br, "Block Size"));
-                root.Children.Add(ReadInt64(br, "Sub Block Size"));
-            }
+                string key = Clean(strings[i]);
+                string value = Clean(strings[i + 1]);
 
-            int countHeaders = ReadInt32AndAppend(br, "Header Entries Count", root);
-
-            PropNode headersNode = new PropNode();
-            headersNode.Name = "Header Entries";
-            headersNode.Value = countHeaders.ToString();
-            root.Children.Add(headersNode);
-
-            for (int i = 0; i < countHeaders; i++)
-            {
-                PropNode entry = new PropNode();
-                entry.Name = "Entry " + i;
-                headersNode.Children.Add(entry);
-                entry.Children.Add(ReadBytesNode(br, "CRC64", 8));
-                entry.Children.Add(ReadInt32Node(br, "Value"));
-            }
-
-            root.Children.Add(ReadInt32Node(br, "One"));
-            root.Children.Add(ReadInt32Node(br, "SomeValue1"));
-
-            if (header != "6VSM")
-            {
-                int blSize1 = ReadInt32AndAppend(br, "Block1Size", root);
-                root.Children.Add(ReadBytesNode(br, "Block1Data", Math.Max(0, blSize1 - 4)));
-            }
-
-            root.Children.Add(ReadInt32Node(br, "Block2Size"));
-            root.Children.Add(ReadInt32Node(br, "One1"));
-            if (header == "6VSM")
-            {
-                root.Children.Add(ReadInt32Node(br, "One2"));
-            }
-
-            long markerOffset = br.BaseStream.Position;
-            byte[] typeMarker = br.ReadBytes(8);
-            root.Children.Add(CreateBytesNode("Primary Marker", typeMarker, markerOffset));
-
-            string marker = BitConverter.ToString(typeMarker);
-
-            if (marker == "B4-F4-5A-5F-60-6E-9C-CD")
-            {
-                ParseStringBlock(br, root, header);
-            }
-            else if (marker == "25-03-C6-1F-D8-64-1B-4F")
-            {
-                ParseNestedStringBlock(br, root, header);
-            }
-
-            long remain = br.BaseStream.Length - br.BaseStream.Position;
-            if (remain > 0)
-            {
-                root.Children.Add(ReadBytesNode(br, "Trailing/Hidden Data", (int)remain));
-            }
-        }
-
-        private static void ParseStringBlock(BinaryReader br, PropNode parent, string header)
-        {
-            PropNode blockNode = new PropNode();
-            blockNode.Name = "String Block (Marker B4-F4-5A-5F-60-6E-9C-CD)";
-            blockNode.Value = string.Empty;
-            parent.Children.Add(blockNode);
-
-            if (header == "ERTM")
-            {
-                blockNode.Children.Add(ReadInt32Node(br, "Optional One"));
-            }
-
-            int countBlocks = ReadInt32AndAppend(br, "Entries Count", blockNode);
-            for (int i = 0; i < countBlocks; i++)
-            {
-                PropNode entry = new PropNode();
-                entry.Name = "Entry " + i;
-                blockNode.Children.Add(entry);
-                entry.Children.Add(ReadBytesNode(br, "Name CRC64", 8));
-
-                if (header == "ERTM")
+                if (LanguageNames.Contains(key) && !string.IsNullOrEmpty(value) && !LanguageNames.Contains(value))
                 {
-                    entry.Children.Add(ReadInt32Node(br, "Optional One"));
-                }
-
-                int len = ReadInt32AndAppend(br, "String Length", entry);
-                entry.Children.Add(ReadStringByHeader(br, "String", len, header));
-            }
-        }
-
-        private static void ParseNestedStringBlock(BinaryReader br, PropNode parent, string header)
-        {
-            PropNode blockNode = new PropNode();
-            blockNode.Name = "Nested Block (Marker 25-03-C6-1F-D8-64-1B-4F)";
-            blockNode.Value = string.Empty;
-            parent.Children.Add(blockNode);
-
-            int count = ReadInt32AndAppend(br, "Blocks Count", blockNode);
-            for (int i = 0; i < count; i++)
-            {
-                PropNode block = new PropNode();
-                block.Name = "Block " + i;
-                blockNode.Children.Add(block);
-                block.Children.Add(ReadBytesNode(br, "Block CRC64", 8));
-
-                if (header == "ERTM")
-                {
-                    block.Children.Add(ReadInt32Node(br, "Optional One"));
-                }
-
-                int subCount = ReadInt32AndAppend(br, "Sub Count", block);
-                for (int j = 0; j < subCount * 2; j++)
-                {
-                    int len = ReadInt32AndAppend(br, "Value Length " + j, block);
-                    block.Children.Add(ReadStringByHeader(br, "Value " + j, len, header));
+                    if (!valuesByLang.ContainsKey(key)) valuesByLang[key] = new List<string>();
+                    valuesByLang[key].Add(value);
                 }
             }
+
+            if (valuesByLang.Count == 0)
+            {
+                return;
+            }
+
+            foreach (KeyValuePair<string, List<string>> item in valuesByLang)
+            {
+                PropNode langNode = new PropNode();
+                langNode.Name = item.Key;
+                langNode.Value = string.Empty;
+
+                for (int i = 0; i < item.Value.Count; i++)
+                {
+                    PropNode txtNode = new PropNode();
+                    txtNode.Name = "Text " + (i + 1).ToString();
+                    txtNode.Value = item.Value[i];
+                    langNode.Children.Add(txtNode);
+                }
+
+                localized.Children.Add(langNode);
+            }
+
+            properties.Children.Add(localized);
         }
 
-        private static PropNode ReadStringByHeader(BinaryReader br, string name, int length, string header)
+        private static void AddFlatEntriesView(PropNode properties, List<string> strings)
         {
-            long offset = br.BaseStream.Position;
-            byte[] data = br.ReadBytes(length);
+            PropNode entries = new PropNode();
+            entries.Name = "Entries";
+            entries.Value = strings.Count.ToString();
 
-            Encoding enc = header == "6VSM" ? Encoding.UTF8 : Encoding.GetEncoding(MainMenu.settings.ASCII_N);
-            string value = enc.GetString(data);
+            for (int i = 0; i < strings.Count; i++)
+            {
+                string val = Clean(strings[i]);
+                if (string.IsNullOrEmpty(val)) continue;
 
-            PropNode node = new PropNode();
-            node.Name = name;
-            node.Value = value;
-            node.Offset = offset;
-            node.Length = data.Length;
-            node.Children.Add(CreateBytesNode("Raw", data, offset));
-            return node;
+                PropNode node = new PropNode();
+                node.Name = "Entry " + (i + 1).ToString();
+                node.Value = val;
+                entries.Children.Add(node);
+            }
+
+            properties.Children.Add(entries);
         }
 
-        private static PropNode ReadBytesNode(BinaryReader br, string name, int length)
+        private static List<string> ExtractPropStrings(string filePath)
         {
-            long offset = br.BaseStream.Position;
-            byte[] bytes = br.ReadBytes(length);
-            return CreateBytesNode(name, bytes, offset);
+            List<string> results = new List<string>();
+
+            using (FileStream fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read))
+            using (BinaryReader br = new BinaryReader(fs))
+            {
+                string header = Encoding.ASCII.GetString(br.ReadBytes(4));
+
+                if (header == "5VSM" || header == "6VSM")
+                {
+                    br.ReadInt32();
+                    br.ReadInt64();
+                }
+
+                int countHeaders = SafeReadInt32(br);
+                for (int i = 0; i < countHeaders; i++)
+                {
+                    br.ReadBytes(8);
+                    br.ReadBytes(4);
+                }
+
+                br.ReadInt32();
+                br.ReadInt32();
+
+                if (header != "6VSM")
+                {
+                    int blSize1 = SafeReadInt32(br);
+                    int toSkip = blSize1 - 4;
+                    if (toSkip > 0) br.ReadBytes(toSkip);
+                }
+
+                br.ReadInt32();
+                br.ReadInt32();
+                if (header == "6VSM") br.ReadInt32();
+
+                byte[] markerBytes = br.ReadBytes(8);
+                string marker = BitConverter.ToString(markerBytes);
+
+                Encoding enc = header == "6VSM" ? Encoding.UTF8 : Encoding.GetEncoding(MainMenu.settings.ASCII_N);
+
+                if (marker == "B4-F4-5A-5F-60-6E-9C-CD")
+                {
+                    if (header == "ERTM") br.ReadInt32();
+
+                    int countBlocks = SafeReadInt32(br);
+                    for (int i = 0; i < countBlocks; i++)
+                    {
+                        br.ReadBytes(8);
+                        if (header == "ERTM") br.ReadInt32();
+
+                        int len = SafeReadInt32(br);
+                        if (len <= 0 || len > (br.BaseStream.Length - br.BaseStream.Position)) break;
+
+                        byte[] valueData = br.ReadBytes(len);
+                        results.Add(enc.GetString(valueData));
+                    }
+                }
+                else if (marker == "25-03-C6-1F-D8-64-1B-4F")
+                {
+                    if (header == "ERTM") br.ReadInt32();
+
+                    int countBlocks = SafeReadInt32(br);
+                    for (int i = 0; i < countBlocks; i++)
+                    {
+                        br.ReadBytes(8);
+                        if (header == "ERTM") br.ReadInt32();
+
+                        int countSubBlocks = SafeReadInt32(br);
+                        for (int j = 0; j < countSubBlocks * 2; j++)
+                        {
+                            int len = SafeReadInt32(br);
+                            if (len <= 0 || len > (br.BaseStream.Length - br.BaseStream.Position)) break;
+
+                            byte[] valueData = br.ReadBytes(len);
+                            results.Add(enc.GetString(valueData));
+                        }
+                    }
+                }
+                else
+                {
+                    // Fallback: scan printable strings from remaining file data
+                    byte[] tail = br.ReadBytes((int)(br.BaseStream.Length - br.BaseStream.Position));
+                    ExtractPrintableStrings(results, tail, enc);
+                }
+            }
+
+            return results;
         }
 
-        private static PropNode CreateBytesNode(string name, byte[] bytes, long offset)
+        private static void ExtractPrintableStrings(List<string> output, byte[] data, Encoding enc)
         {
-            PropNode node = new PropNode();
-            node.Name = name;
-            node.Value = BitConverter.ToString(bytes);
-            node.Offset = offset;
-            node.Length = bytes.Length;
-            return node;
+            List<byte> current = new List<byte>();
+            for (int i = 0; i < data.Length; i++)
+            {
+                byte b = data[i];
+                bool printable = (b >= 32 && b <= 126) || b >= 128;
+
+                if (printable)
+                {
+                    current.Add(b);
+                }
+                else
+                {
+                    FlushCurrent(output, current, enc);
+                }
+            }
+
+            FlushCurrent(output, current, enc);
         }
 
-        private static int ReadInt32AndAppend(BinaryReader br, string name, PropNode appendTo)
+        private static void FlushCurrent(List<string> output, List<byte> current, Encoding enc)
         {
-            int value;
-            appendTo.Children.Add(ReadInt32Node(br, name, out value));
-            return value;
+            if (current.Count >= 3)
+            {
+                string s = Clean(enc.GetString(current.ToArray()));
+                if (!string.IsNullOrEmpty(s)) output.Add(s);
+            }
+
+            current.Clear();
         }
 
-        private static PropNode ReadInt32Node(BinaryReader br, string name)
+        private static int SafeReadInt32(BinaryReader br)
         {
-            int dummy;
-            return ReadInt32Node(br, name, out dummy);
+            if (br.BaseStream.Position + 4 > br.BaseStream.Length) return 0;
+            return br.ReadInt32();
         }
 
-        private static PropNode ReadInt32Node(BinaryReader br, string name, out int value)
+        private static string Clean(string s)
         {
-            long offset = br.BaseStream.Position;
-            value = br.ReadInt32();
-
-            PropNode node = new PropNode();
-            node.Name = name;
-            node.Value = value.ToString();
-            node.Offset = offset;
-            node.Length = 4;
-            return node;
-        }
-
-        private static PropNode ReadInt64(BinaryReader br, string name)
-        {
-            long offset = br.BaseStream.Position;
-            long val = br.ReadInt64();
-
-            PropNode node = new PropNode();
-            node.Name = name;
-            node.Value = val.ToString();
-            node.Offset = offset;
-            node.Length = 8;
-            return node;
-        }
-
-        private static PropNode ReadAscii(BinaryReader br, string name, int length)
-        {
-            long offset = br.BaseStream.Position;
-            byte[] bytes = br.ReadBytes(length);
-
-            PropNode node = new PropNode();
-            node.Name = name;
-            node.Value = Encoding.ASCII.GetString(bytes);
-            node.Offset = offset;
-            node.Length = bytes.Length;
-            return node;
+            if (s == null) return string.Empty;
+            s = s.Replace("\0", string.Empty).Trim();
+            return s;
         }
     }
 }
