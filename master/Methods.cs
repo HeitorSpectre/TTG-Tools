@@ -267,7 +267,9 @@ namespace TTG_Tools
 
         public static byte[] EncodeGameText(string text, bool useUtf8)
         {
-            if (useUtf8 && !_forceAnsiForCurrentOperation)
+            // If caller explicitly requests UTF-8 for this string,
+            // always honor that to preserve non-ANSI content (e.g. kanji).
+            if (useUtf8)
             {
                 return Encoding.UTF8.GetBytes(text);
             }
