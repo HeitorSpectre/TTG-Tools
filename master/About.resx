@@ -146,7 +146,11 @@ Maybe some games doesn't work.
 ===
 [Version history]
 
-v.1.15.4 (13.02.2026)
+v.1.15.6 (16.02.2026)
++ Archive Packer and Font Editor:
+Added support for The Walking Dead Season One on PS Vita
+
+v.1.15.5 (13.02.2026)
 + Archive Packer
 Lua encryption has been fixed when a .lenc file is present during the building of a ttarch.
 + TTG Tools:
