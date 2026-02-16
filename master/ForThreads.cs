@@ -33,6 +33,9 @@ namespace TTG_Tools
             bool FullEncrypt = param[7] == "True";
             bool isNewEngine = param[8] == "True";
             byte[] encKey = Methods.stringToKey(param[9]);
+            bool useTwdNintendoSwitchAnsi = Methods.ShouldUseTwdNintendoSwitchAnsi(versionOfGame);
+
+            Methods.SetForceAnsiForCurrentOperation(useTwdNintendoSwitchAnsi);
 
             bool[] show = { false, false, false, false, false, false, false };
 
@@ -264,6 +267,8 @@ namespace TTG_Tools
             }
             finally
             {
+                Methods.SetForceAnsiForCurrentOperation(false);
+
                 // RESTAURAR: Garante que o caminho original volte ao normal, mesmo se der erro
                 MainMenu.settings.pathForOutputFolder = originalGlobalOutputPath;
             }
@@ -548,6 +553,9 @@ namespace TTG_Tools
             string versionOfGame = param[2];
             byte[] key = Methods.stringToKey(param[3]);
             int version = Convert.ToInt32(param[4]);
+            bool useTwdNintendoSwitchAnsi = Methods.ShouldUseTwdNintendoSwitchAnsi(versionOfGame);
+
+            Methods.SetForceAnsiForCurrentOperation(useTwdNintendoSwitchAnsi);
 
             // Salvar o caminho original para restaurar depois
             string originalGlobalOutputPath = MainMenu.settings.pathForOutputFolder;
@@ -679,6 +687,8 @@ namespace TTG_Tools
             }
             finally
             {
+                Methods.SetForceAnsiForCurrentOperation(false);
+
                 // Restaurar configuração original
                 MainMenu.settings.pathForOutputFolder = originalGlobalOutputPath;
             }

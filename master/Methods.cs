@@ -12,6 +12,22 @@ namespace TTG_Tools
 {
     class Methods
     {
+        private static bool _forceAnsiForCurrentOperation = false;
+
+        public static void SetForceAnsiForCurrentOperation(bool enabled)
+        {
+            _forceAnsiForCurrentOperation = enabled;
+        }
+
+        public static bool ShouldUseTwdNintendoSwitchAnsi(string versionOfGame)
+        {
+            if (!MainMenu.settings.supportTwdNintendoSwitch) return false;
+            if (String.IsNullOrEmpty(versionOfGame)) return false;
+
+            return versionOfGame == "The Walking Dead: Season One"
+                || versionOfGame == "The Walking Dead: The Telltale Definitive Series";
+        }
+
         public static bool IsNumeric(string str)
         {
             try
@@ -81,7 +97,7 @@ namespace TTG_Tools
 
         public static string DecodeGameText(byte[] bytes, bool useUtf8)
         {
-            if (useUtf8)
+            if (useUtf8 && !_forceAnsiForCurrentOperation)
             {
                 return Encoding.UTF8.GetString(bytes);
             }
@@ -97,7 +113,7 @@ namespace TTG_Tools
 
         public static byte[] EncodeGameText(string text, bool useUtf8)
         {
-            if (useUtf8)
+            if (useUtf8 && !_forceAnsiForCurrentOperation)
             {
                 return Encoding.UTF8.GetBytes(text);
             }
