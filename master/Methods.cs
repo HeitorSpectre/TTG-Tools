@@ -118,15 +118,37 @@ namespace TTG_Tools
 
         public static string DecodeGameText(byte[] bytes, bool useUtf8)
         {
-            if (useUtf8 && !_forceAnsiForCurrentOperation)
-            {
-                return Encoding.UTF8.GetString(bytes);
-            }
-
             int codePage = MainMenu.settings.ASCII_N;
             if (MainMenu.settings.supportTwdNintendoSwitch)
             {
                 codePage = 1252;
+            }
+
+            // Some files contain mixed ANSI/UTF-8 strings in the same block.
+            // Try strict UTF-8 first and fall back to ANSI only when bytes are not valid UTF-8.
+            string decodedUtf8 = null;
+            try
+            {
+                Encoding strictUtf8 = Encoding.GetEncoding(
+                    Encoding.UTF8.CodePage,
+                    EncoderFallback.ExceptionFallback,
+                    DecoderFallback.ExceptionFallback);
+
+                decodedUtf8 = strictUtf8.GetString(bytes);
+            }
+            catch
+            {
+                decodedUtf8 = null;
+            }
+
+            if (useUtf8)
+            {
+                return decodedUtf8 ?? Encoding.GetEncoding(codePage).GetString(bytes);
+            }
+
+            if (_forceAnsiForCurrentOperation && decodedUtf8 != null)
+            {
+                return decodedUtf8;
             }
 
             return Encoding.GetEncoding(codePage).GetString(bytes);
