@@ -12,7 +12,7 @@ namespace TTG_Tools.Graphics
     {
         static uint[] TexCodes = { 0x00, 0x4, 0x10, 0x11, 0x25, 0x40, 0x41, 0x42, 0x43, 0x43, 0x44, 0x45, 0x46 };
         static string[] FourCC = { "\0\0\0\0", "\0\0\0\0", "\0\0\0\0", "\0\0\0\0", "\x74\0\0\0", "DXT1", "DXT3", "DXT5", "BC4U", "ATI1", "ATI2", "BC6H", "ATI2" };
-        static string[] Formats = { "uncompressed 8.8.8.8 ARGB", "uncompressed 4.4.4.4 ARGB", "Alpha 8 bit (A8)", "IL8", "uncompressed 32f.32f.32f.32f ARGB", "DXT1", "DXT3", "DXT5", "BC4", "BC5", "BC6", "BC7" };
+        static string[] Formats = { "uncompressed 8.8.8.8 ARGB", "uncompressed 4.4.4.4 ARGB", "Alpha 8 bit (A8)", "IL8", "uncompressed 32f.32f.32f.32f ARGB", "DXT1", "DXT3", "DXT5", "BC4", "BC4", "BC5", "BC6", "BC7" };
 
         private static bool IsVitaPvrFormat(uint textureFormat)
         {

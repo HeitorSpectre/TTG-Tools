@@ -32,13 +32,17 @@ namespace TTG_Tools.Graphics.Swizzles
         {
             switch (code)
             {
-                case 0x40:
+                case 0x40: // BC1
+                case 0x43: // BC4
                     return bpps[8];
 
-                case 0x41:
+                case 0x41: // BC2
                     return bpps[9];
 
-                case 0x42:
+                case 0x42: // BC3
+                case 0x44: // BC5
+                case 0x45: // BC6
+                case 0x46: // BC7
                     return bpps[10];
             }
             return 0;
@@ -156,7 +160,7 @@ namespace TTG_Tools.Graphics.Swizzles
             int originWidth = width;
             int originHeight = height;
 
-            if (code >= 0x40 && code <= 0x42)
+            if (code >= 0x40 && code <= 0x46)
             {
                 originHeight = (originHeight + 3) / 4;
                 originWidth = (originWidth + 3) / 4;
@@ -191,7 +195,7 @@ namespace TTG_Tools.Graphics.Swizzles
             int origin_width = width;
             int origin_height = height;
 
-            if(code >= 0x40 && code <= 0x42)
+            if(code >= 0x40 && code <= 0x46)
             {
                 origin_height = (origin_height + 3) / 4;
                 origin_width = (origin_width + 3) / 4;
