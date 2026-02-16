@@ -505,6 +505,7 @@ namespace TTG_Tools.Texts
             byte[] buffer = File.ReadAllBytes(InputFile);
             MemoryStream ms = new MemoryStream(buffer);
             BinaryReader br = new BinaryReader(ms);
+            bool mapOpeningCreditsReplacement = Methods.ShouldMapOpeningCreditsReplacement(fi.Name, buffer);
 
             try
             {
@@ -567,6 +568,11 @@ namespace TTG_Tools.Texts
                         txt.actorName = landbs.landbs[i].actorName;
                         txt.actorSpeechOriginal = landbs.landbs[i].actorSpeech;
                         txt.actorSpeechTranslation = landbs.landbs[i].actorSpeech;
+
+                        txt.actorName = Methods.MapReplacementCharToCopyright(txt.actorName, mapOpeningCreditsReplacement);
+                        txt.actorSpeechOriginal = Methods.MapReplacementCharToCopyright(txt.actorSpeechOriginal, mapOpeningCreditsReplacement);
+                        txt.actorSpeechTranslation = Methods.MapReplacementCharToCopyright(txt.actorSpeechTranslation, mapOpeningCreditsReplacement);
+
                         txt.flags = Encoding.ASCII.GetString(landbs.flags[i].flags);
 
                         if (((txt.actorSpeechOriginal == "") && !MainMenu.settings.ignoreEmptyStrings)
@@ -599,6 +605,18 @@ namespace TTG_Tools.Texts
                 {
                     ClassesStructs.Text.CommonTextClass txts = new CommonTextClass();
                     txts.txtList = ReadText.GetStrings(TxtFile);
+
+                    if (mapOpeningCreditsReplacement && txts.txtList != null)
+                    {
+                        for (int i = 0; i < txts.txtList.Count; i++)
+                        {
+                            ClassesStructs.Text.CommonText tmpTxt = txts.txtList[i];
+                            tmpTxt.actorName = Methods.MapCopyrightToReplacementChar(tmpTxt.actorName, true);
+                            tmpTxt.actorSpeechOriginal = Methods.MapCopyrightToReplacementChar(tmpTxt.actorSpeechOriginal, true);
+                            tmpTxt.actorSpeechTranslation = Methods.MapCopyrightToReplacementChar(tmpTxt.actorSpeechTranslation, true);
+                            txts.txtList[i] = tmpTxt;
+                        }
+                    }
 
                     /*if (txts.txtList.Count < landbs.landbCount)
                     {

@@ -34,10 +34,37 @@ namespace TTG_Tools
         {
             string safeName = Path.GetFileName(fileName ?? "");
 
-            return safeName.Equals("tutorial_english.landb", StringComparison.OrdinalIgnoreCase)
-                || safeName.Equals("aliased_english.landb", StringComparison.OrdinalIgnoreCase)
-                || safeName.Equals("choice_notification_english.landb", StringComparison.OrdinalIgnoreCase)
-                || safeName.Equals("ui_menu_english.landb", StringComparison.OrdinalIgnoreCase);
+            return safeName.Equals("ui_menu_english.landb", StringComparison.OrdinalIgnoreCase);
+        }
+
+        public static bool ShouldMapOpeningCreditsReplacement(string fileName, byte[] originalFileBytes)
+        {
+            string safeName = Path.GetFileName(fileName ?? "");
+
+            if (!safeName.Equals("ui_openingcredits_english.landb", StringComparison.OrdinalIgnoreCase)) return false;
+            if (originalFileBytes == null || originalFileBytes.Length < 3) return false;
+
+            for (int i = 0; i < originalFileBytes.Length - 2; i++)
+            {
+                if ((originalFileBytes[i] == 0xEF) && (originalFileBytes[i + 1] == 0xBF) && (originalFileBytes[i + 2] == 0xBD))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        public static string MapReplacementCharToCopyright(string text, bool enabled)
+        {
+            if (!enabled || text == null) return text;
+            return text.Replace('\uFFFD', '©');
+        }
+
+        public static string MapCopyrightToReplacementChar(string text, bool enabled)
+        {
+            if (!enabled || text == null) return text;
+            return text.Replace('©', '\uFFFD');
         }
 
         public static bool ShouldUseTwdNintendoSwitchAnsi(string versionOfGame)
