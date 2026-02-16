@@ -379,6 +379,7 @@ namespace TTG_Tools
                 flatEntries.Add(entry);
 
                 TreeNode symNode = new TreeNode("Symbol<" + ToHexLower(symbol) + ">") { Tag = entry };
+                AddExtractedStringNodes(symNode, raw);
                 blockNode.Nodes.Add(symNode);
                 root.Nodes.Add(blockNode);
             }
@@ -533,6 +534,79 @@ namespace TTG_Tools
             }
 
             return oneLine;
+        }
+
+        private static void AddExtractedStringNodes(TreeNode parent, byte[] raw)
+        {
+            List<string> strings = ExtractPrintableAsciiStrings(raw, 4);
+            if (strings.Count == 0)
+            {
+                return;
+            }
+
+            TreeNode container = new TreeNode("Extracted Strings");
+            int added = 0;
+            foreach (string item in strings)
+            {
+                container.Nodes.Add(new TreeNode("String: " + ClipNodeText(item)));
+                added++;
+                if (added >= 32)
+                {
+                    container.Nodes.Add(new TreeNode("..."));
+                    break;
+                }
+            }
+
+            parent.Nodes.Add(container);
+        }
+
+        private static List<string> ExtractPrintableAsciiStrings(byte[] raw, int minLen)
+        {
+            List<string> result = new List<string>();
+            if (raw == null || raw.Length == 0)
+            {
+                return result;
+            }
+
+            StringBuilder current = new StringBuilder();
+            HashSet<string> seen = new HashSet<string>(StringComparer.Ordinal);
+
+            for (int i = 0; i < raw.Length; i++)
+            {
+                byte b = raw[i];
+                bool printable = b >= 0x20 && b <= 0x7E;
+
+                if (printable)
+                {
+                    current.Append((char)b);
+                }
+                else
+                {
+                    if (current.Length >= minLen)
+                    {
+                        string s = current.ToString();
+                        if (!seen.Contains(s))
+                        {
+                            seen.Add(s);
+                            result.Add(s);
+                        }
+                    }
+
+                    current.Clear();
+                }
+            }
+
+            if (current.Length >= minLen)
+            {
+                string s = current.ToString();
+                if (!seen.Contains(s))
+                {
+                    seen.Add(s);
+                    result.Add(s);
+                }
+            }
+
+            return result;
         }
 
         private void PropTree_AfterSelect(object sender, TreeViewEventArgs e)
