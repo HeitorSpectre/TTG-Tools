@@ -303,16 +303,15 @@ namespace TTG_Tools
             FileStream fs = new FileStream(destFilePath, FileMode.CreateNew);
             BinaryWriter bw = new BinaryWriter(fs);
 
-            bool forceAnsiForSeasonStats = Methods.IsSeasonStatsTextProp(inputFile.Name);
+            bool forceAnsiForCheckpointProp = Methods.IsCheckpointPropAnsiException(inputFile.Name);
             bool previousForceAnsiState = Methods.GetForceAnsiForCurrentOperation();
-            if (forceAnsiForSeasonStats) Methods.SetForceAnsiForCurrentOperation(true);
+            if (forceAnsiForCheckpointProp) Methods.SetForceAnsiForCurrentOperation(true);
 
             try
             {
                 byte[] header = br.ReadBytes(4);
                 bw.Write(header);
-                bool useUtf8ForReinsert = MainMenu.settings.supportTwdNintendoSwitch && !forceAnsiForSeasonStats;
-                if (!useUtf8ForReinsert) useUtf8ForReinsert = Encoding.ASCII.GetString(header) == "6VSM";
+                bool useUtf8ForReinsert = Methods.ShouldUseUtf8ForPropReinsert(inputFile.Name, Encoding.ASCII.GetString(header) == "6VSM");
                 if ((Encoding.ASCII.GetString(header) == "5VSM") || (Encoding.ASCII.GetString(header) == "6VSM"))
                 {
                     blHeadSize = br.ReadInt32();
@@ -450,7 +449,7 @@ namespace TTG_Tools
                 fs.Close();
                 br.Close();
                 ms.Close();
-                if (forceAnsiForSeasonStats) Methods.SetForceAnsiForCurrentOperation(previousForceAnsiState);
+                if (forceAnsiForCheckpointProp) Methods.SetForceAnsiForCurrentOperation(previousForceAnsiState);
                 ReportForWork("File " + DestinationFile.Name + " imported in " + inputFile.Name + ".");
             }
             catch
@@ -460,7 +459,7 @@ namespace TTG_Tools
                 if (bw != null) bw.Close();
                 if (fs != null) fs.Close();
 
-                if (forceAnsiForSeasonStats) Methods.SetForceAnsiForCurrentOperation(previousForceAnsiState);
+                if (forceAnsiForCheckpointProp) Methods.SetForceAnsiForCurrentOperation(previousForceAnsiState);
                 string errorMsg = "Something wrong with file " + inputFile.Name;
                 failedList.Add(inputFile.Name);
                 ReportForWork(errorMsg);
@@ -479,9 +478,9 @@ namespace TTG_Tools
             FileStream fsw = new FileStream(fullDestPath, FileMode.CreateNew);
             StreamWriter sw = new StreamWriter(fsw);
 
-            bool forceAnsiForSeasonStats = Methods.IsSeasonStatsTextProp(inputFile.Name);
+            bool forceAnsiForCheckpointProp = Methods.IsCheckpointPropAnsiException(inputFile.Name);
             bool previousForceAnsiState = Methods.GetForceAnsiForCurrentOperation();
-            if (forceAnsiForSeasonStats) Methods.SetForceAnsiForCurrentOperation(true);
+            if (forceAnsiForCheckpointProp) Methods.SetForceAnsiForCurrentOperation(true);
 
             try
             {
@@ -559,7 +558,7 @@ namespace TTG_Tools
                 fs.Close();
                 sw.Close();
                 fsw.Close();
-                if (forceAnsiForSeasonStats) Methods.SetForceAnsiForCurrentOperation(previousForceAnsiState);
+                if (forceAnsiForCheckpointProp) Methods.SetForceAnsiForCurrentOperation(previousForceAnsiState);
             }
             catch
             {
@@ -567,7 +566,7 @@ namespace TTG_Tools
                 if (fs != null) fs.Close();
                 if (sw != null) sw.Close();
                 if (fsw != null) fsw.Close();
-                if (forceAnsiForSeasonStats) Methods.SetForceAnsiForCurrentOperation(previousForceAnsiState);
+                if (forceAnsiForCheckpointProp) Methods.SetForceAnsiForCurrentOperation(previousForceAnsiState);
                 ReportForWork("Something wrong with file " + inputFile.Name);
             }
         }

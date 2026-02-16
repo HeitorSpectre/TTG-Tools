@@ -24,12 +24,24 @@ namespace TTG_Tools
             return _forceAnsiForCurrentOperation;
         }
 
-        public static bool IsSeasonStatsTextProp(string fileName)
+        public static bool IsCheckpointPropAnsiException(string fileName)
         {
             if (!MainMenu.settings.supportTwdNintendoSwitch) return false;
 
             string safeName = Path.GetFileName(fileName ?? "");
             return safeName.Equals("checkpoint_text.prop", StringComparison.OrdinalIgnoreCase);
+        }
+
+        public static bool ShouldUseUtf8ForPropReinsert(string fileName, bool headerIs6VSM)
+        {
+            if (MainMenu.settings.supportTwdNintendoSwitch)
+            {
+                // New requested strategy for Switch mode:
+                // all PROP reinsertion in UTF-8, except checkpoint_text.prop in ANSI.
+                return !IsCheckpointPropAnsiException(fileName);
+            }
+
+            return headerIs6VSM;
         }
 
         public static bool IsLandbExcludedFromTwdSwitchAnsi(string fileName)

@@ -360,7 +360,7 @@ namespace TTG_Tools.Texts
                     {
                         bool useUtf8ForActorName = true;
 
-                        if (Methods.IsSeasonStatsTextProp(inputFileName))
+                        if (Methods.IsCheckpointPropAnsiException(inputFileName))
                         {
                             useUtf8ForActorName = false;
                         }
@@ -399,7 +399,7 @@ namespace TTG_Tools.Texts
                         {
                             bool useUtf8ForSpeech = true;
 
-                            if (Methods.IsSeasonStatsTextProp(inputFileName))
+                            if (Methods.IsCheckpointPropAnsiException(inputFileName))
                             {
                                 useUtf8ForSpeech = false;
                             }
