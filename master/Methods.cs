@@ -19,6 +19,17 @@ namespace TTG_Tools
             _forceAnsiForCurrentOperation = enabled;
         }
 
+        public static bool GetForceAnsiForCurrentOperation()
+        {
+            return _forceAnsiForCurrentOperation;
+        }
+
+        public static bool IsSeasonStatsTextProp(string fileName)
+        {
+            string safeName = Path.GetFileName(fileName ?? "");
+            return safeName.Equals("seasonStatsText.prop", StringComparison.OrdinalIgnoreCase);
+        }
+
         public static bool ShouldUseTwdNintendoSwitchAnsi(string versionOfGame)
         {
             if (!MainMenu.settings.supportTwdNintendoSwitch) return false;
