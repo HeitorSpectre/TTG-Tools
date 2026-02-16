@@ -12,6 +12,7 @@ namespace TTG_Tools
         {
             public string Label;
             public string Value;
+            public string DisplayValue;
             public int FlatOrder;
         }
 
@@ -309,6 +310,7 @@ namespace TTG_Tools
                             {
                                 Label = "Entry " + (j + 1),
                                 Value = text,
+                                DisplayValue = BuildDisplayValue(raw, text),
                                 FlatOrder = flatEntries.Count
                             };
                             flatEntries.Add(entry);
@@ -322,45 +324,215 @@ namespace TTG_Tools
                 }
                 else
                 {
-                    // Fallback path: many games use different key CRC signatures but still store
-                    // a flat list of string values in each block.
-                    for (int i = 0; i < countBlocks; i++)
-                    {
-                        TreeNode blockNode = new TreeNode("Block " + (i + 1));
-
-                        br.ReadBytes(8);
-                        if (header == "ERTM") br.ReadInt32();
-
-                        int len = br.ReadInt32();
-                        if (len < 0)
-                        {
-                            throw new InvalidDataException("Negative string length encountered while parsing fallback PROP layout.");
-                        }
-
-                        byte[] raw = br.ReadBytes(len);
-                        if (raw.Length != len)
-                        {
-                            throw new InvalidDataException("Unexpected end of PROP file in fallback parser.");
-                        }
-
-                        string text = valueEncoding.GetString(raw);
-
-                        PropTextEntry entry = new PropTextEntry
-                        {
-                            Label = "Value",
-                            Value = text,
-                            FlatOrder = flatEntries.Count
-                        };
-                        flatEntries.Add(entry);
-
-                        TreeNode leaf = new TreeNode("Value") { Tag = entry };
-                        blockNode.Nodes.Add(leaf);
-                        root.Nodes.Add(blockNode);
-                    }
+                    ParseFallbackBlocks(br, header, countBlocks, valueEncoding, root, signature);
                 }
 
                 propTree.Nodes.Add(root);
             }
+        }
+
+        private void ParseFallbackBlocks(BinaryReader br, string header, int countBlocks, Encoding valueEncoding, TreeNode root, string signature)
+        {
+            long startPos = br.BaseStream.Position;
+            bool parsedAsSubBlocks = TryParseFallbackAsSubBlocks(br, header, countBlocks, valueEncoding, root);
+
+            if (parsedAsSubBlocks)
+            {
+                return;
+            }
+
+            br.BaseStream.Seek(startPos, SeekOrigin.Begin);
+
+            for (int i = 0; i < countBlocks; i++)
+            {
+                TreeNode blockNode = new TreeNode("Block " + (i + 1) + " [" + signature + "]");
+
+                byte[] symbol = br.ReadBytes(8);
+                if (symbol.Length != 8)
+                {
+                    throw new InvalidDataException("Unexpected end of PROP file while reading fallback block symbol.");
+                }
+
+                if (header == "ERTM") br.ReadInt32();
+
+                int len = br.ReadInt32();
+                if (len < 0)
+                {
+                    throw new InvalidDataException("Negative string length encountered while parsing fallback PROP layout.");
+                }
+
+                byte[] raw = br.ReadBytes(len);
+                if (raw.Length != len)
+                {
+                    throw new InvalidDataException("Unexpected end of PROP file in fallback parser.");
+                }
+
+                string text = valueEncoding.GetString(raw);
+
+                PropTextEntry entry = new PropTextEntry
+                {
+                    Label = "Value",
+                    Value = text,
+                    DisplayValue = BuildDisplayValue(raw, text),
+                    FlatOrder = flatEntries.Count
+                };
+                flatEntries.Add(entry);
+
+                TreeNode symNode = new TreeNode("Symbol<" + ToHexLower(symbol) + ">") { Tag = entry };
+                blockNode.Nodes.Add(symNode);
+                root.Nodes.Add(blockNode);
+            }
+        }
+
+        private bool TryParseFallbackAsSubBlocks(BinaryReader br, string header, int countBlocks, Encoding valueEncoding, TreeNode root)
+        {
+            long parseStart = br.BaseStream.Position;
+            List<TreeNode> pendingNodes = new List<TreeNode>();
+            List<PropTextEntry> pendingEntries = new List<PropTextEntry>();
+
+            try
+            {
+                for (int i = 0; i < countBlocks; i++)
+                {
+                    TreeNode blockNode = new TreeNode("Block " + (i + 1));
+
+                    byte[] symbol = br.ReadBytes(8);
+                    if (symbol.Length != 8) return false;
+                    if (header == "ERTM") br.ReadInt32();
+
+                    int countSubBlocks = br.ReadInt32();
+                    if (countSubBlocks < 0 || countSubBlocks > 100000)
+                    {
+                        return false;
+                    }
+
+                    TreeNode symTree = new TreeNode("Symbol<" + ToHexLower(symbol) + "> [x" + countSubBlocks + "]");
+
+                    List<PropTextEntry> localEntries = new List<PropTextEntry>();
+                    for (int j = 0; j < countSubBlocks * 2; j++)
+                    {
+                        if (br.BaseStream.Position + 4 > br.BaseStream.Length)
+                        {
+                            return false;
+                        }
+
+                        int len = br.ReadInt32();
+                        if (len < 0 || br.BaseStream.Position + len > br.BaseStream.Length)
+                        {
+                            return false;
+                        }
+
+                        byte[] raw = br.ReadBytes(len);
+                        string text = valueEncoding.GetString(raw);
+
+                        PropTextEntry entry = new PropTextEntry
+                        {
+                            Label = "Entry " + (j + 1),
+                            Value = text,
+                            DisplayValue = BuildDisplayValue(raw, text),
+                            FlatOrder = flatEntries.Count + pendingEntries.Count + localEntries.Count
+                        };
+
+                        localEntries.Add(entry);
+                    }
+
+                    for (int p = 0; p < localEntries.Count; p += 2)
+                    {
+                        PropTextEntry keyEntry = localEntries[p];
+                        TreeNode pairNode = new TreeNode("Property " + ((p / 2) + 1));
+                        pairNode.Nodes.Add(new TreeNode("Key: " + ClipNodeText(keyEntry.DisplayValue)) { Tag = keyEntry });
+
+                        if (p + 1 < localEntries.Count)
+                        {
+                            PropTextEntry valueEntry = localEntries[p + 1];
+                            pairNode.Nodes.Add(new TreeNode("Value: " + ClipNodeText(valueEntry.DisplayValue)) { Tag = valueEntry });
+                        }
+
+                        symTree.Nodes.Add(pairNode);
+                    }
+
+                    pendingEntries.AddRange(localEntries);
+
+                    blockNode.Nodes.Add(symTree);
+                    pendingNodes.Add(blockNode);
+                }
+
+                // Heuristic: if this interpretation consumed a meaningful portion of data, accept it.
+                if (pendingEntries.Count == 0)
+                {
+                    return false;
+                }
+
+                long consumed = br.BaseStream.Position - parseStart;
+                if (consumed < 32)
+                {
+                    return false;
+                }
+
+                flatEntries.AddRange(pendingEntries);
+                foreach (TreeNode node in pendingNodes)
+                {
+                    root.Nodes.Add(node);
+                }
+
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static string ToHexLower(byte[] bytes)
+        {
+            string hex = BitConverter.ToString(bytes).Replace("-", string.Empty).ToLowerInvariant();
+            return hex;
+        }
+
+
+        private static string BuildDisplayValue(byte[] raw, string decoded)
+        {
+            if (!string.IsNullOrEmpty(decoded) && ContainsVisibleChars(decoded))
+            {
+                return decoded;
+            }
+
+            if (raw == null || raw.Length == 0)
+            {
+                return "<empty>";
+            }
+
+            return "0x" + BitConverter.ToString(raw).Replace("-", string.Empty);
+        }
+
+        private static bool ContainsVisibleChars(string value)
+        {
+            for (int i = 0; i < value.Length; i++)
+            {
+                char c = value[i];
+                if (!char.IsControl(c) && !char.IsWhiteSpace(c))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static string ClipNodeText(string text)
+        {
+            if (string.IsNullOrEmpty(text))
+            {
+                return "<empty>";
+            }
+
+            string oneLine = text.Replace("\r", " ").Replace("\n", " ");
+            if (oneLine.Length > 64)
+            {
+                return oneLine.Substring(0, 64) + "...";
+            }
+
+            return oneLine;
         }
 
         private void PropTree_AfterSelect(object sender, TreeViewEventArgs e)
@@ -376,7 +548,7 @@ namespace TTG_Tools
 
             valueEditor.Enabled = true;
             applyTextBtn.Enabled = true;
-            valueEditor.Text = entry.Value;
+            valueEditor.Text = string.IsNullOrEmpty(entry.Value) ? entry.DisplayValue : entry.Value;
         }
 
         private void ApplyTextBtn_Click(object sender, EventArgs e)
@@ -394,6 +566,7 @@ namespace TTG_Tools
             }
 
             entry.Value = valueEditor.Text;
+            entry.DisplayValue = valueEditor.Text;
             statusLbl.Text = "Text updated (not saved yet).";
         }
 
