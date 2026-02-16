@@ -1,19 +1,32 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Text;
 using System.Windows.Forms;
 
 namespace TTG_Tools
 {
     public class PropEditor : Form
     {
-        private readonly DataGridView entriesGrid;
+        private class PropTextEntry
+        {
+            public string Label;
+            public string Value;
+            public int FlatOrder;
+        }
+
         private readonly Button openBtn;
         private readonly Button saveBtn;
         private readonly Button saveAsBtn;
+        private readonly Button applyTextBtn;
         private readonly Label statusLbl;
         private readonly Label gameLbl;
         private readonly ComboBox gameSelector;
+        private readonly TreeView propTree;
+        private readonly TextBox valueEditor;
+        private readonly SplitContainer splitContainer;
+
+        private readonly List<PropTextEntry> flatEntries = new List<PropTextEntry>();
 
         private string currentPropPath;
 
@@ -38,8 +51,8 @@ namespace TTG_Tools
         public PropEditor()
         {
             Text = "Prop Editor";
-            Width = 980;
-            Height = 640;
+            Width = 1080;
+            Height = 700;
             StartPosition = FormStartPosition.CenterScreen;
 
             openBtn = new Button { Text = "Open .prop", Left = 12, Top = 12, Width = 120 };
@@ -50,7 +63,7 @@ namespace TTG_Tools
             {
                 Left = 402,
                 Top = 16,
-                Width = 560,
+                Width = 660,
                 Text = "Compatible games (same scope as Inspector Prop Editor):"
             };
 
@@ -58,42 +71,58 @@ namespace TTG_Tools
             {
                 Left = 402,
                 Top = 38,
-                Width = 560,
+                Width = 660,
                 DropDownStyle = ComboBoxStyle.DropDownList
             };
 
             statusLbl = new Label { Left = 12, Top = 50, Width = 380, Height = 22, Text = "Ready." };
 
-            entriesGrid = new DataGridView
+            splitContainer = new SplitContainer
             {
                 Left = 12,
                 Top = 78,
-                Width = 950,
-                Height = 510,
+                Width = 1050,
+                Height = 570,
                 Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right,
-                AllowUserToAddRows = false,
-                AllowUserToDeleteRows = false,
-                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill
+                Orientation = Orientation.Vertical,
+                SplitterDistance = 480
             };
 
-            entriesGrid.Columns.Add(new DataGridViewTextBoxColumn
+            propTree = new TreeView
             {
-                Name = "EntryIndex",
-                HeaderText = "#",
-                FillWeight = 10,
-                ReadOnly = true
-            });
+                Dock = DockStyle.Fill,
+                HideSelection = false
+            };
 
-            entriesGrid.Columns.Add(new DataGridViewTextBoxColumn
+            valueEditor = new TextBox
             {
-                Name = "EntryText",
-                HeaderText = "Text",
-                FillWeight = 90
-            });
+                Dock = DockStyle.Fill,
+                Multiline = true,
+                ScrollBars = ScrollBars.Both,
+                WordWrap = false,
+                Enabled = false
+            };
+
+            applyTextBtn = new Button
+            {
+                Dock = DockStyle.Bottom,
+                Height = 32,
+                Text = "Apply Text",
+                Enabled = false
+            };
+
+            Panel rightPanel = new Panel { Dock = DockStyle.Fill };
+            rightPanel.Controls.Add(valueEditor);
+            rightPanel.Controls.Add(applyTextBtn);
+
+            splitContainer.Panel1.Controls.Add(propTree);
+            splitContainer.Panel2.Controls.Add(rightPanel);
 
             openBtn.Click += OpenBtn_Click;
             saveBtn.Click += SaveBtn_Click;
             saveAsBtn.Click += SaveAsBtn_Click;
+            propTree.AfterSelect += PropTree_AfterSelect;
+            applyTextBtn.Click += ApplyTextBtn_Click;
 
             Controls.Add(openBtn);
             Controls.Add(saveBtn);
@@ -101,7 +130,7 @@ namespace TTG_Tools
             Controls.Add(gameLbl);
             Controls.Add(gameSelector);
             Controls.Add(statusLbl);
-            Controls.Add(entriesGrid);
+            Controls.Add(splitContainer);
 
             foreach (KeyValuePair<string, string> game in SupportedGames)
             {
@@ -170,55 +199,193 @@ namespace TTG_Tools
 
         private void LoadProp(string propPath)
         {
-            string tempDir = Path.Combine(Path.GetTempPath(), "TTGTools_PropEditor", Guid.NewGuid().ToString("N"));
-            Directory.CreateDirectory(tempDir);
-
             try
             {
-                ForThreads worker = new ForThreads();
-                worker.ReportForWork += _ => { };
+                propTree.Nodes.Clear();
+                flatEntries.Clear();
+                valueEditor.Text = string.Empty;
+                valueEditor.Enabled = false;
+                applyTextBtn.Enabled = false;
 
-                string txtName = Path.GetFileNameWithoutExtension(propPath) + ".txt";
-                worker.ExportPROP(new FileInfo(propPath), txtName, tempDir);
+                ParsePropIntoTree(propPath);
 
-                string txtPath = Path.Combine(tempDir, txtName);
-                if (!File.Exists(txtPath))
+                saveBtn.Enabled = flatEntries.Count > 0;
+                saveAsBtn.Enabled = flatEntries.Count > 0;
+                statusLbl.Text = "Loaded: " + propPath + " | Entries: " + flatEntries.Count;
+
+                if (propTree.Nodes.Count > 0)
                 {
-                    throw new InvalidDataException("This PROP file could not be exported by the current editor pipeline.");
+                    propTree.ExpandAll();
                 }
-
-                string[] lines = File.ReadAllLines(txtPath);
-                entriesGrid.Rows.Clear();
-
-                for (int i = 0; i < lines.Length; i += 2)
-                {
-                    string indexText = lines[i].Trim();
-                    string value = (i + 1 < lines.Length) ? lines[i + 1] : string.Empty;
-                    entriesGrid.Rows.Add(indexText.TrimEnd(')'), value);
-                }
-
-                saveBtn.Enabled = true;
-                saveAsBtn.Enabled = true;
-                statusLbl.Text = "Loaded: " + propPath;
             }
             catch (Exception ex)
             {
                 MessageBox.Show("Failed to open PROP file: " + ex.Message, "Prop Editor", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 statusLbl.Text = "Open failed.";
             }
-            finally
+        }
+
+        private void ParsePropIntoTree(string propPath)
+        {
+            using (FileStream fs = new FileStream(propPath, FileMode.Open, FileAccess.Read))
+            using (BinaryReader br = new BinaryReader(fs))
             {
-                try
+                byte[] headerBytes = br.ReadBytes(4);
+                if (headerBytes.Length != 4)
                 {
-                    if (Directory.Exists(tempDir))
+                    throw new InvalidDataException("Invalid PROP header.");
+                }
+
+                string header = Encoding.ASCII.GetString(headerBytes);
+                if ((header == "5VSM") || (header == "6VSM"))
+                {
+                    br.ReadInt32();
+                    br.ReadInt64();
+                }
+
+                int countHeaders = br.ReadInt32();
+                for (int i = 0; i < countHeaders; i++)
+                {
+                    br.ReadBytes(8);
+                    br.ReadBytes(4);
+                }
+
+                br.ReadInt32();
+                br.ReadInt32();
+
+                if (header != "6VSM")
+                {
+                    int blSize1 = br.ReadInt32();
+                    if (blSize1 < 4)
                     {
-                        Directory.Delete(tempDir, true);
+                        throw new InvalidDataException("Unsupported PROP block layout.");
+                    }
+
+                    br.ReadBytes(blSize1 - 4);
+                }
+
+                br.ReadInt32();
+                br.ReadInt32();
+                if (header == "6VSM")
+                {
+                    br.ReadInt32();
+                }
+
+                byte[] bValue = br.ReadBytes(8);
+                if (bValue.Length != 8)
+                {
+                    throw new InvalidDataException("Unexpected end of PROP file.");
+                }
+
+                string signature = BitConverter.ToString(bValue);
+                Encoding valueEncoding = header == "6VSM" ? Encoding.UTF8 : Encoding.GetEncoding(MainMenu.settings.ASCII_N);
+
+                TreeNode root = new TreeNode(Path.GetFileName(propPath));
+
+                if (header == "ERTM")
+                {
+                    br.ReadInt32();
+                }
+
+                int countBlocks = br.ReadInt32();
+
+                if (signature == "B4-F4-5A-5F-60-6E-9C-CD")
+                {
+                    for (int i = 0; i < countBlocks; i++)
+                    {
+                        TreeNode blockNode = new TreeNode("Block " + (i + 1));
+
+                        br.ReadBytes(8);
+                        if (header == "ERTM") br.ReadInt32();
+                        int len = br.ReadInt32();
+                        byte[] raw = br.ReadBytes(len);
+                        string text = valueEncoding.GetString(raw);
+
+                        PropTextEntry entry = new PropTextEntry
+                        {
+                            Label = "Value",
+                            Value = text,
+                            FlatOrder = flatEntries.Count
+                        };
+                        flatEntries.Add(entry);
+
+                        TreeNode leaf = new TreeNode("Value") { Tag = entry };
+                        blockNode.Nodes.Add(leaf);
+                        root.Nodes.Add(blockNode);
                     }
                 }
-                catch
+                else if (signature == "25-03-C6-1F-D8-64-1B-4F")
                 {
+                    for (int i = 0; i < countBlocks; i++)
+                    {
+                        TreeNode blockNode = new TreeNode("Block " + (i + 1));
+
+                        br.ReadBytes(8);
+                        if (header == "ERTM") br.ReadInt32();
+                        int countSubBlocks = br.ReadInt32();
+
+                        for (int j = 0; j < countSubBlocks * 2; j++)
+                        {
+                            int len = br.ReadInt32();
+                            byte[] raw = br.ReadBytes(len);
+                            string text = valueEncoding.GetString(raw);
+
+                            PropTextEntry entry = new PropTextEntry
+                            {
+                                Label = "Entry " + (j + 1),
+                                Value = text,
+                                FlatOrder = flatEntries.Count
+                            };
+                            flatEntries.Add(entry);
+
+                            TreeNode leaf = new TreeNode(entry.Label) { Tag = entry };
+                            blockNode.Nodes.Add(leaf);
+                        }
+
+                        root.Nodes.Add(blockNode);
+                    }
                 }
+                else
+                {
+                    throw new InvalidDataException("Unsupported PROP signature for this editor view: " + signature);
+                }
+
+                propTree.Nodes.Add(root);
             }
+        }
+
+        private void PropTree_AfterSelect(object sender, TreeViewEventArgs e)
+        {
+            PropTextEntry entry = e.Node.Tag as PropTextEntry;
+            if (entry == null)
+            {
+                valueEditor.Text = string.Empty;
+                valueEditor.Enabled = false;
+                applyTextBtn.Enabled = false;
+                return;
+            }
+
+            valueEditor.Enabled = true;
+            applyTextBtn.Enabled = true;
+            valueEditor.Text = entry.Value;
+        }
+
+        private void ApplyTextBtn_Click(object sender, EventArgs e)
+        {
+            TreeNode selected = propTree.SelectedNode;
+            if (selected == null)
+            {
+                return;
+            }
+
+            PropTextEntry entry = selected.Tag as PropTextEntry;
+            if (entry == null)
+            {
+                return;
+            }
+
+            entry.Value = valueEditor.Text;
+            statusLbl.Text = "Text updated (not saved yet).";
         }
 
         private void SaveProp(string savePath)
@@ -231,12 +398,10 @@ namespace TTG_Tools
                 string txtPath = Path.Combine(tempDir, Path.GetFileNameWithoutExtension(currentPropPath) + ".txt");
                 List<string> exportLines = new List<string>();
 
-                for (int i = 0; i < entriesGrid.Rows.Count; i++)
+                for (int i = 0; i < flatEntries.Count; i++)
                 {
-                    object cellValue = entriesGrid.Rows[i].Cells[1].Value;
-                    string textValue = cellValue != null ? cellValue.ToString() : string.Empty;
                     exportLines.Add((i + 1).ToString() + ")");
-                    exportLines.Add(textValue);
+                    exportLines.Add(flatEntries[i].Value ?? string.Empty);
                 }
 
                 File.WriteAllLines(txtPath, exportLines.ToArray());
