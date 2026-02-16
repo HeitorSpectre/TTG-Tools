@@ -373,7 +373,7 @@ namespace TTG_Tools
                         bl = br.ReadBytes(blLen);
                         blockSize += 4;
                         blHeadSize += 4;
-                        bl = Encoding.ASCII.GetString(header) == "6VSM" ? Encoding.UTF8.GetBytes(strs[c]) : Encoding.GetEncoding(MainMenu.settings.ASCII_N).GetBytes(strs[c]);
+                        bl = Methods.EncodeGameText(strs[c], Encoding.ASCII.GetString(header) == "6VSM");
                         blLen = bl.Length;
                         bw.Write(blLen);
                         bw.Write(bl);
@@ -405,7 +405,7 @@ namespace TTG_Tools
                         {
                             blLen = br.ReadInt32();
                             bl = br.ReadBytes(blLen);
-                            bl = Encoding.ASCII.GetString(header) == "6VSM" ? Encoding.UTF8.GetBytes(strs[c]) : Encoding.GetEncoding(MainMenu.settings.ASCII_N).GetBytes(strs[c]);
+                            bl = Methods.EncodeGameText(strs[c], Encoding.ASCII.GetString(header) == "6VSM");
                             blLen = bl.Length;
                             bw.Write(blLen);
                             bw.Write(bl);
@@ -493,8 +493,7 @@ namespace TTG_Tools
                         if (Encoding.ASCII.GetString(header) == "ERTM") one1 = br.ReadInt32();
                         int len = br.ReadInt32();
                         bValue = br.ReadBytes(len);
-                        strs[i] = Encoding.GetEncoding(MainMenu.settings.ASCII_N).GetString(bValue);
-                        if (Encoding.ASCII.GetString(header) == "6VSM") strs[i] = Encoding.UTF8.GetString(bValue);
+                        strs[i] = Methods.DecodeGameText(bValue, Encoding.ASCII.GetString(header) == "6VSM");
                         sw.WriteLine(Convert.ToString(c_str) + ")");
                         sw.WriteLine(strs[i]);
                         c_str++;
@@ -517,8 +516,7 @@ namespace TTG_Tools
                         {
                             int len = br.ReadInt32();
                             bValue = br.ReadBytes(len);
-                            strs[i][j] = Encoding.GetEncoding(MainMenu.settings.ASCII_N).GetString(bValue);
-                            if (Encoding.ASCII.GetString(header) == "6VSM") strs[i][j] = Encoding.UTF8.GetString(bValue);
+                            strs[i][j] = Methods.DecodeGameText(bValue, Encoding.ASCII.GetString(header) == "6VSM");
                             sw.WriteLine(Convert.ToString(c_str) + ")");
                             sw.WriteLine(strs[i][j]);
                             c_str++;

@@ -79,6 +79,38 @@ namespace TTG_Tools
             return str;
         }
 
+        public static string DecodeGameText(byte[] bytes, bool useUtf8)
+        {
+            if (useUtf8)
+            {
+                return Encoding.UTF8.GetString(bytes);
+            }
+
+            int codePage = MainMenu.settings.ASCII_N;
+            if (MainMenu.settings.supportTwdNintendoSwitch)
+            {
+                codePage = 1252;
+            }
+
+            return Encoding.GetEncoding(codePage).GetString(bytes);
+        }
+
+        public static byte[] EncodeGameText(string text, bool useUtf8)
+        {
+            if (useUtf8)
+            {
+                return Encoding.UTF8.GetBytes(text);
+            }
+
+            int codePage = MainMenu.settings.ASCII_N;
+            if (MainMenu.settings.supportTwdNintendoSwitch)
+            {
+                codePage = 1252;
+            }
+
+            return Encoding.GetEncoding(codePage).GetBytes(text);
+        }
+
         public static UInt64 pad_it(UInt64 num, UInt64 pad)
         {
             UInt64 t;

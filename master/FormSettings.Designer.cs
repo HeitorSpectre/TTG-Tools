@@ -37,6 +37,7 @@
             this.buttonApplyAndExitSettings = new System.Windows.Forms.Button();
             this.groupBox2 = new System.Windows.Forms.GroupBox();
             this.rbNewBttF = new System.Windows.Forms.RadioButton();
+            this.rbTwdNintendoSwitch = new System.Windows.Forms.RadioButton();
             this.rbNonNormalUnicode2 = new System.Windows.Forms.RadioButton();
             this.rbNormalUnicode = new System.Windows.Forms.RadioButton();
             this.toolTip1 = new System.Windows.Forms.ToolTip(this.components);
@@ -86,7 +87,7 @@
             // 
             // buttonSaveSettings
             // 
-            this.buttonSaveSettings.Location = new System.Drawing.Point(180, 312);
+            this.buttonSaveSettings.Location = new System.Drawing.Point(180, 329);
             this.buttonSaveSettings.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
             this.buttonSaveSettings.Name = "buttonSaveSettings";
             this.buttonSaveSettings.Size = new System.Drawing.Size(136, 23);
@@ -97,7 +98,7 @@
             // 
             // buttonExitSettingsForm
             // 
-            this.buttonExitSettingsForm.Location = new System.Drawing.Point(333, 312);
+            this.buttonExitSettingsForm.Location = new System.Drawing.Point(333, 329);
             this.buttonExitSettingsForm.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
             this.buttonExitSettingsForm.Name = "buttonExitSettingsForm";
             this.buttonExitSettingsForm.Size = new System.Drawing.Size(88, 23);
@@ -108,7 +109,7 @@
             // 
             // buttonApplyAndExitSettings
             // 
-            this.buttonApplyAndExitSettings.Location = new System.Drawing.Point(36, 312);
+            this.buttonApplyAndExitSettings.Location = new System.Drawing.Point(36, 329);
             this.buttonApplyAndExitSettings.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
             this.buttonApplyAndExitSettings.Name = "buttonApplyAndExitSettings";
             this.buttonApplyAndExitSettings.Size = new System.Drawing.Size(136, 23);
@@ -119,6 +120,7 @@
             // 
             // groupBox2
             // 
+            this.groupBox2.Controls.Add(this.rbTwdNintendoSwitch);
             this.groupBox2.Controls.Add(this.rbNewBttF);
             this.groupBox2.Controls.Add(this.rbNonNormalUnicode2);
             this.groupBox2.Controls.Add(this.rbNormalUnicode);
@@ -126,7 +128,7 @@
             this.groupBox2.Margin = new System.Windows.Forms.Padding(2);
             this.groupBox2.Name = "groupBox2";
             this.groupBox2.Padding = new System.Windows.Forms.Padding(2);
-            this.groupBox2.Size = new System.Drawing.Size(354, 97);
+            this.groupBox2.Size = new System.Drawing.Size(354, 114);
             this.groupBox2.TabIndex = 13;
             this.groupBox2.TabStop = false;
             this.groupBox2.Text = "Coding for new games (From \"Tales From the Borderlands\" game)";
@@ -141,6 +143,18 @@
             this.rbNewBttF.TabStop = true;
             this.rbNewBttF.Text = "ASCII support for Back to the Future Xbox360 and PS4 versions";
             this.rbNewBttF.UseVisualStyleBackColor = true;
+            // 
+            // 
+            // rbTwdNintendoSwitch
+            // 
+            this.rbTwdNintendoSwitch.AutoSize = true;
+            this.rbTwdNintendoSwitch.Location = new System.Drawing.Point(5, 88);
+            this.rbTwdNintendoSwitch.Name = "rbTwdNintendoSwitch";
+            this.rbTwdNintendoSwitch.Size = new System.Drawing.Size(251, 17);
+            this.rbTwdNintendoSwitch.TabIndex = 4;
+            this.rbTwdNintendoSwitch.TabStop = true;
+            this.rbTwdNintendoSwitch.Text = "Support for The Walking Dead Nintendo Switch";
+            this.rbTwdNintendoSwitch.UseVisualStyleBackColor = true;
             // 
             // rbNonNormalUnicode2
             // 
@@ -216,7 +230,7 @@
             this.groupBox1.Controls.Add(this.textBoxInputFolder);
             this.groupBox1.Controls.Add(this.buttonInputFolder);
             this.groupBox1.Controls.Add(this.buttonOutputFolder);
-            this.groupBox1.Location = new System.Drawing.Point(19, 199);
+            this.groupBox1.Location = new System.Drawing.Point(19, 216);
             this.groupBox1.Name = "groupBox1";
             this.groupBox1.Size = new System.Drawing.Size(427, 100);
             this.groupBox1.TabIndex = 30;
@@ -247,7 +261,7 @@
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(475, 368);
+            this.ClientSize = new System.Drawing.Size(475, 385);
             this.Controls.Add(this.languageComboBox);
             this.Controls.Add(this.checkLanguage);
             this.Controls.Add(this.groupBox1);
@@ -288,6 +302,7 @@
         private System.Windows.Forms.ToolTip toolTip3;
         private System.Windows.Forms.RadioButton rbNonNormalUnicode2;
         private System.Windows.Forms.RadioButton rbNewBttF;
+        private System.Windows.Forms.RadioButton rbTwdNintendoSwitch;
         private System.Windows.Forms.Button buttonOutputFolder;
         private System.Windows.Forms.Button buttonInputFolder;
         private System.Windows.Forms.TextBox textBoxInputFolder;

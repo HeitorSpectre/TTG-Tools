@@ -101,7 +101,7 @@ namespace TTG_Tools.Texts
                         landb.newLandbFileSize += landb.landbs[i].anmNameSize;
                         landb.newBlockLength += landb.landbs[i].anmNameSize;
 
-                        landb.landbs[i].anmName = Encoding.GetEncoding(MainMenu.settings.ASCII_N).GetString(tmp);
+                        landb.landbs[i].anmName = Methods.DecodeGameText(tmp, false);
                     }
 
                     landb.landbs[i].blockWavNameSize = br.ReadInt32();
@@ -127,7 +127,7 @@ namespace TTG_Tools.Texts
                         landb.newLandbFileSize += landb.landbs[i].wavNameSize;
                         landb.newBlockLength += landb.landbs[i].wavNameSize;
 
-                        landb.landbs[i].wavName = Encoding.GetEncoding(MainMenu.settings.ASCII_N).GetString(tmp);
+                        landb.landbs[i].wavName = Methods.DecodeGameText(tmp, false);
                     }
 
                     landb.landbs[i].blockUnknownNameSize = br.ReadInt32();
@@ -142,7 +142,7 @@ namespace TTG_Tools.Texts
                     landb.newLandbFileSize += landb.landbs[i].unknownNameSize;
                     landb.newBlockLength += landb.landbs[i].unknownNameSize;
 
-                    landb.landbs[i].unknownName = Encoding.GetEncoding(MainMenu.settings.ASCII_N).GetString(tmp);
+                    landb.landbs[i].unknownName = Methods.DecodeGameText(tmp, false);
 
                     landb.landbs[i].zero2 = br.ReadInt32();
                     landb.newLandbFileSize += 4;
@@ -159,11 +159,11 @@ namespace TTG_Tools.Texts
                     //Don't calculate new size with actor name!
                     landb.landbs[i].actorNameSize = br.ReadInt32();
                     tmp = br.ReadBytes(landb.landbs[i].actorNameSize);
-                    landb.landbs[i].actorName = landb.isUnicode ? Encoding.UTF8.GetString(tmp) : Encoding.GetEncoding(MainMenu.settings.ASCII_N).GetString(tmp);
+                    landb.landbs[i].actorName = Methods.DecodeGameText(tmp, landb.isUnicode);
                     if (landb.isUnicode && (MainMenu.settings.unicodeSettings == 2))
                     {
                         //landb.landbs[i].actorName = Methods.isUTF8String(tmp) ? Encoding.UTF8.GetString(tmp) : Encoding.GetEncoding(MainMenu.settings.ASCII_N).GetString(tmp);
-                        landb.landbs[i].actorName = Encoding.GetEncoding(MainMenu.settings.ASCII_N).GetString(tmp);
+                        landb.landbs[i].actorName = Methods.DecodeGameText(tmp, false);
                     }
 
                     landb.landbs[i].blockActorSpeechSize = br.ReadInt32();
@@ -172,11 +172,11 @@ namespace TTG_Tools.Texts
 
                     landb.landbs[i].actorSpeechSize = br.ReadInt32();
                     tmp = br.ReadBytes(landb.landbs[i].actorSpeechSize);
-                    landb.landbs[i].actorSpeech = landb.isUnicode ? Encoding.UTF8.GetString(tmp) : Encoding.GetEncoding(MainMenu.settings.ASCII_N).GetString(tmp);
+                    landb.landbs[i].actorSpeech = Methods.DecodeGameText(tmp, landb.isUnicode);
                     if (landb.isUnicode && (MainMenu.settings.unicodeSettings == 2))
                     {
                         //landb.landbs[i].actorSpeech = Methods.isUTF8String(tmp) ? Encoding.UTF8.GetString(tmp) : Encoding.GetEncoding(MainMenu.settings.ASCII_N).GetString(tmp);
-                        landb.landbs[i].actorSpeech = Encoding.GetEncoding(MainMenu.settings.ASCII_N).GetString(tmp);
+                        landb.landbs[i].actorSpeech = Methods.DecodeGameText(tmp, false);
 
                         if(Methods.isUTF8String(tmp))
                         {
@@ -327,7 +327,7 @@ namespace TTG_Tools.Texts
                     else
                     {
                         bw.Write(landb.landbs[i].anmNameSize);
-                        tmp = Encoding.GetEncoding(MainMenu.settings.ASCII_N).GetBytes(landb.landbs[i].anmName);
+                        tmp = Methods.EncodeGameText(landb.landbs[i].anmName, false);
                     }
 
                     bw.Write(tmp);
@@ -347,7 +347,7 @@ namespace TTG_Tools.Texts
                     else
                     {
                         bw.Write(landb.landbs[i].wavNameSize);
-                        tmp = Encoding.GetEncoding(MainMenu.settings.ASCII_N).GetBytes(landb.landbs[i].wavName);
+                        tmp = Methods.EncodeGameText(landb.landbs[i].wavName, false);
                     }
 
                     bw.Write(tmp);
@@ -355,19 +355,19 @@ namespace TTG_Tools.Texts
                     bw.Write(landb.landbs[i].blockUnknownNameSize);
                     bw.Write(landb.landbs[i].unknownNameSize);
 
-                    tmp = Encoding.GetEncoding(MainMenu.settings.ASCII_N).GetBytes(landb.landbs[i].unknownName);
+                    tmp = Methods.EncodeGameText(landb.landbs[i].unknownName, false);
                     bw.Write(tmp);
 
                     bw.Write(landb.landbs[i].zero2);
 
-                    byte[] tmpActorName = landb.isUnicode ? Encoding.UTF8.GetBytes(landb.landbs[i].actorName) : Encoding.GetEncoding(MainMenu.settings.ASCII_N).GetBytes(landb.landbs[i].actorName);
-                    if (landb.isUnicode && (MainMenu.settings.unicodeSettings == 2)) tmpActorName = Encoding.GetEncoding(MainMenu.settings.ASCII_N).GetBytes(landb.landbs[i].actorName);
+                    byte[] tmpActorName = Methods.EncodeGameText(landb.landbs[i].actorName, landb.isUnicode);
+                    if (landb.isUnicode && (MainMenu.settings.unicodeSettings == 2)) tmpActorName = Methods.EncodeGameText(landb.landbs[i].actorName, false);
                     landb.landbs[i].actorNameSize = tmpActorName.Length;
                     landb.landbs[i].blockActorNameSize = landb.landbs[i].actorNameSize + 8;
                     landb.newBlockLength += 4 + landb.landbs[i].actorNameSize;
                     landb.newLandbFileSize += 4 + landb.landbs[i].actorNameSize;
 
-                    byte[] tmpActorSpeech = landb.isUnicode ? Encoding.UTF8.GetBytes(landb.landbs[i].actorSpeech) : Encoding.GetEncoding(MainMenu.settings.ASCII_N).GetBytes(landb.landbs[i].actorSpeech);
+                    byte[] tmpActorSpeech = Methods.EncodeGameText(landb.landbs[i].actorSpeech, landb.isUnicode);
                     if (landb.isUnicode && (MainMenu.settings.unicodeSettings == 2))
                     {
                         //tmpActorSpeech = landb.landbs[i].actorName.Contains("\"") ? Encoding.UTF8.GetBytes(landb.landbs[i].actorSpeech) : Encoding.GetEncoding(MainMenu.settings.ASCII_N).GetBytes(landb.landbs[i].actorSpeech);
@@ -382,7 +382,7 @@ namespace TTG_Tools.Texts
                             tmpStr = Methods.ConvertString(tmpStr, false);
                             tmpActorSpeech = Encoding.UTF8.GetBytes(tmpStr);
                         }
-                        else tmpActorSpeech = Encoding.GetEncoding(MainMenu.settings.ASCII_N).GetBytes(landb.landbs[i].actorSpeech);
+                        else tmpActorSpeech = Methods.EncodeGameText(landb.landbs[i].actorSpeech, false);
                     }
                     landb.landbs[i].actorSpeechSize = tmpActorSpeech.Length;
                     landb.landbs[i].blockActorSpeechSize = landb.landbs[i].actorSpeechSize + 8;

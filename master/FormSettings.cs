@@ -44,6 +44,8 @@ namespace TTG_Tools
             else if (rbNonNormalUnicode2.Checked == true) MainMenu.settings.unicodeSettings = 1;
             else MainMenu.settings.unicodeSettings = 2;
 
+            MainMenu.settings.supportTwdNintendoSwitch = rbTwdNintendoSwitch.Checked;
+
             MainMenu.settings.languageIndex = -1;
             if (checkLanguage.Checked)
             {
@@ -267,6 +269,8 @@ namespace TTG_Tools
                     rbNormalUnicode.Checked = true;
                     break;
             }
+
+            rbTwdNintendoSwitch.Checked = MainMenu.settings.supportTwdNintendoSwitch;
         }
 
         private void buttonInputFolder_Click(object sender, EventArgs e)
