@@ -104,6 +104,57 @@ namespace TTG_Tools
             }
         }
 
+        public static bool ContainsNonAscii(string text)
+        {
+            if (String.IsNullOrEmpty(text)) return false;
+
+            for (int i = 0; i < text.Length; i++)
+            {
+                if (text[i] > 0x7F) return true;
+            }
+
+            return false;
+        }
+
+        public static bool ShouldForceUtf8ForLandbString(string fileName, string text, bool openingCreditsReplacementMode)
+        {
+            if (!MainMenu.settings.supportTwdNintendoSwitch) return false;
+            if (String.IsNullOrEmpty(text)) return false;
+
+            string safeName = Path.GetFileName(fileName ?? "");
+
+            if (safeName.Equals("ui_openingcredits_english.landb", StringComparison.OrdinalIgnoreCase) && text.Contains('©'))
+            {
+                return true;
+            }
+
+            if (openingCreditsReplacementMode && text.Contains('©')) return true;
+
+            if (safeName.Equals("choice_notification_english.landb", StringComparison.OrdinalIgnoreCase))
+            {
+                return text.Contains("Mark lo notó");
+            }
+
+            if (safeName.Equals("ui_menu_english.landb", StringComparison.OrdinalIgnoreCase))
+            {
+                return text.Contains('®') || ContainsNonAscii(text);
+            }
+
+            if (safeName.Equals("dairyexterior_lee_andy_english.landb", StringComparison.OrdinalIgnoreCase)
+                || safeName.Equals("dairyexterior_lee_lilly_english.landb", StringComparison.OrdinalIgnoreCase)
+                || safeName.Equals("env_dairyexterior_atthedairy_english.landb", StringComparison.OrdinalIgnoreCase)
+                || safeName.Equals("env_dairymeatlocker_english.landb", StringComparison.OrdinalIgnoreCase)
+                || safeName.Equals("env_forestabandonedcamp_english.landb", StringComparison.OrdinalIgnoreCase)
+                || safeName.Equals("env_forestjolenescamp_english.landb", StringComparison.OrdinalIgnoreCase)
+                || safeName.Equals("env_motorinn_backatthemotel_english.landb", StringComparison.OrdinalIgnoreCase)
+                || safeName.Equals("motorinn_lee_kenny_english.landb", StringComparison.OrdinalIgnoreCase))
+            {
+                return ContainsNonAscii(text);
+            }
+
+            return false;
+        }
+
         public static bool ShouldUseTwdNintendoSwitchAnsi(string versionOfGame)
         {
             if (!MainMenu.settings.supportTwdNintendoSwitch) return false;
@@ -245,20 +296,50 @@ namespace TTG_Tools
         //For tests
         public static bool isUTF8String(byte[] arr)
         {
-            bool result = false;
+            if (arr == null || arr.Length == 0) return false;
+
+            bool sawMultibyte = false;
             int i = 0;
 
-            while (i < arr.Length - 4)
+            while (i < arr.Length)
             {
-                if (arr[i] <= 0x7f) { i++; continue; }
-                if (arr[i] >= 0xc2 && arr[i] < 0xe0 && arr[i + 1] >= 0x80 && arr[i + 1] < 0xc0) { i += 2; result = true; continue; }
-                if (arr[i] >= 0xe0 && arr[i] < 0xf0 && arr[i + 1] >= 0x80 && arr[i + 1] < 0xc0 && arr[i + 2] >= 0x80 && arr[i + 2] < 0xc0) { i += 3; result = true; continue; }
-                if (arr[i] >= 0xf0 && arr[i] < 0xf5 && arr[i + 1] >= 0x80 && arr[i + 1] < 0xc0 && arr[i + 2] >= 0x80 && arr[i + 2] < 0xc0 && arr[i + 3] >= 0x80 && arr[i + 3] < 0xc0) { i += 4; result = true; continue; }
-                result = false;
-                break;
+                if (arr[i] <= 0x7f)
+                {
+                    i++;
+                    continue;
+                }
+
+                if ((arr[i] >= 0xc2) && (arr[i] < 0xe0))
+                {
+                    if ((i + 1) >= arr.Length) return false;
+                    if (arr[i + 1] < 0x80 || arr[i + 1] >= 0xc0) return false;
+                    i += 2;
+                    sawMultibyte = true;
+                    continue;
+                }
+
+                if ((arr[i] >= 0xe0) && (arr[i] < 0xf0))
+                {
+                    if ((i + 2) >= arr.Length) return false;
+                    if (arr[i + 1] < 0x80 || arr[i + 1] >= 0xc0 || arr[i + 2] < 0x80 || arr[i + 2] >= 0xc0) return false;
+                    i += 3;
+                    sawMultibyte = true;
+                    continue;
+                }
+
+                if ((arr[i] >= 0xf0) && (arr[i] < 0xf5))
+                {
+                    if ((i + 3) >= arr.Length) return false;
+                    if (arr[i + 1] < 0x80 || arr[i + 1] >= 0xc0 || arr[i + 2] < 0x80 || arr[i + 2] >= 0xc0 || arr[i + 3] < 0x80 || arr[i + 3] >= 0xc0) return false;
+                    i += 4;
+                    sawMultibyte = true;
+                    continue;
+                }
+
+                return false;
             }
 
-            return result;
+            return sawMultibyte;
         }
         public static void getSizeAndKratnost(int width, int height, int code, ref int ddsContentLength, ref int kratnost)
         {

@@ -303,9 +303,9 @@ namespace TTG_Tools
             FileStream fs = new FileStream(destFilePath, FileMode.CreateNew);
             BinaryWriter bw = new BinaryWriter(fs);
 
-            bool skipAnsiForSeasonStats = Methods.IsSeasonStatsTextProp(inputFile.Name);
+            bool forceAnsiForSeasonStats = Methods.IsSeasonStatsTextProp(inputFile.Name);
             bool previousForceAnsiState = Methods.GetForceAnsiForCurrentOperation();
-            if (skipAnsiForSeasonStats) Methods.SetForceAnsiForCurrentOperation(false);
+            if (forceAnsiForSeasonStats) Methods.SetForceAnsiForCurrentOperation(true);
 
             try
             {
@@ -448,7 +448,7 @@ namespace TTG_Tools
                 fs.Close();
                 br.Close();
                 ms.Close();
-                if (skipAnsiForSeasonStats) Methods.SetForceAnsiForCurrentOperation(previousForceAnsiState);
+                if (forceAnsiForSeasonStats) Methods.SetForceAnsiForCurrentOperation(previousForceAnsiState);
                 ReportForWork("File " + DestinationFile.Name + " imported in " + inputFile.Name + ".");
             }
             catch
@@ -458,7 +458,7 @@ namespace TTG_Tools
                 if (bw != null) bw.Close();
                 if (fs != null) fs.Close();
 
-                if (skipAnsiForSeasonStats) Methods.SetForceAnsiForCurrentOperation(previousForceAnsiState);
+                if (forceAnsiForSeasonStats) Methods.SetForceAnsiForCurrentOperation(previousForceAnsiState);
                 string errorMsg = "Something wrong with file " + inputFile.Name;
                 failedList.Add(inputFile.Name);
                 ReportForWork(errorMsg);
@@ -477,9 +477,9 @@ namespace TTG_Tools
             FileStream fsw = new FileStream(fullDestPath, FileMode.CreateNew);
             StreamWriter sw = new StreamWriter(fsw);
 
-            bool skipAnsiForSeasonStats = Methods.IsSeasonStatsTextProp(inputFile.Name);
+            bool forceAnsiForSeasonStats = Methods.IsSeasonStatsTextProp(inputFile.Name);
             bool previousForceAnsiState = Methods.GetForceAnsiForCurrentOperation();
-            if (skipAnsiForSeasonStats) Methods.SetForceAnsiForCurrentOperation(false);
+            if (forceAnsiForSeasonStats) Methods.SetForceAnsiForCurrentOperation(true);
 
             try
             {
@@ -557,7 +557,7 @@ namespace TTG_Tools
                 fs.Close();
                 sw.Close();
                 fsw.Close();
-                if (skipAnsiForSeasonStats) Methods.SetForceAnsiForCurrentOperation(previousForceAnsiState);
+                if (forceAnsiForSeasonStats) Methods.SetForceAnsiForCurrentOperation(previousForceAnsiState);
             }
             catch
             {
@@ -565,7 +565,7 @@ namespace TTG_Tools
                 if (fs != null) fs.Close();
                 if (sw != null) sw.Close();
                 if (fsw != null) fsw.Close();
-                if (skipAnsiForSeasonStats) Methods.SetForceAnsiForCurrentOperation(previousForceAnsiState);
+                if (forceAnsiForSeasonStats) Methods.SetForceAnsiForCurrentOperation(previousForceAnsiState);
                 ReportForWork("Something wrong with file " + inputFile.Name);
             }
         }

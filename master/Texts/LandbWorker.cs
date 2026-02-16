@@ -246,7 +246,7 @@ namespace TTG_Tools.Texts
             return landb;
         }
 
-        private static int RebuildLandb(BinaryReader br, string outputFile, LandbClass landb)
+        private static int RebuildLandb(BinaryReader br, string outputFile, LandbClass landb, string inputFileName, bool openingCreditsReplacementMode)
         {
             if (File.Exists(outputFile)) File.Delete(outputFile);
 
@@ -358,7 +358,8 @@ namespace TTG_Tools.Texts
                     byte[] tmpActorName = Methods.EncodeGameText(landb.landbs[i].actorName, landb.isUnicode);
                     if (MainMenu.settings.supportTwdNintendoSwitch && landb.isUnicode && (MainMenu.settings.unicodeSettings == 2))
                     {
-                        bool useUtf8ForActorName = !Methods.IsTextRepresentableInActiveEncoding(landb.landbs[i].actorName);
+                        bool useUtf8ForActorName = !Methods.IsTextRepresentableInActiveEncoding(landb.landbs[i].actorName)
+                            || Methods.ShouldForceUtf8ForLandbString(inputFileName, landb.landbs[i].actorName, openingCreditsReplacementMode);
                         tmpActorName = Methods.EncodeGameText(landb.landbs[i].actorName, useUtf8ForActorName);
                     }
                     landb.landbs[i].actorNameSize = tmpActorName.Length;
@@ -386,7 +387,8 @@ namespace TTG_Tools.Texts
                         }
                         else
                         {
-                            bool useUtf8ForSpeech = !Methods.IsTextRepresentableInActiveEncoding(speechText);
+                            bool useUtf8ForSpeech = !Methods.IsTextRepresentableInActiveEncoding(speechText)
+                                || Methods.ShouldForceUtf8ForLandbString(inputFileName, speechText, openingCreditsReplacementMode);
                             tmpActorSpeech = Methods.EncodeGameText(speechText, useUtf8ForSpeech);
                         }
                     }
@@ -641,7 +643,7 @@ namespace TTG_Tools.Texts
 
                     string outputFile = MainMenu.settings.pathForOutputFolder + "\\" + fi.Name;
 
-                    int rebuildResult = RebuildLandb(br, outputFile, landbs);
+                    int rebuildResult = RebuildLandb(br, outputFile, landbs, fi.Name, mapOpeningCreditsReplacement);
                     
                     br.Close();
                     ms.Close();
