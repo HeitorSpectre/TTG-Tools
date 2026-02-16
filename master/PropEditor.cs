@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Text;
 using System.Windows.Forms;
@@ -19,6 +20,7 @@ namespace TTG_Tools
         private readonly Button openBtn;
         private readonly Button saveBtn;
         private readonly Button saveAsBtn;
+        private readonly Button openInspectorBtn;
         private readonly Button applyTextBtn;
         private readonly Label statusLbl;
         private readonly Label gameLbl;
@@ -59,6 +61,7 @@ namespace TTG_Tools
             openBtn = new Button { Text = "Open .prop", Left = 12, Top = 12, Width = 120 };
             saveBtn = new Button { Text = "Save", Left = 140, Top = 12, Width = 120, Enabled = false };
             saveAsBtn = new Button { Text = "Save As", Left = 268, Top = 12, Width = 120, Enabled = false };
+            openInspectorBtn = new Button { Text = "Open Full Inspector", Left = 12, Top = 44, Width = 376 };
 
             gameLbl = new Label
             {
@@ -76,14 +79,14 @@ namespace TTG_Tools
                 DropDownStyle = ComboBoxStyle.DropDownList
             };
 
-            statusLbl = new Label { Left = 12, Top = 50, Width = 380, Height = 22, Text = "Ready." };
+            statusLbl = new Label { Left = 12, Top = 80, Width = 1050, Height = 22, Text = "Ready." };
 
             splitContainer = new SplitContainer
             {
                 Left = 12,
-                Top = 78,
+                Top = 108,
                 Width = 1050,
-                Height = 570,
+                Height = 540,
                 Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right,
                 Orientation = Orientation.Vertical,
                 SplitterDistance = 480
@@ -122,12 +125,14 @@ namespace TTG_Tools
             openBtn.Click += OpenBtn_Click;
             saveBtn.Click += SaveBtn_Click;
             saveAsBtn.Click += SaveAsBtn_Click;
+            openInspectorBtn.Click += OpenInspectorBtn_Click;
             propTree.AfterSelect += PropTree_AfterSelect;
             applyTextBtn.Click += ApplyTextBtn_Click;
 
             Controls.Add(openBtn);
             Controls.Add(saveBtn);
             Controls.Add(saveAsBtn);
+            Controls.Add(openInspectorBtn);
             Controls.Add(gameLbl);
             Controls.Add(gameSelector);
             Controls.Add(statusLbl);
@@ -142,6 +147,100 @@ namespace TTG_Tools
             {
                 gameSelector.SelectedIndex = 0;
             }
+        }
+
+        private void OpenInspectorBtn_Click(object sender, EventArgs e)
+        {
+            if (string.IsNullOrEmpty(currentPropPath) || !File.Exists(currentPropPath))
+            {
+                MessageBox.Show(
+                    "To get a 1:1 Property Editor experience (exactly like Telltale Inspector), please open a .prop file first and then click this button.\n\n"
+                    + "TTG Tools currently does not embed the full native TelltaleToolLib runtime.\n"
+                    + "This button opens the original Telltale Inspector so you can use the complete Property Editor with full metadata/types/structures.",
+                    "Open Full Inspector",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+                return;
+            }
+
+            string inspectorExe = FindInspectorExecutable();
+            if (string.IsNullOrEmpty(inspectorExe))
+            {
+                MessageBox.Show(
+                    "Could not find TelltaleInspector executable automatically.\n\n"
+                    + "Please install/build Telltale Inspector and make sure its EXE is available.\n"
+                    + "Then open it and load this file manually:\n"
+                    + currentPropPath,
+                    "Open Full Inspector",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+                return;
+            }
+
+            try
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = inspectorExe,
+                    WorkingDirectory = Path.GetDirectoryName(inspectorExe),
+                    UseShellExecute = true
+                });
+
+                statusLbl.Text = "Inspector launched. Open your file there for full Property Editor parity.";
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Failed to launch Telltale Inspector: " + ex.Message, "Open Full Inspector", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private static string FindInspectorExecutable()
+        {
+            List<string> candidates = new List<string>();
+
+            string[] envVars = new string[]
+            {
+                "TELLTALE_INSPECTOR_EXE",
+                "TT_INSPECTOR_EXE"
+            };
+
+            foreach (string env in envVars)
+            {
+                string value = Environment.GetEnvironmentVariable(env);
+                if (!string.IsNullOrEmpty(value))
+                {
+                    candidates.Add(value);
+                }
+            }
+
+            string desktop = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+            string docs = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+            string localApp = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+
+            if (!string.IsNullOrEmpty(desktop))
+            {
+                candidates.Add(Path.Combine(desktop, "TelltaleInspector.exe"));
+            }
+
+            if (!string.IsNullOrEmpty(docs))
+            {
+                candidates.Add(Path.Combine(docs, "TelltaleInspector", "TelltaleInspector.exe"));
+            }
+
+            if (!string.IsNullOrEmpty(localApp))
+            {
+                candidates.Add(Path.Combine(localApp, "TelltaleInspector", "TelltaleInspector.exe"));
+            }
+
+            foreach (string path in candidates)
+            {
+                if (!string.IsNullOrEmpty(path) && File.Exists(path))
+                {
+                    return path;
+                }
+            }
+
+            return null;
         }
 
         private void OpenBtn_Click(object sender, EventArgs e)
