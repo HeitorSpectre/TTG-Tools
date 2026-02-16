@@ -58,13 +58,44 @@ namespace TTG_Tools
         public static string MapReplacementCharToCopyright(string text, bool enabled)
         {
             if (!enabled || text == null) return text;
-            return text.Replace('\uFFFD', '©');
+            return text.Replace('\uFFFD', '©').Replace("ï¿½", "©");
         }
 
         public static string MapCopyrightToReplacementChar(string text, bool enabled)
         {
             if (!enabled || text == null) return text;
             return text.Replace('©', '\uFFFD');
+        }
+
+        public static int GetActiveTextCodePage()
+        {
+            int codePage = MainMenu.settings.ASCII_N;
+            if (MainMenu.settings.supportTwdNintendoSwitch)
+            {
+                codePage = 1252;
+            }
+
+            return codePage;
+        }
+
+        public static bool IsTextRepresentableInActiveEncoding(string text)
+        {
+            if (text == null) return true;
+
+            Encoding enc = Encoding.GetEncoding(
+                GetActiveTextCodePage(),
+                EncoderFallback.ExceptionFallback,
+                DecoderFallback.ExceptionFallback);
+
+            try
+            {
+                enc.GetBytes(text);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         public static bool ShouldUseTwdNintendoSwitchAnsi(string versionOfGame)
@@ -145,11 +176,7 @@ namespace TTG_Tools
 
         public static string DecodeGameText(byte[] bytes, bool useUtf8)
         {
-            int codePage = MainMenu.settings.ASCII_N;
-            if (MainMenu.settings.supportTwdNintendoSwitch)
-            {
-                codePage = 1252;
-            }
+            int codePage = GetActiveTextCodePage();
 
             // Some files contain mixed ANSI/UTF-8 strings in the same block.
             // Try strict UTF-8 first and fall back to ANSI only when bytes are not valid UTF-8.
@@ -188,11 +215,7 @@ namespace TTG_Tools
                 return Encoding.UTF8.GetBytes(text);
             }
 
-            int codePage = MainMenu.settings.ASCII_N;
-            if (MainMenu.settings.supportTwdNintendoSwitch)
-            {
-                codePage = 1252;
-            }
+            int codePage = GetActiveTextCodePage();
 
             return Encoding.GetEncoding(codePage).GetBytes(text);
         }

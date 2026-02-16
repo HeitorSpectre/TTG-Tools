@@ -162,8 +162,9 @@ namespace TTG_Tools.Texts
                     landb.landbs[i].actorName = Methods.DecodeGameText(tmp, landb.isUnicode);
                     if (landb.isUnicode && (MainMenu.settings.unicodeSettings == 2))
                     {
-                        //landb.landbs[i].actorName = Methods.isUTF8String(tmp) ? Encoding.UTF8.GetString(tmp) : Encoding.GetEncoding(MainMenu.settings.ASCII_N).GetString(tmp);
-                        landb.landbs[i].actorName = Methods.DecodeGameText(tmp, false);
+                        landb.landbs[i].actorName = Methods.isUTF8String(tmp)
+                            ? Encoding.UTF8.GetString(tmp)
+                            : Methods.DecodeGameText(tmp, false);
                     }
 
                     landb.landbs[i].blockActorSpeechSize = br.ReadInt32();
@@ -175,15 +176,9 @@ namespace TTG_Tools.Texts
                     landb.landbs[i].actorSpeech = Methods.DecodeGameText(tmp, landb.isUnicode);
                     if (landb.isUnicode && (MainMenu.settings.unicodeSettings == 2))
                     {
-                        //landb.landbs[i].actorSpeech = Methods.isUTF8String(tmp) ? Encoding.UTF8.GetString(tmp) : Encoding.GetEncoding(MainMenu.settings.ASCII_N).GetString(tmp);
-                        landb.landbs[i].actorSpeech = Methods.DecodeGameText(tmp, false);
-
-                        if(Methods.isUTF8String(tmp))
-                        {
-                            landb.landbs[i].actorSpeech = Encoding.UTF8.GetString(tmp);
-                            landb.landbs[i].actorSpeech = Methods.ConvertString(landb.landbs[i].actorSpeech, true);
-                            landb.landbs[i].actorSpeech += "(utf8c)";
-                        }
+                        landb.landbs[i].actorSpeech = Methods.isUTF8String(tmp)
+                            ? Encoding.UTF8.GetString(tmp)
+                            : Methods.DecodeGameText(tmp, false);
                     }
 
                     //Don't calculate actor speech's size!
@@ -361,7 +356,11 @@ namespace TTG_Tools.Texts
                     bw.Write(landb.landbs[i].zero2);
 
                     byte[] tmpActorName = Methods.EncodeGameText(landb.landbs[i].actorName, landb.isUnicode);
-                    if (landb.isUnicode && (MainMenu.settings.unicodeSettings == 2)) tmpActorName = Methods.EncodeGameText(landb.landbs[i].actorName, false);
+                    if (landb.isUnicode && (MainMenu.settings.unicodeSettings == 2))
+                    {
+                        bool useUtf8ForActorName = !Methods.IsTextRepresentableInActiveEncoding(landb.landbs[i].actorName);
+                        tmpActorName = Methods.EncodeGameText(landb.landbs[i].actorName, useUtf8ForActorName);
+                    }
                     landb.landbs[i].actorNameSize = tmpActorName.Length;
                     landb.landbs[i].blockActorNameSize = landb.landbs[i].actorNameSize + 8;
                     landb.newBlockLength += 4 + landb.landbs[i].actorNameSize;
@@ -370,19 +369,26 @@ namespace TTG_Tools.Texts
                     byte[] tmpActorSpeech = Methods.EncodeGameText(landb.landbs[i].actorSpeech, landb.isUnicode);
                     if (landb.isUnicode && (MainMenu.settings.unicodeSettings == 2))
                     {
-                        //tmpActorSpeech = landb.landbs[i].actorName.Contains("\"") ? Encoding.UTF8.GetBytes(landb.landbs[i].actorSpeech) : Encoding.GetEncoding(MainMenu.settings.ASCII_N).GetBytes(landb.landbs[i].actorSpeech);
+                        string speechText = landb.landbs[i].actorSpeech;
+                        bool endsUtf8Marker = (speechText.IndexOf("(utf8)") > 0) && (speechText.IndexOf("(utf8)") == speechText.Length - 6);
+                        bool endsUtf8cMarker = (speechText.IndexOf("(utf8c)") > 0) && (speechText.IndexOf("(utf8c)") == speechText.Length - 7);
 
-                        if ((landb.landbs[i].actorSpeech.IndexOf("(utf8)") > 0) && (landb.landbs[i].actorSpeech.IndexOf("(utf8)") == landb.landbs[i].actorSpeech.Length - 6))
+                        if (endsUtf8Marker)
                         {
-                            tmpActorSpeech = Encoding.UTF8.GetBytes(landb.landbs[i].actorSpeech.Remove(landb.landbs[i].actorSpeech.Length - 6, 6));
+                            speechText = speechText.Remove(speechText.Length - 6, 6);
+                            tmpActorSpeech = Encoding.UTF8.GetBytes(speechText);
                         }
-                        else if ((landb.landbs[i].actorSpeech.IndexOf("(utf8c)") > 0) && (landb.landbs[i].actorSpeech.IndexOf("(utf8c)") == landb.landbs[i].actorSpeech.Length - 7))
+                        else if (endsUtf8cMarker)
                         {
-                            string tmpStr = landb.landbs[i].actorSpeech.Remove(landb.landbs[i].actorSpeech.Length - 7, 7);
-                            tmpStr = Methods.ConvertString(tmpStr, false);
-                            tmpActorSpeech = Encoding.UTF8.GetBytes(tmpStr);
+                            speechText = speechText.Remove(speechText.Length - 7, 7);
+                            speechText = Methods.ConvertString(speechText, false);
+                            tmpActorSpeech = Encoding.UTF8.GetBytes(speechText);
                         }
-                        else tmpActorSpeech = Methods.EncodeGameText(landb.landbs[i].actorSpeech, false);
+                        else
+                        {
+                            bool useUtf8ForSpeech = !Methods.IsTextRepresentableInActiveEncoding(speechText);
+                            tmpActorSpeech = Methods.EncodeGameText(speechText, useUtf8ForSpeech);
+                        }
                     }
                     landb.landbs[i].actorSpeechSize = tmpActorSpeech.Length;
                     landb.landbs[i].blockActorSpeechSize = landb.landbs[i].actorSpeechSize + 8;
