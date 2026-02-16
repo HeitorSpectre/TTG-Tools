@@ -289,32 +289,7 @@ namespace TTG_Tools
 
                 int countBlocks = br.ReadInt32();
 
-                if (signature == "B4-F4-5A-5F-60-6E-9C-CD")
-                {
-                    for (int i = 0; i < countBlocks; i++)
-                    {
-                        TreeNode blockNode = new TreeNode("Block " + (i + 1));
-
-                        br.ReadBytes(8);
-                        if (header == "ERTM") br.ReadInt32();
-                        int len = br.ReadInt32();
-                        byte[] raw = br.ReadBytes(len);
-                        string text = valueEncoding.GetString(raw);
-
-                        PropTextEntry entry = new PropTextEntry
-                        {
-                            Label = "Value",
-                            Value = text,
-                            FlatOrder = flatEntries.Count
-                        };
-                        flatEntries.Add(entry);
-
-                        TreeNode leaf = new TreeNode("Value") { Tag = entry };
-                        blockNode.Nodes.Add(leaf);
-                        root.Nodes.Add(blockNode);
-                    }
-                }
-                else if (signature == "25-03-C6-1F-D8-64-1B-4F")
+                if (signature == "25-03-C6-1F-D8-64-1B-4F")
                 {
                     for (int i = 0; i < countBlocks; i++)
                     {
@@ -347,7 +322,41 @@ namespace TTG_Tools
                 }
                 else
                 {
-                    throw new InvalidDataException("Unsupported PROP signature for this editor view: " + signature);
+                    // Fallback path: many games use different key CRC signatures but still store
+                    // a flat list of string values in each block.
+                    for (int i = 0; i < countBlocks; i++)
+                    {
+                        TreeNode blockNode = new TreeNode("Block " + (i + 1));
+
+                        br.ReadBytes(8);
+                        if (header == "ERTM") br.ReadInt32();
+
+                        int len = br.ReadInt32();
+                        if (len < 0)
+                        {
+                            throw new InvalidDataException("Negative string length encountered while parsing fallback PROP layout.");
+                        }
+
+                        byte[] raw = br.ReadBytes(len);
+                        if (raw.Length != len)
+                        {
+                            throw new InvalidDataException("Unexpected end of PROP file in fallback parser.");
+                        }
+
+                        string text = valueEncoding.GetString(raw);
+
+                        PropTextEntry entry = new PropTextEntry
+                        {
+                            Label = "Value",
+                            Value = text,
+                            FlatOrder = flatEntries.Count
+                        };
+                        flatEntries.Add(entry);
+
+                        TreeNode leaf = new TreeNode("Value") { Tag = entry };
+                        blockNode.Nodes.Add(leaf);
+                        root.Nodes.Add(blockNode);
+                    }
                 }
 
                 propTree.Nodes.Add(root);
