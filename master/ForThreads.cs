@@ -396,7 +396,10 @@ namespace TTG_Tools
                         bl = br.ReadBytes(blLen);
                         blockSize += 4;
                         blHeadSize += 4;
-                        bl = Methods.EncodeGameText(strs[c], useUtf8ForReinsert);
+                        bool useUtf8ForCurrentString = useUtf8ForReinsert
+                            && !Methods.ShouldForceAnsiForSeasonStatsPropLine(inputFile.Name, strs[c]);
+
+                        bl = Methods.EncodeGameText(strs[c], useUtf8ForCurrentString);
                         blLen = bl.Length;
                         bw.Write(blLen);
                         bw.Write(bl);
@@ -428,7 +431,10 @@ namespace TTG_Tools
                         {
                             blLen = br.ReadInt32();
                             bl = br.ReadBytes(blLen);
-                            bl = Methods.EncodeGameText(strs[c], useUtf8ForReinsert);
+                            bool useUtf8ForCurrentString = useUtf8ForReinsert
+                                && !Methods.ShouldForceAnsiForSeasonStatsPropLine(inputFile.Name, strs[c]);
+
+                            bl = Methods.EncodeGameText(strs[c], useUtf8ForCurrentString);
                             blLen = bl.Length;
                             bw.Write(blLen);
                             bw.Write(bl);

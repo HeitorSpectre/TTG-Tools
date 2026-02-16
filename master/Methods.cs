@@ -44,6 +44,19 @@ namespace TTG_Tools
             return headerIs6VSM;
         }
 
+        public static bool ShouldForceAnsiForSeasonStatsPropLine(string fileName, string text)
+        {
+            if (!MainMenu.settings.supportTwdNintendoSwitch) return false;
+
+            string safeName = Path.GetFileName(fileName ?? "");
+            if (!safeName.Equals("seasonStatsText.prop", StringComparison.OrdinalIgnoreCase)) return false;
+
+            return String.Equals(
+                text,
+                "Il est mort quand ils ont attaqué le drugstore.",
+                StringComparison.Ordinal);
+        }
+
         public static bool IsLandbExcludedFromTwdSwitchAnsi(string fileName)
         {
             if (!MainMenu.settings.supportTwdNintendoSwitch) return false;
