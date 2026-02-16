@@ -116,10 +116,33 @@ namespace TTG_Tools
             return false;
         }
 
+        public static bool ContainsJapaneseCharacters(string text)
+        {
+            if (String.IsNullOrEmpty(text)) return false;
+
+            for (int i = 0; i < text.Length; i++)
+            {
+                char c = text[i];
+
+                // Hiragana, Katakana, CJK Unified Ideographs, Halfwidth Katakana
+                if ((c >= '\u3040' && c <= '\u309F')
+                    || (c >= '\u30A0' && c <= '\u30FF')
+                    || (c >= '\u4E00' && c <= '\u9FFF')
+                    || (c >= '\uFF66' && c <= '\uFF9D'))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         public static bool ShouldForceUtf8ForLandbString(string fileName, string text, bool openingCreditsReplacementMode)
         {
             if (!MainMenu.settings.supportTwdNintendoSwitch) return false;
             if (String.IsNullOrEmpty(text)) return false;
+
+            if (ContainsJapaneseCharacters(text)) return true;
 
             string safeName = Path.GetFileName(fileName ?? "");
 
