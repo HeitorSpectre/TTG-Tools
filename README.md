@@ -8,10 +8,6 @@ This version of TTG Tools includes some modifications and has been uploaded with
 
 ⬇ [Download TTG Tools!](https://github.com/zenderovpaulo95/TTG-Tools/releases)
 
-## Compilation
-
-For correct compilation, you need to download `zlib.net.dll` from [here](http://www.componentace.com/download/download.php?editionid=25) and place it in the `zlib` folder.
-
 ## Special Thanks
 
 - Den Em for allowing the source code to be uploaded  
@@ -63,6 +59,7 @@ TTG Tools makes it easier to translate and modify Telltale Games and Skunkape Ga
 - Sam & Max: Save the World - Remastered  
 - Sam & Max: Beyond Time and Space - Remastered  
 - Sam & Max: The Devil's Playhouse - Remastered
+
 
 
 
