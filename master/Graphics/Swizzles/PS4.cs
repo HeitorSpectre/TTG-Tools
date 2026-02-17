@@ -11,19 +11,32 @@ namespace TTG_Tools.Graphics.Swizzles
     {
         public static byte[] Swizzle(byte[] data, int width, int height, int blockSize)
         {
-            return DoSwizzle(data, width, height, blockSize, false);
+            return DoSwizzle(data, width, height, blockSize, 4, 4, false);
+        }
+
+        public static byte[] Swizzle(byte[] data, int width, int height, int blockSize, int blockWidth, int blockHeight)
+        {
+            return DoSwizzle(data, width, height, blockSize, blockWidth, blockHeight, false);
         }
 
         public static byte[] Unswizzle(byte[] data, int width, int height, int blockSize)
         {
-            return DoSwizzle(data, width, height, blockSize, true);
+            return DoSwizzle(data, width, height, blockSize, 4, 4, true);
         }
 
-        private static byte[] DoSwizzle(byte[] data, int width, int height, int blockSize, bool unswizzle)
+        public static byte[] Unswizzle(byte[] data, int width, int height, int blockSize, int blockWidth, int blockHeight)
         {
-            // 1. Calcula as dimensões em "Texels" (Blocos de compressão 4x4 pixels)
-            var heightTexels = height / 4;
-            var widthTexels = width / 4;
+            return DoSwizzle(data, width, height, blockSize, blockWidth, blockHeight, true);
+        }
+
+        private static byte[] DoSwizzle(byte[] data, int width, int height, int blockSize, int blockWidth, int blockHeight, bool unswizzle)
+        {
+            blockWidth = blockWidth < 1 ? 1 : blockWidth;
+            blockHeight = blockHeight < 1 ? 1 : blockHeight;
+
+            // 1. Calcula as dimensões em "Texels" (blocos do formato)
+            var heightTexels = Math.Max(1, (height + blockHeight - 1) / blockHeight);
+            var widthTexels = Math.Max(1, (width + blockWidth - 1) / blockWidth);
 
             // 2. Calcula o alinhamento necessário para o PS4 (Blocos de 8x8 Texels = 32x32 Pixels)
             var heightTexelsAligned = (heightTexels + 7) / 8;

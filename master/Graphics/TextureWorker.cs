@@ -1802,11 +1802,13 @@ namespace TTG_Tools.Graphics
                             int h = tex.Height;
 
                             int blockSize = tex.TextureFormat == 0x40 || tex.TextureFormat == 0x43 ? 8 : 16;
+                            int blockWidth = tex.TextureFormat >= 0x40 && tex.TextureFormat <= 0x46 ? 4 : 1;
+                            int blockHeight = tex.TextureFormat >= 0x40 && tex.TextureFormat <= 0x46 ? 4 : 1;
 
                             for (int i = 0; i < tex.Tex.MipCount; i++)
                             {
                                 if (tex.Tex.Textures[i].Block.Length < blockSize) blockSize = tex.Tex.Textures[i].Block.Length;
-                                tex.Tex.Textures[i].Block = PS4.Swizzle(tex.Tex.Textures[i].Block, w, h, blockSize);
+                                tex.Tex.Textures[i].Block = PS4.Swizzle(tex.Tex.Textures[i].Block, w, h, blockSize, blockWidth, blockHeight);
 
                                 if (w > 1) w /= 2;
                                 if (h > 1) h /= 2;
@@ -2504,11 +2506,13 @@ namespace TTG_Tools.Graphics
                     int w = tex.Width;
                     int h = tex.Height;
                     int blockSize = tex.TextureFormat == 0x40 || tex.TextureFormat == 0x43 ? 8 : 16;
+                    int blockWidth = tex.TextureFormat >= 0x40 && tex.TextureFormat <= 0x46 ? 4 : 1;
+                    int blockHeight = tex.TextureFormat >= 0x40 && tex.TextureFormat <= 0x46 ? 4 : 1;
 
                     for (int i = 0; i < tex.Tex.MipCount; i++)
                     {
                         if (tex.Tex.Textures[i].Block.Length < blockSize) blockSize = tex.Tex.Textures[i].Block.Length;
-                        tex.Tex.Textures[i].Block = PS4.Unswizzle(tex.Tex.Textures[i].Block, w, h, blockSize);
+                        tex.Tex.Textures[i].Block = PS4.Unswizzle(tex.Tex.Textures[i].Block, w, h, blockSize, blockWidth, blockHeight);
 
                         if (w > 1) w /= 2;
                         if (h > 1) h /= 2;
