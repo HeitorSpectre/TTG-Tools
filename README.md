@@ -59,6 +59,8 @@ TTG Tools makes it easier to translate and modify Telltale Games and Skunkape Ga
 - Sam & Max: Save the World - Remastered  
 - Sam & Max: Beyond Time and Space - Remastered  
 - Sam & Max: The Devil's Playhouse - Remastered
+- Poker Night at the Inventory - Remastered
+
 
 
 
