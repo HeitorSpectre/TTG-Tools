@@ -319,7 +319,6 @@ namespace TTG_Tools
             }
 
             File.Delete(tempPath);
-            AddNewReport("Legacy compatibility mode (v1.13.2 ttarch2 builder) applied.");
         }
 
 
@@ -1172,7 +1171,6 @@ namespace TTG_Tools
 
                         if (useLegacyBuilder)
                         {
-                            AddNewReport("Enabled legacy compatibility mode.");
                             await Task.Run(() => ttarch2BuilderLegacy1132(MainMenu.settings.inputDirPath, MainMenu.settings.archivePath, MainMenu.settings.compressArchive, MainMenu.settings.encArchive, !MainMenu.settings.encryptLuaInArchive, keyEnc, archiveVersion, MainMenu.settings.encNewLua));
                         }
                         else
