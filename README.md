@@ -20,6 +20,7 @@ This version of TTG Tools includes some modifications and has been uploaded with
 - Nemiroff for fixing a bug in the Font Editor  
 - Krisp for adding Xbox texture support and font editing with Swizzle
 - Pashok6798 for all your support to the community and for trusting us.
+- BennyBoy for sending the encryption key for Poker Night at the Inventory - Remastered
 
 ## Features
 
@@ -60,6 +61,7 @@ TTG Tools makes it easier to translate and modify Telltale Games and Skunkape Ga
 - Sam & Max: Beyond Time and Space - Remastered  
 - Sam & Max: The Devil's Playhouse - Remastered
 - Poker Night at the Inventory - Remastered
+
 
 
 
