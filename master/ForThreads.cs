@@ -179,8 +179,9 @@ namespace TTG_Tools
                                                 FileStream fs = new FileStream(inputFiles[i].FullName, FileMode.Open);
                                                 byte[] luaContent = Methods.ReadFull(fs);
                                                 fs.Close();
-
-                                                luaContent = Methods.encryptLua(luaContent, encKey, isNewEngine, version);
+                                                
+                                                if(!inputFiles[i].FullName.Contains("_version_"))
+                                                    luaContent = Methods.encryptLua(luaContent, encKey, isNewEngine, version);
 
                                                 string destFileLua = Path.Combine(targetFolder, inputFiles[i].Name);
                                                 if (File.Exists(destFileLua)) File.Delete(destFileLua);
@@ -188,8 +189,13 @@ namespace TTG_Tools
                                                 fs = new FileStream(destFileLua, FileMode.CreateNew);
                                                 fs.Write(luaContent, 0, luaContent.Length);
                                                 fs.Close();
-
-                                                ReportForWork("File " + inputFiles[i].Name + " encrypted.");
+                                                
+                                                if(!inputFiles[i].FullName.Contains("_version_"))
+                                                    ReportForWork("File " + inputFiles[i].Name + " encrypted.");
+                                                else
+                                                    ReportForWork("File " + inputFiles[i].Name + " moved.");
+                                                
+                                                
                                                 emptyFiles = false;
                                                 show[6] = true;
                                                 break;
@@ -699,15 +705,20 @@ namespace TTG_Tools
                                         FileStream fs = new FileStream(inputFiles[i].FullName, FileMode.Open);
                                         byte[] luaContent = Methods.ReadFull(fs);
                                         fs.Close();
-
-                                        luaContent = Methods.decryptLua(luaContent, key, version);
+                                        
+                                        if(!inputFiles[i].FullName.Contains("_version_"))
+                                            luaContent = Methods.decryptLua(luaContent, key, version);
 
                                         string destFileLua = Path.Combine(targetFolder, inputFiles[i].Name);
                                         fs = new FileStream(destFileLua, FileMode.OpenOrCreate);
                                         fs.Write(luaContent, 0, luaContent.Length);
                                         fs.Close();
 
-                                        ReportForWork("File " + inputFiles[i].Name + " decrypted.");
+                                        if(!inputFiles[i].FullName.Contains("_version_"))
+                                            ReportForWork("File " + inputFiles[i].Name + " decrypted.");
+                                        else
+                                            ReportForWork("File " + inputFiles[i].Name + " moved.");
+                                        
                                         if (destinationForExport == ".lua") extractedFormat[6] = 6;
                                         else extractedFormat[7] = 7;
                                         break;

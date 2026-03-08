@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Windows.Forms;
 using System.IO;
+using System.Linq;
 using System.Threading;
 
 namespace TTG_Tools
@@ -13,7 +14,7 @@ namespace TTG_Tools
             InitializeComponent();
         }
 
-        public static FileInfo[] fi;
+        public static FileInfo[] directoryFiles;
         public static FileInfo[] fi_temp;
 
         public static int numKey;
@@ -79,16 +80,9 @@ namespace TTG_Tools
         {
             if (MainMenu.settings.clearMessages) listBox1.Items.Clear();
 
-            try
-            {
-                DirectoryInfo di = new DirectoryInfo(MainMenu.settings.pathForInputFolder);
-                fi = di.GetFiles();
-            }
-            catch
-            {
-                MessageBox.Show("Open and close program or fix path in config.xml!", "Error!");
+            //Try to add information for all the files in the directory
+            if (setDirectoryFilesInfo())
                 return;
-            }
 
             /*if (checkUnicode.Checked) MainMenu.settings.unicodeSettings = 0;
             else MainMenu.settings.unicodeSettings = 1;*/
@@ -121,7 +115,7 @@ namespace TTG_Tools
 
         public static string GetNameOnly(int i)
         {
-            return fi[i].Name.Substring(0, (fi[i].Name.Length - fi[i].Extension.Length));
+            return directoryFiles[i].Name.Substring(0, (directoryFiles[i].Name.Length - directoryFiles[i].Extension.Length));
         }
 
         private void buttonDecrypt_Click(object sender, EventArgs e)
@@ -139,16 +133,10 @@ namespace TTG_Tools
             int arc_version = comboBox2.SelectedIndex != 1 ? 2 : 7;
 
             Methods.DeleteCurrentFile("\\del.me");
-            try
-            {
-                DirectoryInfo di = new DirectoryInfo(MainMenu.settings.pathForInputFolder);
-                fi = di.GetFiles();
-            }
-            catch
-            {
-                MessageBox.Show("Open and close program or fix path in config.xml!", "Error!");
+            
+            //Try to add information for all the files in the directory
+            if (setDirectoryFilesInfo()) 
                 return;
-            }
 
             //Создаем нить для экспорта текста из LANGDB
             var processExport = new ForThreads();
@@ -170,6 +158,22 @@ namespace TTG_Tools
                 sw.Close();
                 listBox1.Items.Add("Bugs have been written in file " + MainMenu.settings.pathForOutputFolder + "\\bugs.txt");
             }
+        }
+
+        private static bool setDirectoryFilesInfo()
+        {
+            try
+            {
+                DirectoryInfo di = new DirectoryInfo(MainMenu.settings.pathForInputFolder);
+                directoryFiles = di.GetFiles();
+            }
+            catch
+            {
+                MessageBox.Show("Open and close program or fix path in config.xml!", "Error!");
+                return true;
+            }
+            
+            return false;
         }
 
         public class Prop
