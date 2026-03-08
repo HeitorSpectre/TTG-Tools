@@ -146,6 +146,10 @@ Maybe some games doesn't work.
 ===
 [Version history]
 
+v.1.15.8 (08.03.2026)
++ TTG Tools:
+Added support for the game Poker Night at the Inventory - Remastered.
+
 v.1.15.7 (16.02.2026)
 + Auto(De)Packer
 Add Nintendo Switch-specific text encoding mode for TWD (.prop/.landb)
