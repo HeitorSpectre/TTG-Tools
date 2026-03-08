@@ -124,9 +124,19 @@ namespace TTG_Tools
             return enc.Crypt_ECB(bytes, archiveVersion, false);
         }
 
-        private static bool IsSamMaxRemasteredIndex(int selectedGameIndex)
+        private static bool UsesLegacy1132Ttarch2Builder(int selectedGameIndex)
         {
-            return (selectedGameIndex == 65) || (selectedGameIndex == 66) || (selectedGameIndex == 67);
+            if (selectedGameIndex < 0 || selectedGameIndex >= MainMenu.gamelist.Count)
+            {
+                return false;
+            }
+
+            string gameName = MainMenu.gamelist[selectedGameIndex].gamename;
+
+            return (gameName == "Sam & Max: Save the World - Remastered")
+                || (gameName == "Sam & Max: Beyond Time and Space - Remastered")
+                || (gameName == "Sam & Max: The Devil's Playhouse - Remastered")
+                || (gameName == "Poker Night at the Inventory Remastered");
         }
 
         void ttarch2BuilderLegacy1132(string inputFolder, string outputPath, bool compression, bool encryption, bool encLua, byte[] key, int versionArchive, bool newEngine)
@@ -309,7 +319,7 @@ namespace TTG_Tools
             }
 
             File.Delete(tempPath);
-            AddNewReport("Sam & Max Remastered compatibility mode (v1.13.2 ttarch2 builder) applied.");
+            AddNewReport("Legacy compatibility mode (v1.13.2 ttarch2 builder) applied.");
         }
 
 
@@ -1158,11 +1168,11 @@ namespace TTG_Tools
                     }
                     else
                     {
-                        bool useLegacySamMaxBuilder = IsSamMaxRemasteredIndex(comboGameList.SelectedIndex);
+                        bool useLegacyBuilder = UsesLegacy1132Ttarch2Builder(comboGameList.SelectedIndex);
 
-                        if (useLegacySamMaxBuilder)
+                        if (useLegacyBuilder)
                         {
-                            AddNewReport("Enabled Sam & Max Remastered compatibility mode.");
+                            AddNewReport("Enabled legacy compatibility mode.");
                             await Task.Run(() => ttarch2BuilderLegacy1132(MainMenu.settings.inputDirPath, MainMenu.settings.archivePath, MainMenu.settings.compressArchive, MainMenu.settings.encArchive, !MainMenu.settings.encryptLuaInArchive, keyEnc, archiveVersion, MainMenu.settings.encNewLua));
                         }
                         else
