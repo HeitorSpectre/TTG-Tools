@@ -136,7 +136,7 @@ namespace TTG_Tools
             return (gameName == "Sam & Max: Save the World - Remastered")
                 || (gameName == "Sam & Max: Beyond Time and Space - Remastered")
                 || (gameName == "Sam & Max: The Devil's Playhouse - Remastered")
-                || (gameName == "Poker Night at the Inventory Remastered");
+                || (gameName == "Poker Night at the Inventory - Remastered");
         }
 
         void ttarch2BuilderLegacy1132(string inputFolder, string outputPath, bool compression, bool encryption, bool encLua, byte[] key, int versionArchive, bool newEngine)
