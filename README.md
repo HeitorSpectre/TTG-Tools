@@ -11,10 +11,10 @@ This version of TTG Tools includes some modifications and has been uploaded with
 ## Special Thanks
 
 - Den Em for allowing the source code to be uploaded  
-- aluigi for the source code of `ttarchext`  
+- Aluigi for the source code of `ttarchext`  
 - Taylor Hornby for the C# source code of Blowfish encryption  
-- gdkchan, Stella/AboodXD for the Nintendo Switch swizzle method  
-- daemon1 and tge for the PS4 swizzle algorithm  
+- Gdkchan, Stella/AboodXD for the Nintendo Switch swizzle method  
+- Daemon1 and tge for the PS4 swizzle algorithm  
 - Josh Tamely for the Oodle wrapper  
 - Hajin Jang for the Zlib wrapper  
 - Nemiroff for fixing a bug in the Font Editor  
@@ -61,6 +61,7 @@ TTG Tools makes it easier to translate and modify Telltale Games and Skunkape Ga
 - Sam & Max: Beyond Time and Space - Remastered  
 - Sam & Max: The Devil's Playhouse - Remastered
 - Poker Night at the Inventory - Remastered
+
 
 
 
