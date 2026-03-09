@@ -276,11 +276,25 @@ namespace TTG_Tools
                         
                 }
 
+                //Some archives have mixed/broken compression markers for specific blocks.
+                //Fallback to auto-detect so extraction can continue.
+                if (retBuf == null || retBuf.Length == 0)
+                {
+                    retBuf = decompressBlock(bytes);
+                }
+
                 return retBuf;
             }
             catch
             {
-                return null;
+                try
+                {
+                    return decompressBlock(bytes);
+                }
+                catch
+                {
+                    return null;
+                }
             }
         }
 
@@ -827,6 +841,7 @@ namespace TTG_Tools
         private void UnpackTtarch2(string folderPath, string format, int[] indexes = null)
         {
             var files = getFilteredTtarch2Files();
+            List<string> failedFiles = new List<string>();
 
             int count = indexes != null ? indexes.Length : files.Length;
             
@@ -842,6 +857,13 @@ namespace TTG_Tools
 
                 byte[] file = getTtarch2File(ttarch2, files[ind], key, br);
 
+                if (file == null)
+                {
+                    failedFiles.Add(files[ind].fileName);
+                    Progress(i + 1);
+                    continue;
+                }
+
                 string fileName = files[ind].fileName;
                 if (((fileName.Substring(fileName.Length - 5, 5).ToLower() == ".lenc") || (fileName.Substring(fileName.Length - 4, 4).ToLower() == ".lua")) && decrypt)
                 {
@@ -856,6 +878,11 @@ namespace TTG_Tools
 
             br.Close();
             fs.Close();
+
+            if (failedFiles.Count > 0)
+            {
+                MessageBox.Show("Some files were skipped due to decompression errors:\r\n" + string.Join("\r\n", failedFiles), "Completed with warnings", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
         }
 
         private void getArchiveInfo()
@@ -1138,8 +1165,6 @@ namespace TTG_Tools
                             if (tmp == null || tmp.Length == 0)
                             {
                                 MessageBox.Show("TTG Tools couldn't decompress block. Compress algorithm is " + Convert.ToString(ttarch2.compressAlgorithm), "Decompress error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-
-                                br.Close();
                                 return null;
                             }
 
