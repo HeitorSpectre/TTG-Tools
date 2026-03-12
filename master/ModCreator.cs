@@ -19,6 +19,13 @@ namespace TTG_Tools
             InitializeComponent();
             folderDialog.IsFolderPicker = true;
             folderDialog.EnsurePathExists = true;
+
+            AllowDrop = true;
+            DragEnter += InputFolder_DragEnter;
+            DragDrop += InputFolder_DragDrop;
+            inputFolderTextBox.AllowDrop = true;
+            inputFolderTextBox.DragEnter += InputFolder_DragEnter;
+            inputFolderTextBox.DragDrop += InputFolder_DragDrop;
         }
 
         private void ModCreator_Load(object sender, EventArgs e)
@@ -27,6 +34,11 @@ namespace TTG_Tools
             gameComboBox.Items.Add(pokerNightProfile.GameDisplayName);
             gameComboBox.SelectedIndex = 0;
             gameComboBox.Enabled = false; // estrutura preparada, mas bloqueada para este jogo nesta fase.
+
+            if (string.IsNullOrWhiteSpace(outputFolderTextBox.Text) && Directory.Exists(inputFolderTextBox.Text))
+            {
+                outputFolderTextBox.Text = Path.Combine(inputFolderTextBox.Text, "ModCreator_Output");
+            }
         }
 
         private void browseInputButton_Click(object sender, EventArgs e)
@@ -34,18 +46,38 @@ namespace TTG_Tools
             if (folderDialog.ShowDialog() == CommonFileDialogResult.Ok)
             {
                 inputFolderTextBox.Text = folderDialog.FileName;
+
+                if (string.IsNullOrWhiteSpace(outputFolderTextBox.Text))
+                {
+                    outputFolderTextBox.Text = Path.Combine(folderDialog.FileName, "ModCreator_Output");
+                }
+            }
+        }
+
+
+        private void browseOutputButton_Click(object sender, EventArgs e)
+        {
+            if (folderDialog.ShowDialog() == CommonFileDialogResult.Ok)
+            {
+                outputFolderTextBox.Text = folderDialog.FileName;
             }
         }
 
         private async void createModButton_Click(object sender, EventArgs e)
         {
             string inputFolder = inputFolderTextBox.Text.Trim();
+            string outputFolder = outputFolderTextBox.Text.Trim();
             string modName = NormalizeModName(modNameTextBox.Text.Trim());
 
             if (!Directory.Exists(inputFolder))
             {
                 MessageBox.Show("Input folder doesn't exist.", "Error");
                 return;
+            }
+
+            if (!Directory.Exists(outputFolder))
+            {
+                Directory.CreateDirectory(outputFolder);
             }
 
             if (string.IsNullOrWhiteSpace(modName))
@@ -55,8 +87,8 @@ namespace TTG_Tools
             }
 
             string archiveFileName = pokerNightProfile.BuildArchiveFileName(modName);
-            string archivePath = Path.Combine(inputFolder, archiveFileName);
-            string luaPath = Path.Combine(inputFolder, modName + ".lua");
+            string archivePath = Path.Combine(outputFolder, archiveFileName);
+            string luaPath = Path.Combine(outputFolder, pokerNightProfile.BuildLuaFileName(modName));
 
             SetUiEnabled(false);
             logListBox.Items.Clear();
@@ -64,7 +96,7 @@ namespace TTG_Tools
 
             try
             {
-                await Task.Run(() => CreateModPackage(inputFolder, archivePath, luaPath, modName, archiveFileName));
+                await Task.Run(() => CreateModPackage(inputFolder, outputFolder, archivePath, luaPath, modName, archiveFileName));
                 AddLog("Mod created successfully.");
                 MessageBox.Show("Mod created successfully.", "Success");
             }
@@ -79,10 +111,11 @@ namespace TTG_Tools
             }
         }
 
-        private void CreateModPackage(string inputFolder, string archivePath, string luaPath, string modName, string archiveFileName)
+        private void CreateModPackage(string inputFolder, string outputFolder, string archivePath, string luaPath, string modName, string archiveFileName)
         {
             byte[] gameKey = GetEncryptionKeyForGame(pokerNightProfile.GameDisplayName);
 
+            AddLog("Output folder: " + outputFolder);
             AddLog("Creating archive: " + Path.GetFileName(archivePath));
 
             ttarch2BuilderLegacy1132(
@@ -96,8 +129,8 @@ namespace TTG_Tools
                 pokerNightProfile.NewEngineLua,
                 new HashSet<string>(StringComparer.OrdinalIgnoreCase)
                 {
-                    archivePath,
-                    luaPath
+                    Path.GetFullPath(archivePath),
+                    Path.GetFullPath(luaPath)
                 });
 
             AddLog("Generating Lua descriptor: " + Path.GetFileName(luaPath));
@@ -145,8 +178,51 @@ namespace TTG_Tools
             inputFolderTextBox.Enabled = enabled;
             browseInputButton.Enabled = enabled;
             modNameTextBox.Enabled = enabled;
+            outputFolderTextBox.Enabled = enabled;
+            browseOutputButton.Enabled = enabled;
             createModButton.Enabled = enabled;
             gameComboBox.Enabled = false;
+        }
+
+
+        private void InputFolder_DragEnter(object sender, DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent(DataFormats.FileDrop))
+            {
+                string[] paths = (string[])e.Data.GetData(DataFormats.FileDrop);
+                if (paths != null && paths.Length > 0 && Directory.Exists(paths[0]))
+                {
+                    e.Effect = DragDropEffects.Copy;
+                    return;
+                }
+            }
+
+            e.Effect = DragDropEffects.None;
+        }
+
+        private void InputFolder_DragDrop(object sender, DragEventArgs e)
+        {
+            if (!e.Data.GetDataPresent(DataFormats.FileDrop))
+            {
+                return;
+            }
+
+            string[] paths = (string[])e.Data.GetData(DataFormats.FileDrop);
+            if (paths == null || paths.Length == 0)
+            {
+                return;
+            }
+
+            string droppedPath = paths[0];
+            if (Directory.Exists(droppedPath))
+            {
+                inputFolderTextBox.Text = droppedPath;
+
+                if (string.IsNullOrWhiteSpace(outputFolderTextBox.Text))
+                {
+                    outputFolderTextBox.Text = Path.Combine(droppedPath, "ModCreator_Output");
+                }
+            }
         }
 
         private static void ttarch2BuilderLegacy1132(
@@ -162,7 +238,7 @@ namespace TTG_Tools
         {
             DirectoryInfo di = new DirectoryInfo(inputFolder);
             FileInfo[] fi = di.GetFiles("*", SearchOption.AllDirectories)
-                .Where(f => excludedPaths == null || !excludedPaths.Contains(f.FullName))
+                .Where(f => excludedPaths == null || !excludedPaths.Contains(Path.GetFullPath(f.FullName)))
                 .GroupBy(f => f.Name)
                 .Select(g => g.First())
                 .ToArray();
@@ -368,6 +444,11 @@ namespace TTG_Tools
             public string BuildArchiveFileName(string modName)
             {
                 return "CP_pc_" + modName + ".ttarch2";
+            }
+
+            public string BuildLuaFileName(string modName)
+            {
+                return "_resdesc_50_" + modName + ".lua";
             }
 
             public string BuildLuaDescriptor(string modName, string archiveFileName)

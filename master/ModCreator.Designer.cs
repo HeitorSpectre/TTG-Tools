@@ -26,6 +26,9 @@
             this.gameComboBox = new System.Windows.Forms.ComboBox();
             this.createModButton = new System.Windows.Forms.Button();
             this.logListBox = new System.Windows.Forms.ListBox();
+            this.outputFolderLabel = new System.Windows.Forms.Label();
+            this.outputFolderTextBox = new System.Windows.Forms.TextBox();
+            this.browseOutputButton = new System.Windows.Forms.Button();
             this.SuspendLayout();
             // 
             // inputFolderLabel
@@ -57,7 +60,7 @@
             // modNameLabel
             // 
             this.modNameLabel.AutoSize = true;
-            this.modNameLabel.Location = new System.Drawing.Point(22, 44);
+            this.modNameLabel.Location = new System.Drawing.Point(22, 73);
             this.modNameLabel.Name = "modNameLabel";
             this.modNameLabel.Size = new System.Drawing.Size(58, 13);
             this.modNameLabel.TabIndex = 3;
@@ -65,7 +68,7 @@
             // 
             // modNameTextBox
             // 
-            this.modNameTextBox.Location = new System.Drawing.Point(103, 41);
+            this.modNameTextBox.Location = new System.Drawing.Point(103, 70);
             this.modNameTextBox.Name = "modNameTextBox";
             this.modNameTextBox.Size = new System.Drawing.Size(196, 20);
             this.modNameTextBox.TabIndex = 4;
@@ -73,7 +76,7 @@
             // gameLabel
             // 
             this.gameLabel.AutoSize = true;
-            this.gameLabel.Location = new System.Drawing.Point(43, 73);
+            this.gameLabel.Location = new System.Drawing.Point(43, 102);
             this.gameLabel.Name = "gameLabel";
             this.gameLabel.Size = new System.Drawing.Size(38, 13);
             this.gameLabel.TabIndex = 5;
@@ -83,14 +86,14 @@
             // 
             this.gameComboBox.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.gameComboBox.FormattingEnabled = true;
-            this.gameComboBox.Location = new System.Drawing.Point(103, 70);
+            this.gameComboBox.Location = new System.Drawing.Point(103, 99);
             this.gameComboBox.Name = "gameComboBox";
             this.gameComboBox.Size = new System.Drawing.Size(407, 21);
             this.gameComboBox.TabIndex = 6;
             // 
             // createModButton
             // 
-            this.createModButton.Location = new System.Drawing.Point(516, 68);
+            this.createModButton.Location = new System.Drawing.Point(516, 97);
             this.createModButton.Name = "createModButton";
             this.createModButton.Size = new System.Drawing.Size(75, 23);
             this.createModButton.TabIndex = 7;
@@ -101,16 +104,45 @@
             // logListBox
             // 
             this.logListBox.FormattingEnabled = true;
-            this.logListBox.Location = new System.Drawing.Point(15, 105);
+            this.logListBox.Location = new System.Drawing.Point(15, 136);
             this.logListBox.Name = "logListBox";
             this.logListBox.Size = new System.Drawing.Size(576, 147);
             this.logListBox.TabIndex = 8;
+            // 
+            // outputFolderLabel
+            // 
+            this.outputFolderLabel.AutoSize = true;
+            this.outputFolderLabel.Location = new System.Drawing.Point(3, 44);
+            this.outputFolderLabel.Name = "outputFolderLabel";
+            this.outputFolderLabel.Size = new System.Drawing.Size(74, 13);
+            this.outputFolderLabel.TabIndex = 9;
+            this.outputFolderLabel.Text = "Output folder:";
+            // 
+            // outputFolderTextBox
+            // 
+            this.outputFolderTextBox.Location = new System.Drawing.Point(103, 41);
+            this.outputFolderTextBox.Name = "outputFolderTextBox";
+            this.outputFolderTextBox.Size = new System.Drawing.Size(407, 20);
+            this.outputFolderTextBox.TabIndex = 10;
+            // 
+            // browseOutputButton
+            // 
+            this.browseOutputButton.Location = new System.Drawing.Point(516, 39);
+            this.browseOutputButton.Name = "browseOutputButton";
+            this.browseOutputButton.Size = new System.Drawing.Size(75, 23);
+            this.browseOutputButton.TabIndex = 11;
+            this.browseOutputButton.Text = "Browse...";
+            this.browseOutputButton.UseVisualStyleBackColor = true;
+            this.browseOutputButton.Click += new System.EventHandler(this.browseOutputButton_Click);
             // 
             // ModCreator
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(606, 269);
+            this.ClientSize = new System.Drawing.Size(606, 299);
+            this.Controls.Add(this.browseOutputButton);
+            this.Controls.Add(this.outputFolderTextBox);
+            this.Controls.Add(this.outputFolderLabel);
             this.Controls.Add(this.logListBox);
             this.Controls.Add(this.createModButton);
             this.Controls.Add(this.gameComboBox);
@@ -141,5 +173,8 @@
         private System.Windows.Forms.ComboBox gameComboBox;
         private System.Windows.Forms.Button createModButton;
         private System.Windows.Forms.ListBox logListBox;
+        private System.Windows.Forms.Label outputFolderLabel;
+        private System.Windows.Forms.TextBox outputFolderTextBox;
+        private System.Windows.Forms.Button browseOutputButton;
     }
 }
