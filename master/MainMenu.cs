@@ -356,5 +356,14 @@ namespace TTG_Tools
                 arcUnpackerForm.Show();
             }
         }
+
+        private void modCreatorBtn_Click(object sender, EventArgs e)
+        {
+            if (Application.OpenForms.OfType<ModCreator>().Count() == 0)
+            {
+                Form modCreatorForm = new ModCreator();
+                modCreatorForm.Show();
+            }
+        }
     }
 }

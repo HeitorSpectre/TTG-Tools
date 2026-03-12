@@ -39,6 +39,7 @@
             this.settingsBtn = new System.Windows.Forms.Button();
             this.archivePackerBtn = new System.Windows.Forms.Button();
             this.arcUnpackerBtn = new System.Windows.Forms.Button();
+            this.modCreatorBtn = new System.Windows.Forms.Button();
             this.SuspendLayout();
             // 
             // autopackerBtn
@@ -119,12 +120,23 @@
             this.arcUnpackerBtn.UseVisualStyleBackColor = true;
             this.arcUnpackerBtn.Click += new System.EventHandler(this.arcUnpackerBtn_Click);
             // 
+            // modCreatorBtn
+            // 
+            this.modCreatorBtn.Location = new System.Drawing.Point(127, 108);
+            this.modCreatorBtn.Name = "modCreatorBtn";
+            this.modCreatorBtn.Size = new System.Drawing.Size(112, 23);
+            this.modCreatorBtn.TabIndex = 14;
+            this.modCreatorBtn.Text = "Mod Creator";
+            this.modCreatorBtn.UseVisualStyleBackColor = true;
+            this.modCreatorBtn.Click += new System.EventHandler(this.modCreatorBtn_Click);
+            // 
             // MainMenu
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(370, 191);
             this.Controls.Add(this.arcUnpackerBtn);
+            this.Controls.Add(this.modCreatorBtn);
             this.Controls.Add(this.archivePackerBtn);
             this.Controls.Add(this.settingsBtn);
             this.Controls.Add(this.textEditorBtn);
@@ -153,5 +165,6 @@
         private System.Windows.Forms.Button settingsBtn;
         private System.Windows.Forms.Button archivePackerBtn;
         private System.Windows.Forms.Button arcUnpackerBtn;
+        private System.Windows.Forms.Button modCreatorBtn;
     }
 }

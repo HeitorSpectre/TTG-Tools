@@ -170,6 +170,12 @@
     <Compile Include="MainMenu.Designer.cs">
       <DependentUpon>MainMenu.cs</DependentUpon>
     </Compile>
+    <Compile Include="ModCreator.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="ModCreator.Designer.cs">
+      <DependentUpon>ModCreator.cs</DependentUpon>
+    </Compile>
     <Compile Include="Methods.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
