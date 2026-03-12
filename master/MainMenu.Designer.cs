@@ -54,7 +54,7 @@
             // 
             // aboutBtn
             // 
-            this.aboutBtn.Location = new System.Drawing.Point(33, 156);
+            this.aboutBtn.Location = new System.Drawing.Point(33, 147);
             this.aboutBtn.Name = "aboutBtn";
             this.aboutBtn.Size = new System.Drawing.Size(112, 23);
             this.aboutBtn.TabIndex = 1;
@@ -122,7 +122,7 @@
             // 
             // modCreatorBtn
             // 
-            this.modCreatorBtn.Location = new System.Drawing.Point(230, 156);
+            this.modCreatorBtn.Location = new System.Drawing.Point(230, 147);
             this.modCreatorBtn.Name = "modCreatorBtn";
             this.modCreatorBtn.Size = new System.Drawing.Size(112, 23);
             this.modCreatorBtn.TabIndex = 14;
