@@ -332,8 +332,6 @@ namespace TTG_Tools
             DirectoryInfo di = new DirectoryInfo(inputFolder);
             FileInfo[] fi = di.GetFiles("*", SearchOption.AllDirectories)
                 .Where(f => excludedPaths == null || !excludedPaths.Contains(Path.GetFullPath(f.FullName)))
-                .GroupBy(f => f.Name)
-                .Select(g => g.First())
                 .ToArray();
 
             ulong[] nameCrc = new ulong[fi.Length];
@@ -350,72 +348,77 @@ namespace TTG_Tools
                 {
                     name[i] = fi[i].Name;
                 }
+
                 nameCrc[i] = CRCs.CRC64(0, name[i].ToLower());
             }
 
-            for (int i = 0; i < fi.Length - 1; i++)
+            for (int k = 0; k < fi.Length - 1; k++)
             {
-                for (int j = i + 1; j < fi.Length; j++)
+                for (int l = k + 1; l < fi.Length; l++)
                 {
-                    if (nameCrc[j] < nameCrc[i])
+                    if (nameCrc[l] < nameCrc[k])
                     {
-                        FileInfo tempFi = fi[i];
-                        fi[i] = fi[j];
-                        fi[j] = tempFi;
+                        FileInfo temp = fi[k];
+                        fi[k] = fi[l];
+                        fi[l] = temp;
 
-                        ulong tempCrc = nameCrc[i];
-                        nameCrc[i] = nameCrc[j];
-                        nameCrc[j] = tempCrc;
+                        string tempStr = name[k];
+                        name[k] = name[l];
+                        name[l] = tempStr;
 
-                        string tempName = name[i];
-                        name[i] = name[j];
-                        name[j] = tempName;
+                        ulong tempCrc = nameCrc[k];
+                        nameCrc[k] = nameCrc[l];
+                        nameCrc[l] = tempCrc;
                     }
                 }
             }
 
-            uint nameSize = 0;
-            for (int i = 0; i < fi.Length; i++)
-            {
-                nameSize += (uint)name[i].Length + 1;
-            }
-
-            ulong infoSize = (ulong)fi.Length * 28;
+            uint infoSize = (uint)fi.Length * (8 + 8 + 4 + 4 + 2 + 2);
             uint dataSize = 0;
-            for (int i = 0; i < fi.Length; i++)
+            uint nameSize = 0;
+
+            for (int j = 0; j < fi.Length; j++)
             {
-                dataSize += (uint)fi[i].Length;
+                nameSize += (uint)name[j].Length + 1;
+                dataSize += (uint)fi[j].Length;
             }
 
-            ulong commonSize = infoSize + nameSize + dataSize + 24;
-            byte[] ncttHeader = Encoding.ASCII.GetBytes("NCTT");
-            byte[] att = { 65, 84, 84, 84 };
+            nameSize = (uint)Methods.pad_it(nameSize, 0x10000);
             byte[] infoTable = new byte[infoSize];
             byte[] namesTable = new byte[nameSize];
 
-            uint fileOffset = 0;
-            uint ns = 0;
+            uint nameOffset = 0;
+            for (int d = 0; d < fi.Length; d++)
+            {
+                name[d] += "\0";
+                Array.Copy(Encoding.ASCII.GetBytes(name[d]), 0, namesTable, nameOffset, name[d].Length);
+                nameOffset += (uint)name[d].Length;
+            }
+
+            byte[] ncttHeader = Encoding.ASCII.GetBytes("NCTT");
+            byte[] att = versionArchive == 1 ? Encoding.ASCII.GetBytes("3ATT") : Encoding.ASCII.GetBytes("4ATT");
+            ulong commonSize = versionArchive == 1 ? dataSize + infoSize + nameSize + 16UL : dataSize + infoSize + nameSize + 12UL;
+
+            uint ns = nameSize;
+            uint tmp;
+            ulong fileOffset = 0;
 
             for (int k = 0; k < fi.Length; k++)
             {
-                byte[] tmpName = Encoding.ASCII.GetBytes(name[k]);
-                Array.Copy(tmpName, 0, namesTable, ns, tmpName.Length);
-                ns += (uint)tmpName.Length + 1;
-
                 Array.Copy(BitConverter.GetBytes(nameCrc[k]), 0, infoTable, (long)offset, 8);
                 offset += 8;
-                Array.Copy(BitConverter.GetBytes((ulong)fileOffset), 0, infoTable, (long)offset, 8);
+                Array.Copy(BitConverter.GetBytes(fileOffset), 0, infoTable, (long)offset, 8);
                 offset += 8;
-                Array.Copy(BitConverter.GetBytes((uint)fi[k].Length), 0, infoTable, (long)offset, 4);
+                Array.Copy(BitConverter.GetBytes((int)fi[k].Length), 0, infoTable, (long)offset, 4);
                 offset += 4;
                 Array.Copy(BitConverter.GetBytes(0), 0, infoTable, (long)offset, 4);
                 offset += 4;
-
-                uint tmp = ns - nameSize;
+                tmp = ns - nameSize;
                 Array.Copy(BitConverter.GetBytes((ushort)(tmp / 0x10000)), 0, infoTable, (long)offset, 2);
                 offset += 2;
                 Array.Copy(BitConverter.GetBytes((ushort)(tmp % 0x10000)), 0, infoTable, (long)offset, 2);
                 offset += 2;
+                ns += (uint)name[k].Length;
                 fileOffset += (uint)fi[k].Length;
             }
 
@@ -476,7 +479,7 @@ namespace TTG_Tools
                 fs.Write(BitConverter.GetBytes(blocksCount), 0, 4);
                 fs.Write(chunkTable, 0, chunkTable.Length);
 
-                tempFr.Seek(12, SeekOrigin.Begin);
+                tempFr.Seek(versionArchive == 1 ? 16 : 12, SeekOrigin.Begin);
 
                 for (int i = 0; i < blocksCount; i++)
                 {
