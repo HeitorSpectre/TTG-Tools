@@ -39,11 +39,6 @@ namespace TTG_Tools
 
             UpdateLayoutOptions();
 
-            if (string.IsNullOrWhiteSpace(outputFolderTextBox.Text) && Directory.Exists(inputFolderTextBox.Text))
-            {
-                outputFolderTextBox.Text = Path.Combine(inputFolderTextBox.Text, "ModCreator_Output");
-            }
-
             SetProgress(0);
         }
 
@@ -53,10 +48,6 @@ namespace TTG_Tools
             {
                 inputFolderTextBox.Text = folderDialog.FileName;
 
-                if (string.IsNullOrWhiteSpace(outputFolderTextBox.Text))
-                {
-                    outputFolderTextBox.Text = Path.Combine(folderDialog.FileName, "ModCreator_Output");
-                }
             }
         }
 
@@ -86,8 +77,10 @@ namespace TTG_Tools
             }
 
             string inputFolder = inputFolderTextBox.Text.Trim();
-            string outputFolder = outputFolderTextBox.Text.Trim();
+            string outputFolder = ResolveOutputFolder(inputFolder, outputFolderTextBox.Text.Trim());
             string modName = NormalizeModName(modNameTextBox.Text.Trim());
+
+            outputFolderTextBox.Text = outputFolder;
 
             if (!Directory.Exists(inputFolder))
             {
@@ -255,6 +248,16 @@ namespace TTG_Tools
             }
         }
 
+        private static string ResolveOutputFolder(string inputFolder, string selectedOutputFolder)
+        {
+            if (!string.IsNullOrWhiteSpace(selectedOutputFolder))
+            {
+                return selectedOutputFolder;
+            }
+
+            return Path.Combine(inputFolder, "ModCreator_Output");
+        }
+
         private static string NormalizeModName(string modName)
         {
             char[] invalid = Path.GetInvalidFileNameChars();
@@ -337,10 +340,6 @@ namespace TTG_Tools
             {
                 inputFolderTextBox.Text = droppedPath;
 
-                if (string.IsNullOrWhiteSpace(outputFolderTextBox.Text))
-                {
-                    outputFolderTextBox.Text = Path.Combine(droppedPath, "ModCreator_Output");
-                }
             }
         }
 
