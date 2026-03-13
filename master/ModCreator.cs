@@ -43,6 +43,8 @@ namespace TTG_Tools
             {
                 outputFolderTextBox.Text = Path.Combine(inputFolderTextBox.Text, "ModCreator_Output");
             }
+
+            SetProgress(0);
         }
 
         private void browseInputButton_Click(object sender, EventArgs e)
@@ -109,12 +111,14 @@ namespace TTG_Tools
             string luaPath = Path.Combine(outputFolder, selectedProfile.BuildLuaFileName(modName, selectedLayoutOption));
 
             SetUiEnabled(false);
+            SetProgress(0);
             logListBox.Items.Clear();
             AddLog("Starting mod creation for " + selectedProfile.GameDisplayName + "...");
 
             try
             {
                 await Task.Run(() => CreateModPackage(inputFolder, outputFolder, archivePath, luaPath, modName, archiveFileName, selectedProfile, selectedLayoutOption));
+                SetProgress(100);
                 AddLog("Mod created successfully.");
                 MessageBox.Show("Mod created successfully.", "Success");
             }
@@ -125,6 +129,11 @@ namespace TTG_Tools
             }
             finally
             {
+                if (createProgressBar.Value < 100)
+                {
+                    SetProgress(0);
+                }
+
                 SetUiEnabled(true);
             }
         }
@@ -143,6 +152,7 @@ namespace TTG_Tools
 
             AddLog("Output folder: " + outputFolder);
             AddLog("Creating archive: " + Path.GetFileName(archivePath));
+            SetProgress(5);
 
             ttarch2BuilderLegacy1132(
                 inputFolder,
@@ -153,6 +163,7 @@ namespace TTG_Tools
                 gameKey,
                 profile.Ttarch2Version,
                 profile.NewEngineLua,
+                SetProgress,
                 new HashSet<string>(StringComparer.OrdinalIgnoreCase)
                 {
                     Path.GetFullPath(archivePath),
@@ -160,13 +171,28 @@ namespace TTG_Tools
                 });
 
             AddLog("Generating Lua descriptor: " + Path.GetFileName(luaPath));
+            SetProgress(90);
             string luaContent = profile.BuildLuaDescriptor(modName, archiveFileName, layoutOption);
 
             File.WriteAllText(luaPath, luaContent, new UTF8Encoding(false));
 
             AddLog("Encrypting Lua descriptor in-place (Lua Scripts for New Engine / method 7-9)...");
+            SetProgress(95);
             byte[] encryptedLua = Methods.encryptLua(File.ReadAllBytes(luaPath), gameKey, profile.NewEngineLua, 7);
             File.WriteAllBytes(luaPath, encryptedLua);
+            SetProgress(100);
+        }
+
+        private void SetProgress(int value)
+        {
+            if (InvokeRequired)
+            {
+                Invoke(new Action<int>(SetProgress), value);
+                return;
+            }
+
+            int normalized = Math.Max(createProgressBar.Minimum, Math.Min(createProgressBar.Maximum, value));
+            createProgressBar.Value = normalized;
         }
 
         private IModCreatorProfile GetSelectedProfile()
@@ -327,6 +353,7 @@ namespace TTG_Tools
             byte[] key,
             int versionArchive,
             bool newEngine,
+            Action<int> progressCallback,
             ISet<string> excludedPaths)
         {
             DirectoryInfo di = new DirectoryInfo(inputFolder);
@@ -420,6 +447,12 @@ namespace TTG_Tools
                 offset += 2;
                 ns += (uint)name[k].Length;
                 fileOffset += (uint)fi[k].Length;
+
+                if (fi.Length > 0 && progressCallback != null)
+                {
+                    int p = 5 + (int)Math.Round(((k + 1) / (double)fi.Length) * 40.0);
+                    progressCallback(p);
+                }
             }
 
             string format = Methods.GetExtension(outputPath).ToLower() == ".obb" ? ".obb" : ".ttarch2";
@@ -451,6 +484,12 @@ namespace TTG_Tools
                     }
 
                     fs.Write(file, 0, file.Length);
+
+                    if (fi.Length > 0 && progressCallback != null)
+                    {
+                        int p = 45 + (int)Math.Round(((l + 1) / (double)fi.Length) * 20.0);
+                        progressCallback(p);
+                    }
                 }
             }
 
@@ -495,6 +534,12 @@ namespace TTG_Tools
                     offset += (uint)compressedBlock.Length;
                     Array.Copy(BitConverter.GetBytes(offset), 0, chunkTable, 8 + (i * 8), 8);
                     fs.Write(compressedBlock, 0, compressedBlock.Length);
+
+                    if (blocksCount > 0 && progressCallback != null)
+                    {
+                        int p = 65 + (int)Math.Round(((i + 1) / (double)blocksCount) * 25.0);
+                        progressCallback(p);
+                    }
                 }
 
                 fs.Seek(12, SeekOrigin.Begin);

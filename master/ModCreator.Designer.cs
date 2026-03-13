@@ -31,6 +31,7 @@
             this.browseOutputButton = new System.Windows.Forms.Button();
             this.modLayoutLabel = new System.Windows.Forms.Label();
             this.modLayoutComboBox = new System.Windows.Forms.ComboBox();
+            this.createProgressBar = new System.Windows.Forms.ProgressBar();
             this.SuspendLayout();
             // 
             // inputFolderLabel
@@ -156,11 +157,19 @@
             this.modLayoutComboBox.Size = new System.Drawing.Size(407, 21);
             this.modLayoutComboBox.TabIndex = 13;
             // 
+            // createProgressBar
+            // 
+            this.createProgressBar.Location = new System.Drawing.Point(15, 312);
+            this.createProgressBar.Name = "createProgressBar";
+            this.createProgressBar.Size = new System.Drawing.Size(576, 12);
+            this.createProgressBar.TabIndex = 14;
+            // 
             // ModCreator
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(606, 318);
+            this.ClientSize = new System.Drawing.Size(606, 332);
+            this.Controls.Add(this.createProgressBar);
             this.Controls.Add(this.modLayoutComboBox);
             this.Controls.Add(this.modLayoutLabel);
             this.Controls.Add(this.browseOutputButton);
@@ -201,5 +210,6 @@
         private System.Windows.Forms.Button browseOutputButton;
         private System.Windows.Forms.Label modLayoutLabel;
         private System.Windows.Forms.ComboBox modLayoutComboBox;
+        private System.Windows.Forms.ProgressBar createProgressBar;
     }
 }
