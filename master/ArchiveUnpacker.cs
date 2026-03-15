@@ -800,7 +800,10 @@ namespace TTG_Tools
                                 {
                                     byte[] tmp = getTtarch2File(ttarch2, ttarch2.files[i], key, br);
 
-                                    ttarch2.isEncryptedLua = Methods.isLuaEncrypted(tmp);
+                                    if (tmp != null)
+                                    {
+                                        ttarch2.isEncryptedLua = Methods.isLuaEncrypted(tmp);
+                                    }
                                 }
                             }
 
@@ -827,6 +830,7 @@ namespace TTG_Tools
         private void UnpackTtarch2(string folderPath, string format, int[] indexes = null)
         {
             var files = getFilteredTtarch2Files();
+            List<string> failedFiles = new List<string>();
 
             int count = indexes != null ? indexes.Length : files.Length;
             
@@ -843,6 +847,14 @@ namespace TTG_Tools
                 byte[] file = getTtarch2File(ttarch2, files[ind], key, br);
 
                 string fileName = files[ind].fileName;
+
+                if (file == null)
+                {
+                    failedFiles.Add(fileName);
+                    Progress(i + 1);
+                    continue;
+                }
+
                 if (((fileName.Substring(fileName.Length - 5, 5).ToLower() == ".lenc") || (fileName.Substring(fileName.Length - 4, 4).ToLower() == ".lua")) && decrypt)
                 {
                     fileName = fileName.Substring(fileName.Length - 5, 5).ToLower() == ".lenc" ? fileName.Remove(fileName.Length - 4, 4) + "lua" : fileName.Remove(fileName.Length - 3, 3) + "lua";
@@ -856,6 +868,11 @@ namespace TTG_Tools
 
             br.Close();
             fs.Close();
+
+            if (failedFiles.Count > 0)
+            {
+                MessageBox.Show("Não foi possível extrair os seguintes arquivos:\n\n" + string.Join("\n", failedFiles), "Arquivos não extraídos", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
         }
 
         private void getArchiveInfo()
@@ -1137,8 +1154,6 @@ namespace TTG_Tools
 
                             if (tmp == null || tmp.Length == 0)
                             {
-                                MessageBox.Show("TTG Tools couldn't decompress block. Compress algorithm is " + Convert.ToString(ttarch2.compressAlgorithm), "Decompress error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-
                                 br.Close();
                                 return null;
                             }
