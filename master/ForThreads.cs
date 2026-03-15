@@ -180,7 +180,11 @@ namespace TTG_Tools
                                                 byte[] luaContent = Methods.ReadFull(fs);
                                                 fs.Close();
 
-                                                luaContent = Methods.encryptLua(luaContent, encKey, isNewEngine, version);
+                                                bool skipLuaCrypto = inputFiles[i].Name.IndexOf("_version_", StringComparison.OrdinalIgnoreCase) >= 0;
+                                                if (!skipLuaCrypto)
+                                                {
+                                                    luaContent = Methods.encryptLua(luaContent, encKey, isNewEngine, version);
+                                                }
 
                                                 string destFileLua = Path.Combine(targetFolder, inputFiles[i].Name);
                                                 if (File.Exists(destFileLua)) File.Delete(destFileLua);
@@ -189,7 +193,7 @@ namespace TTG_Tools
                                                 fs.Write(luaContent, 0, luaContent.Length);
                                                 fs.Close();
 
-                                                ReportForWork("File " + inputFiles[i].Name + " encrypted.");
+                                                if (!skipLuaCrypto) ReportForWork("File " + inputFiles[i].Name + " encrypted.");
                                                 emptyFiles = false;
                                                 show[6] = true;
                                                 break;
@@ -700,14 +704,18 @@ namespace TTG_Tools
                                         byte[] luaContent = Methods.ReadFull(fs);
                                         fs.Close();
 
-                                        luaContent = Methods.decryptLua(luaContent, key, version);
+                                        bool skipLuaCrypto = inputFiles[i].Name.IndexOf("_version_", StringComparison.OrdinalIgnoreCase) >= 0;
+                                        if (!skipLuaCrypto)
+                                        {
+                                            luaContent = Methods.decryptLua(luaContent, key, version);
+                                        }
 
                                         string destFileLua = Path.Combine(targetFolder, inputFiles[i].Name);
                                         fs = new FileStream(destFileLua, FileMode.OpenOrCreate);
                                         fs.Write(luaContent, 0, luaContent.Length);
                                         fs.Close();
 
-                                        ReportForWork("File " + inputFiles[i].Name + " decrypted.");
+                                        if (!skipLuaCrypto) ReportForWork("File " + inputFiles[i].Name + " decrypted.");
                                         if (destinationForExport == ".lua") extractedFormat[6] = 6;
                                         else extractedFormat[7] = 7;
                                         break;
