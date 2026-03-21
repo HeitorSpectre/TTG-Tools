@@ -1,6 +1,6 @@
 # TTG Tools by Den Em and Pashok6798
 
-TTG Tools is a powerful utility for modifying files from Telltale Games, including texts (.landb, .langdb, and .dlog for *Sam & Max*, and .prop containing texts in *The Walking Dead*), textures (.d3dtx) for PC, Xbox 360, PS4, PS3, PS Vita, Nintendo Switch, IOS and Android, fonts (.font), as well as extracting and creating archive files (.ttarch, .ttarch2 and obb). It also allows decryption of .lua and .lenc files used by Telltale Games.
+TTG Tools is a powerful utility for modifying files from Telltale Games, including texts (.landb, .langdb, and .dlog for *Sam & Max*, and .prop containing texts in *The Walking Dead*), textures (.d3dtx) for PC, Xbox 360, PS4, PS3, PS Vita, Nintendo Switch, Nintendo Wii, IOS and Android, fonts (.font), as well as extracting and creating archive files (.ttarch, .ttarch2 and obb). It also allows decryption of .lua and .lenc files used by Telltale Games.
 
 This version of TTG Tools includes some modifications and has been uploaded with the permission of Den Em and Pashok6798 agreement.
 
@@ -18,7 +18,7 @@ This version of TTG Tools includes some modifications and has been uploaded with
 - Josh Tamely for the Oodle wrapper  
 - Hajin Jang for the Zlib wrapper  
 - [Nemiroff](https://github.com/Nemiroff/TTG-Tools) for fixing a bug in the Font Editor  
-- Krisp for adding Xbox texture support and font editing with Swizzle
+- Krisp for adding Xbox and Wii textures support and font editing with Swizzle
 - [Pashok6798](https://www.zoneofgames.ru) for all your support to the community and for trusting us.
 - [Benny](https://quickandeasysoftware.net) for sending the encryption key for Poker Night at the Inventory - Remastered
 
