@@ -278,7 +278,7 @@ namespace TTG_Tools
 
             #endregion
 
-            string xmlPath = Application.StartupPath + "\\config.xml";
+            string xmlPath = Settings.EnsureConfigAvailable();
             XmlReader reader = new XmlTextReader(xmlPath);
             XmlSerializer settingsDeserializer = new System.Xml.Serialization.XmlSerializer(typeof(Settings));
             settings = (Settings)settingsDeserializer.Deserialize(reader);

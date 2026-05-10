@@ -9,6 +9,47 @@ namespace TTG_Tools.Texts
 {
     public class SaveText
     {
+        // Issue #82: TSV exports couldn't be re-imported because the old escape
+        // chain was a series of `else if` clauses, so a single speech could
+        // only escape one of {CRLF, CR, LF, TAB}. A line containing both CRLF
+        // and TAB came out with raw tabs in it, which made the TSV parser see
+        // 5+ columns instead of 3/4 and reject the row. We now escape every
+        // embedded control character every time, in a fixed order: CRLF first
+        // (so the standalone CR / LF passes don't double-escape it), then
+        // standalone CR, LF, TAB. The reader's existing `\\r`/`\\n`/`\\t`
+        // unescape (ReadText.GetStrings) round-trips this back perfectly.
+        private static string EscapeForOldMethod(string s, bool tsvFormat)
+        {
+            if (s == null) return string.Empty;
+
+            if (tsvFormat)
+            {
+                s = s.Replace("\r\n", "\\r\\n");
+                s = s.Replace("\r", "\\r");
+                s = s.Replace("\n", "\\n");
+                s = s.Replace("\t", "\\t");
+                return s;
+            }
+
+            // Plain-text (non-TSV) format. CSI3 PS2 langdb speeches use a
+            // raw 0x0D (Mac-classic CR) as their internal line separator;
+            // older logic converted those into \r\n on write and the reader
+            // then collapsed \r\n back to \n, so the speech came back with
+            // 0x0A bytes where the original had 0x0D — not byte-identical.
+            // We now escape standalone CR as the literal "\r" sequence so it
+            // survives the read/write cycle. Standalone LF still gets
+            // normalised to \r\n (preserves multi-line speech rendering).
+            if (s.Contains("\r") && !s.Contains("\r\n"))
+            {
+                s = s.Replace("\r", "\\r");
+            }
+            else if (s.Contains("\n") && !s.Contains("\r\n"))
+            {
+                s = s.Replace("\n", "\r\n");
+            }
+            return s;
+        }
+
         public static void OldMethod(List<CommonText> txt, bool isDoubledFile, bool isUnicode, string outputPath)
         {
             if (File.Exists(outputPath)) File.Delete(outputPath);
@@ -23,21 +64,7 @@ namespace TTG_Tools.Texts
                 {
                     tmpString = MainMenu.settings.tsvFormat ? txt[i].strNumber + "\t" + txt[i].actorName + "\t" : txt[i].strNumber + ") " + txt[i].actorName + "\r\n";
                     tw.Write(tmpString);
-                    tmpString = txt[i].actorSpeechOriginal;
-
-                    if ((tmpString.Contains("\r") || tmpString.Contains("\n")) && !tmpString.Contains("\r\n"))
-                    {
-                        if (tmpString.Contains("\r")) tmpString = MainMenu.settings.tsvFormat ? tmpString.Replace("\r", "\\r") : tmpString.Replace("\r", "\r\n");
-                        else tmpString = MainMenu.settings.tsvFormat ? tmpString.Replace("\n", "\\n") : tmpString.Replace("\n", "\r\n");
-                    }
-                    else if (tmpString.Contains("\r\n") && MainMenu.settings.tsvFormat)
-                    {
-                        tmpString = tmpString.Replace("\r\n", "\\r\\n");
-                    }
-                    else if (txt[i].actorSpeechOriginal.Contains("\t") && MainMenu.settings.tsvFormat)
-                    {
-                        tmpString = tmpString.Replace("\t", "\\t");
-                    }
+                    tmpString = EscapeForOldMethod(txt[i].actorSpeechOriginal, MainMenu.settings.tsvFormat);
 
                     tmpString = isUnicode && MainMenu.settings.unicodeSettings == 1 ? Methods.ConvertString(tmpString, true) : tmpString;
 
@@ -54,21 +81,7 @@ namespace TTG_Tools.Texts
                             tw.Write(tmpString);
                         }
 
-                        tmpString = txt[i].actorSpeechTranslation;
-
-                        if ((tmpString.Contains("\r") || tmpString.Contains("\n")) && !tmpString.Contains("\r\n"))
-                        {
-                            if (tmpString.Contains("\r")) tmpString = MainMenu.settings.tsvFormat ? tmpString.Replace("\r", "\\r") : tmpString.Replace("\r", "\r\n");
-                            else tmpString = MainMenu.settings.tsvFormat ? tmpString.Replace("\n", "\\n") : tmpString.Replace("\n", "\r\n");
-                        }
-                        else if (tmpString.Contains("\r\n") && MainMenu.settings.tsvFormat)
-                        {
-                            tmpString = tmpString.Replace("\r\n", "\\r\\n");
-                        }
-                        else if (tmpString.Contains("\t") && MainMenu.settings.tsvFormat)
-                        {
-                            tmpString = tmpString.Replace("\t", "\\t");
-                        }
+                        tmpString = EscapeForOldMethod(txt[i].actorSpeechTranslation, MainMenu.settings.tsvFormat);
 
                         tmpString = isUnicode && MainMenu.settings.unicodeSettings == 1 ? Methods.ConvertString(tmpString, true) : tmpString;
 

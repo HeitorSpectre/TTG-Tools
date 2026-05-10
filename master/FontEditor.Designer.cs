@@ -687,7 +687,7 @@
             // rbSwitchSwizzle
             // 
             this.rbSwitchSwizzle.AutoSize = true;
-            this.rbSwitchSwizzle.Location = new System.Drawing.Point(7, 59);
+            this.rbSwitchSwizzle.Location = new System.Drawing.Point(7, 69);
             this.rbSwitchSwizzle.Name = "rbSwitchSwizzle";
             this.rbSwitchSwizzle.Size = new System.Drawing.Size(103, 17);
             this.rbSwitchSwizzle.TabIndex = 2;
@@ -699,7 +699,7 @@
             // rbPS4Swizzle
             // 
             this.rbPS4Swizzle.AutoSize = true;
-            this.rbPS4Swizzle.Location = new System.Drawing.Point(7, 36);
+            this.rbPS4Swizzle.Location = new System.Drawing.Point(7, 48);
             this.rbPS4Swizzle.Name = "rbPS4Swizzle";
             this.rbPS4Swizzle.Size = new System.Drawing.Size(45, 17);
             this.rbPS4Swizzle.TabIndex = 1;
@@ -711,7 +711,7 @@
             // rbXbox360Swizzle
             // 
             this.rbXbox360Swizzle.AutoSize = true;
-            this.rbXbox360Swizzle.Location = new System.Drawing.Point(7, 82);
+            this.rbXbox360Swizzle.Location = new System.Drawing.Point(7, 87);
             this.rbXbox360Swizzle.Name = "rbXbox360Swizzle";
             this.rbXbox360Swizzle.Size = new System.Drawing.Size(70, 17);
             this.rbXbox360Swizzle.TabIndex = 3;
@@ -723,7 +723,7 @@
             // rbPSVitaSwizzle
             // 
             this.rbPSVitaSwizzle.AutoSize = true;
-            this.rbPSVitaSwizzle.Location = new System.Drawing.Point(7, 103);
+            this.rbPSVitaSwizzle.Location = new System.Drawing.Point(7, 108);
             this.rbPSVitaSwizzle.Name = "rbPSVitaSwizzle";
             this.rbPSVitaSwizzle.Size = new System.Drawing.Size(60, 17);
             this.rbPSVitaSwizzle.TabIndex = 4;

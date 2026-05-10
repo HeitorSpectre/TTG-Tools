@@ -35,7 +35,6 @@
             this.fontEditorBtn = new System.Windows.Forms.Button();
             this.toolTip1 = new System.Windows.Forms.ToolTip(this.components);
             this.notifyIcon1 = new System.Windows.Forms.NotifyIcon(this.components);
-            this.textEditorBtn = new System.Windows.Forms.Button();
             this.settingsBtn = new System.Windows.Forms.Button();
             this.archivePackerBtn = new System.Windows.Forms.Button();
             this.arcUnpackerBtn = new System.Windows.Forms.Button();
@@ -78,16 +77,6 @@
             this.notifyIcon1.Text = "TTG Tools";
             this.notifyIcon1.MouseDoubleClick += new System.Windows.Forms.MouseEventHandler(this.notifyIcon1_MouseDoubleClick);
             // 
-            // textEditorBtn
-            // 
-            this.textEditorBtn.Location = new System.Drawing.Point(230, 69);
-            this.textEditorBtn.Name = "textEditorBtn";
-            this.textEditorBtn.Size = new System.Drawing.Size(111, 23);
-            this.textEditorBtn.TabIndex = 7;
-            this.textEditorBtn.Text = "Text Editor";
-            this.textEditorBtn.UseVisualStyleBackColor = true;
-            this.textEditorBtn.Click += new System.EventHandler(this.button1_Click);
-            // 
             // settingsBtn
             // 
             this.settingsBtn.Location = new System.Drawing.Point(33, 108);
@@ -111,7 +100,7 @@
             // 
             // arcUnpackerBtn
             // 
-            this.arcUnpackerBtn.Location = new System.Drawing.Point(230, 108);
+            this.arcUnpackerBtn.Location = new System.Drawing.Point(230, 69);
             this.arcUnpackerBtn.Margin = new System.Windows.Forms.Padding(2);
             this.arcUnpackerBtn.Name = "arcUnpackerBtn";
             this.arcUnpackerBtn.Size = new System.Drawing.Size(111, 23);
@@ -122,7 +111,7 @@
             // 
             // modCreatorBtn
             // 
-            this.modCreatorBtn.Location = new System.Drawing.Point(230, 147);
+            this.modCreatorBtn.Location = new System.Drawing.Point(230, 108);
             this.modCreatorBtn.Name = "modCreatorBtn";
             this.modCreatorBtn.Size = new System.Drawing.Size(112, 23);
             this.modCreatorBtn.TabIndex = 14;
@@ -139,7 +128,6 @@
             this.Controls.Add(this.modCreatorBtn);
             this.Controls.Add(this.archivePackerBtn);
             this.Controls.Add(this.settingsBtn);
-            this.Controls.Add(this.textEditorBtn);
             this.Controls.Add(this.fontEditorBtn);
             this.Controls.Add(this.aboutBtn);
             this.Controls.Add(this.autopackerBtn);
@@ -161,7 +149,6 @@
         private System.Windows.Forms.Button fontEditorBtn;
         private System.Windows.Forms.ToolTip toolTip1;
         private System.Windows.Forms.NotifyIcon notifyIcon1;
-        private System.Windows.Forms.Button textEditorBtn;
         private System.Windows.Forms.Button settingsBtn;
         private System.Windows.Forms.Button archivePackerBtn;
         private System.Windows.Forms.Button arcUnpackerBtn;

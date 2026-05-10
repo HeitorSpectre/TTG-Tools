@@ -40,6 +40,7 @@ namespace TTG_Tools
         string droppedFontPath;
         private Bitmap basePreviewBitmap;
         private Graphics.WiiSupport.WiiFontData wiiFontData;
+        private readonly Dictionary<int, string> wiiImportedTexturePaths = new Dictionary<int, string>();
 
         private void EnableDragDropForControls(Control parent)
         {
@@ -648,10 +649,20 @@ namespace TTG_Tools
                 for (int i = 0; i < needed; i += 4)
                 {
                     int src = dataOffset + i;
-                    pixels[i] = texContent[src + 2];
-                    pixels[i + 1] = texContent[src + 1];
-                    pixels[i + 2] = texContent[src];
-                    pixels[i + 3] = texContent[src + 3];
+                    if (wiiFontData != null)
+                    {
+                        pixels[i] = texContent[src + 3];
+                        pixels[i + 1] = texContent[src + 2];
+                        pixels[i + 2] = texContent[src + 1];
+                        pixels[i + 3] = texContent[src];
+                    }
+                    else
+                    {
+                        pixels[i] = texContent[src + 2];
+                        pixels[i + 1] = texContent[src + 1];
+                        pixels[i + 2] = texContent[src];
+                        pixels[i + 3] = texContent[src + 3];
+                    }
                 }
 
                 return BuildBitmapFromRgbaBuffer(pixels, width, height);
@@ -1058,6 +1069,77 @@ namespace TTG_Tools
             return bitmap;
         }
 
+        private static void WriteTgaFromArgb(string path, byte[] argbPixels, int width, int height)
+        {
+            if (argbPixels == null || width <= 0 || height <= 0 || argbPixels.Length < width * height * 4)
+                throw new InvalidDataException("Invalid Wii texture preview buffer.");
+
+            using (FileStream fs = new FileStream(path, FileMode.Create, FileAccess.Write))
+            using (BinaryWriter bw = new BinaryWriter(fs))
+            {
+                bw.Write((byte)0);
+                bw.Write((byte)0);
+                bw.Write((byte)2);
+                bw.Write((ushort)0);
+                bw.Write((ushort)0);
+                bw.Write((byte)0);
+                bw.Write((ushort)0);
+                bw.Write((ushort)0);
+                bw.Write((ushort)width);
+                bw.Write((ushort)height);
+                bw.Write((byte)32);
+                bw.Write((byte)0x28);
+
+                for (int i = 0; i < width * height; i++)
+                {
+                    int p = i * 4;
+                    bw.Write(argbPixels[p + 3]);
+                    bw.Write(argbPixels[p + 2]);
+                    bw.Write(argbPixels[p + 1]);
+                    bw.Write(argbPixels[p]);
+                }
+            }
+        }
+
+        private static byte[] ReadTgaAsArgb(string path, out int width, out int height)
+        {
+            byte[] tga = File.ReadAllBytes(path);
+            if (tga.Length < 18) throw new InvalidDataException("Not a TGA file.");
+
+            int idLength = tga[0];
+            int colorMapType = tga[1];
+            int imageType = tga[2];
+            if (colorMapType != 0 || imageType != 2) throw new NotSupportedException("Only uncompressed true-color TGA files are supported.");
+
+            width = BitConverter.ToUInt16(tga, 12);
+            height = BitConverter.ToUInt16(tga, 14);
+            int bits = tga[16];
+            int descriptor = tga[17];
+            if (width <= 0 || height <= 0 || (bits != 24 && bits != 32)) throw new InvalidDataException("Invalid TGA dimensions or pixel format.");
+
+            int bytesPerPixel = bits / 8;
+            int srcStart = 18 + idLength;
+            int expected = srcStart + (width * height * bytesPerPixel);
+            if (expected > tga.Length) throw new InvalidDataException("TGA pixel data is truncated.");
+
+            bool topOrigin = (descriptor & 0x20) != 0;
+            byte[] argb = new byte[width * height * 4];
+            for (int y = 0; y < height; y++)
+            {
+                int dstY = topOrigin ? y : (height - 1 - y);
+                for (int x = 0; x < width; x++)
+                {
+                    int src = srcStart + ((y * width) + x) * bytesPerPixel;
+                    int dst = ((dstY * width) + x) * 4;
+                    argb[dst] = bits == 32 ? tga[src + 3] : (byte)255;
+                    argb[dst + 1] = tga[src + 2];
+                    argb[dst + 2] = tga[src + 1];
+                    argb[dst + 3] = tga[src];
+                }
+            }
+            return argb;
+        }
+
         private string ConvertToString(byte[] mas)
         {
             string str = "";
@@ -1124,6 +1206,7 @@ namespace TTG_Tools
                             && Path.GetExtension(selectedFontPath).Equals(".font", StringComparison.OrdinalIgnoreCase)
                             && Graphics.WiiSupport.TryLoadWiiFontForEditor(selectedFontPath, out wiiFontData))
                         {
+                            wiiImportedTexturePaths.Clear();
                             fontFlags = null;
                             font = new FontClass.ClassFont();
                             font.NewFormat = false;
@@ -1156,14 +1239,27 @@ namespace TTG_Tools
                             font.tex = new TextureClass.OldT3Texture[font.TexCount];
                             for (int i = 0; i < font.TexCount; i++)
                             {
+                                byte[] texturePreviewContent;
+                                int texturePreviewWidth;
+                                int texturePreviewHeight;
+                                bool hasTexturePreview = Graphics.WiiSupport.TryGetWiiTextureArgbForEditor(
+                                    selectedFontPath,
+                                    i,
+                                    wiiFontData.TextureWidth,
+                                    wiiFontData.TextureHeight,
+                                    out texturePreviewContent,
+                                    out texturePreviewWidth,
+                                    out texturePreviewHeight);
+
                                 font.tex[i] = new TextureClass.OldT3Texture
                                 {
-                                    Width = wiiFontData.TextureWidth,
-                                    Height = wiiFontData.TextureHeight,
-                                    OriginalWidth = wiiFontData.TextureWidth,
-                                    OriginalHeight = wiiFontData.TextureHeight,
-                                    TexSize = 0,
-                                    Content = new byte[0]
+                                    Width = hasTexturePreview ? texturePreviewWidth : wiiFontData.TextureWidth,
+                                    Height = hasTexturePreview ? texturePreviewHeight : wiiFontData.TextureHeight,
+                                    OriginalWidth = hasTexturePreview ? texturePreviewWidth : wiiFontData.TextureWidth,
+                                    OriginalHeight = hasTexturePreview ? texturePreviewHeight : wiiFontData.TextureHeight,
+                                    TextureFormat = (uint)TextureClass.OldTextureFormat.DX_ARGB8888,
+                                    TexSize = hasTexturePreview ? texturePreviewContent.Length : 0,
+                                    Content = hasTexturePreview ? texturePreviewContent : new byte[0]
                                 };
                             }
 
@@ -1183,6 +1279,7 @@ namespace TTG_Tools
                         }
 
                         wiiFontData = null;
+                        wiiImportedTexturePaths.Clear();
                         fontFlags = null;
 
                         byte[] header = new byte[4];
@@ -1750,6 +1847,7 @@ namespace TTG_Tools
         {
             if (wiiFontData != null)
             {
+                string outputPath = fs is FileStream fileStream ? fileStream.Name : ofd.FileName;
                 fs.Close();
                 for (int i = 0; i < font.glyph.CharCount && i < wiiFontData.Glyphs.Count; i++)
                 {
@@ -1766,7 +1864,12 @@ namespace TTG_Tools
                         dst.CharHeight = src.CharHeight;
                     }
                 }
-                wiiFontData.Save(ofd.FileName);
+                wiiFontData.Save(outputPath);
+                string textureImportError;
+                if (!Graphics.WiiSupport.TryApplyWiiTextureImportsForEditor(outputPath, wiiImportedTexturePaths, out textureImportError))
+                {
+                    MessageBox.Show("The Wii font coordinates were saved, but the texture import failed: " + textureImportError, "Wii texture import");
+                }
                 return;
             }
 
@@ -2147,7 +2250,12 @@ namespace TTG_Tools
         {
             int file_n = dataGridViewWithTextures.SelectedCells[0].RowIndex;
             SaveFileDialog saveFD = new SaveFileDialog();
-            if ((font.tex != null && font.tex[file_n].isIOS) || (font.NewTex != null && font.NewTex[file_n].isPVR))
+            if (wiiFontData != null)
+            {
+                saveFD.Filter = "TGA files (*.tga)|*.tga";
+                saveFD.FileName = font.FontName + "_" + file_n.ToString() + ".tga";
+            }
+            else if ((font.tex != null && font.tex[file_n].isIOS) || (font.NewTex != null && font.NewTex[file_n].isPVR))
             {
                 saveFD.Filter = "PVR files (*.pvr)|*.pvr";
                 saveFD.FileName = font.FontName + "_" + file_n.ToString() + ".pvr";
@@ -2160,6 +2268,13 @@ namespace TTG_Tools
 
             if (saveFD.ShowDialog() == DialogResult.OK)
             {
+                if (wiiFontData != null)
+                {
+                    Methods.DeleteCurrentFile(saveFD.FileName);
+                    WriteTgaFromArgb(saveFD.FileName, font.tex[file_n].Content, font.tex[file_n].Width, font.tex[file_n].Height);
+                    return;
+                }
+
                 FileStream fs = new FileStream(saveFD.FileName, FileMode.Create);
                 Methods.DeleteCurrentFile(saveFD.FileName);
 
@@ -2183,13 +2298,32 @@ namespace TTG_Tools
             int file_n = dataGridViewWithTextures.SelectedCells[0].RowIndex;
             OpenFileDialog openFD = new OpenFileDialog();
 
-            openFD.Filter = "dds files (*.dds)|*.dds";
+            openFD.Filter = wiiFontData != null ? "TGA files (*.tga)|*.tga" : "dds files (*.dds)|*.dds";
 
 
             if (openFD.ShowDialog() == DialogResult.OK)
             {
-                if (font.NewFormat) ReplaceTexture(openFD.FileName, font.NewTex[file_n]);
-                else ReplaceTexture(openFD.FileName, font.tex[file_n]);
+                if (wiiFontData != null)
+                {
+                    int width;
+                    int height;
+                    byte[] argb = ReadTgaAsArgb(openFD.FileName, out width, out height);
+                    font.tex[file_n].Content = argb;
+                    font.tex[file_n].Width = width;
+                    font.tex[file_n].Height = height;
+                    font.tex[file_n].OriginalWidth = width;
+                    font.tex[file_n].OriginalHeight = height;
+                    font.tex[file_n].TexSize = argb.Length;
+                    font.tex[file_n].TextureFormat = (uint)TextureClass.OldTextureFormat.DX_ARGB8888;
+                    wiiFontData.TextureWidth = width;
+                    wiiFontData.TextureHeight = height;
+                    wiiImportedTexturePaths[file_n] = openFD.FileName;
+                }
+                else
+                {
+                    if (font.NewFormat) ReplaceTexture(openFD.FileName, font.NewTex[file_n]);
+                    else ReplaceTexture(openFD.FileName, font.tex[file_n]);
+                }
 
                 fillTableofTextures(font);
                 edited = true; //Отмечаем, что шрифт изменился
@@ -2405,7 +2539,8 @@ namespace TTG_Tools
 
                 for(int i = 0; i < font.TexCount; i++)
                 {
-                    info = "page id=" + i + " file=\"" + font.FontName + "_" + i + ".dds\"\r\n";
+                    string textureExtension = wiiFontData != null ? ".tga" : ".dds";
+                    info = "page id=" + i + " file=\"" + font.FontName + "_" + i + textureExtension + "\"\r\n";
                     sw.Write(info);
                 }
 
@@ -2600,9 +2735,10 @@ namespace TTG_Tools
                                     case "file":
                                         string fileName = strings[m].Substring(strings[m].IndexOf("file=") + 5).Replace("\"", string.Empty);
 
-                                        if (fileName.ToLower().Contains(".dds") && File.Exists(fi.DirectoryName + Path.DirectorySeparatorChar + fileName))
+                                        string texturePath = fi.DirectoryName + Path.DirectorySeparatorChar + fileName;
+                                        if (fileName.ToLower().Contains(".dds") && File.Exists(texturePath))
                                         {
-                                            ReplaceTexture(fi.DirectoryName + Path.DirectorySeparatorChar + fileName, tmpNewTex[idNum]);
+                                            ReplaceTexture(texturePath, tmpNewTex[idNum]);
                                         }
                                         break;
                                 }
@@ -2782,9 +2918,27 @@ namespace TTG_Tools
 
                                         string fileName = strings[m].Substring(strings[m].IndexOf("file=") + 5).Replace("\"", string.Empty);
 
-                                        if (fileName.ToLower().Contains(".dds") && File.Exists(fi.DirectoryName + Path.DirectorySeparatorChar +  fileName))
+                                        string texturePath = fi.DirectoryName + Path.DirectorySeparatorChar + fileName;
+                                        string lowerFileName = fileName.ToLower();
+                                        if (wiiFontData != null && lowerFileName.Contains(".tga") && File.Exists(texturePath))
                                         {
-                                            ReplaceTexture(fi.DirectoryName + Path.DirectorySeparatorChar + fileName, tmpOldTex[idNum]);
+                                            int width;
+                                            int height;
+                                            byte[] argb = ReadTgaAsArgb(texturePath, out width, out height);
+                                            tmpOldTex[idNum].Content = argb;
+                                            tmpOldTex[idNum].Width = width;
+                                            tmpOldTex[idNum].Height = height;
+                                            tmpOldTex[idNum].OriginalWidth = width;
+                                            tmpOldTex[idNum].OriginalHeight = height;
+                                            tmpOldTex[idNum].TexSize = argb.Length;
+                                            tmpOldTex[idNum].TextureFormat = (uint)TextureClass.OldTextureFormat.DX_ARGB8888;
+                                            wiiFontData.TextureWidth = width;
+                                            wiiFontData.TextureHeight = height;
+                                            wiiImportedTexturePaths[idNum] = texturePath;
+                                        }
+                                        else if (lowerFileName.Contains(".dds") && File.Exists(texturePath))
+                                        {
+                                            ReplaceTexture(texturePath, tmpOldTex[idNum]);
                                         }
                                         break;
                                 }
@@ -2916,6 +3070,11 @@ namespace TTG_Tools
 
         private void rbNoSwizzle_CheckedChanged(object sender, EventArgs e)
         {
+            if (!rbNoSwizzle.Checked)
+            {
+                return;
+            }
+
             MainMenu.settings.swizzleXbox360 = false;
             MainMenu.settings.swizzlePS4 = false;
             MainMenu.settings.swizzleNintendoSwitch = false;
@@ -2926,6 +3085,11 @@ namespace TTG_Tools
 
         private void rbPS4Swizzle_CheckedChanged(object sender, EventArgs e)
         {
+            if (!rbPS4Swizzle.Checked)
+            {
+                return;
+            }
+
             MainMenu.settings.swizzleXbox360 = false;
             MainMenu.settings.swizzlePS4 = true;
             MainMenu.settings.swizzleNintendoSwitch = false;
@@ -2936,6 +3100,11 @@ namespace TTG_Tools
 
         private void rbSwitchSwizzle_CheckedChanged(object sender, EventArgs e)
         {
+            if (!rbSwitchSwizzle.Checked)
+            {
+                return;
+            }
+
             MainMenu.settings.swizzleXbox360 = false;
             MainMenu.settings.swizzlePS4 = false;
             MainMenu.settings.swizzleNintendoSwitch = true;
