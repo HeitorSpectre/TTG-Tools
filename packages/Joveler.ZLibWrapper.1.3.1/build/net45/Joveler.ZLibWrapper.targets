@@ -1,0 +1,108 @@
+<!--
+ *
+ * WARNING: This MSBuild file requires MSBuild 4.0 features.
+ * 
+ * Based on System.Data.SQLite.Core.targets, written by Joe Mistachkin and David Archer.
+ * Released to the public domain, use at your own risk!
+ *
+-->
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <!--
+  ******************************************************************************
+  **                          Load Per-User Settings                          **
+  ******************************************************************************
+  -->
+  
+  <!--
+    Create "Joveler.ZLibWrapper.Precompiled.Exclude" file in project directory 
+    to disable copying precompiled zlib binaries.
+  -->
+  <PropertyGroup>
+    <ExcludePrecompiledZLib Condition="Exists('$(MSBuildProjectDirectory)\Joveler.ZLibWrapper.Precompiled.Exclude')">true</ExcludePrecompiledZLib>
+  </PropertyGroup>
+
+ <!--
+  ******************************************************************************
+  **                     ZLib Interop Library Build Items                     **
+  ******************************************************************************
+  -->
+
+  <ItemGroup>
+    <ZLibInteropFiles Condition="'$(ExcludePrecompiledZLib)' != 'true' And 
+                                  '$(MSBuildThisFileDirectory)' != '' And
+                                   HasTrailingSlash('$(MSBuildThisFileDirectory)')"
+                        Include="$(MSBuildThisFileDirectory)Precompiled\**\zlibwapi.dll" />
+  </ItemGroup>
+
+  <!--
+  ******************************************************************************
+  **                    ZLib Interop Library Content Items                    **
+  ******************************************************************************
+  -->
+
+  <ItemGroup Condition="'$(ExcludePrecompiledZLib)' != 'true' And 
+                        '@(ZLibInteropFiles)' != ''">
+    <None Include="@(ZLibInteropFiles)">
+      <Link>%(RecursiveDir)%(FileName)%(Extension)</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <!--
+  ******************************************************************************
+  **                    ZLib Interop Library Build Targets                    **
+  ******************************************************************************
+  -->
+
+  <Target Name="CopyZLibInteropFiles"
+          Condition="'$(CopyZLibInteropFiles)' != 'false' And
+                     '$(OutDir)' != '' And
+                     HasTrailingSlash('$(OutDir)') And
+                     Exists('$(OutDir)')"
+          Inputs="@(ZLibInteropFiles)"
+          Outputs="@(ZLibInteropFiles -> '$(OutDir)%(RecursiveDir)%(Filename)%(Extension)')">
+    <!--
+        NOTE: Copy "zlibwapi.dll" and all related files, for every
+              architecture that we support, to the build output directory.
+    -->
+    <Copy SourceFiles="@(ZLibInteropFiles)"
+          DestinationFiles="@(ZLibInteropFiles -> '$(OutDir)%(RecursiveDir)%(Filename)%(Extension)')" />
+  </Target>
+
+  <!--
+  ******************************************************************************
+  -->
+
+  <Target Name="CleanZLibInteropFiles"
+          Condition="'$(CleanZLibInteropFiles)' != 'false' And
+                     '$(OutDir)' != '' And
+                     HasTrailingSlash('$(OutDir)') And
+                     Exists('$(OutDir)')">
+    <!--
+        NOTE: Delete "zlibwapi.dll" and all related files, for every
+              architecture that we support, from the build output directory.
+    -->
+    <Delete Files="@(ZLibInteropFiles -> '$(OutDir)%(RecursiveDir)%(Filename)%(Extension)')" />
+  </Target>
+
+  <!--
+  ******************************************************************************
+  **                  ZLib Interop Library Build Properties                   **
+  ******************************************************************************
+  -->
+
+  <PropertyGroup>
+    <PostBuildEventDependsOn>
+      $(PostBuildEventDependsOn);
+      CopyZLibInteropFiles;
+    </PostBuildEventDependsOn>
+    <BuildDependsOn>
+      $(BuildDependsOn);
+      CopyZLibInteropFiles;
+    </BuildDependsOn>
+    <CleanDependsOn>
+      $(CleanDependsOn);
+      CleanZLibInteropFiles;
+    </CleanDependsOn>
+  </PropertyGroup>
+</Project>

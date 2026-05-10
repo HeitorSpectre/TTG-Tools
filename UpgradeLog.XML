@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?><?xml-stylesheet type='text/xsl' href='_UpgradeReport_Files/UpgradeReport.xslt'?><UpgradeLog>
+<Properties><Property Name="Solution" Value="TTG Tools">
+</Property><Property Name="Файл решения" Value="E:\TTG Autopacker\TTG Tools.sln">
+</Property><Property Name="Date" Value="8 ноября 2012 г.">
+</Property><Property Name="Time" Value="14:05:46">
+</Property></Properties><Event ErrorLevel="0" Project="TTG Tools" Source="TTG Tools.csproj" Description="Успешно создана резервная копия файла проекта: E:\TTG Autopacker\Backup\TTG Tools.csproj">
+</Event><Event ErrorLevel="0" Project="TTG Tools" Source="TTG Tools.csproj.user" Description="Резервная копия проекта успешно создана как E:\TTG Autopacker\Backup\TTG Tools.csproj.user">
+</Event><Event ErrorLevel="0" Project="TTG Tools" Source="About.cs" Description="Успешно создана резервная копия файла E:\TTG Autopacker\Backup\About.cs">
+</Event><Event ErrorLevel="0" Project="TTG Tools" Source="About.Designer.cs" Description="Успешно создана резервная копия файла E:\TTG Autopacker\Backup\About.Designer.cs">
+</Event><Event ErrorLevel="0" Project="TTG Tools" Source="AutoPacker.cs" Description="Успешно создана резервная копия файла E:\TTG Autopacker\Backup\AutoPacker.cs">
+</Event><Event ErrorLevel="0" Project="TTG Tools" Source="AutoPacker.Designer.cs" Description="Успешно создана резервная копия файла E:\TTG Autopacker\Backup\AutoPacker.Designer.cs">
+</Event><Event ErrorLevel="0" Project="TTG Tools" Source="Settings.cs" Description="Успешно создана резервная копия файла E:\TTG Autopacker\Backup\Settings.cs">
+</Event><Event ErrorLevel="0" Project="TTG Tools" Source="ForThreads.cs" Description="Успешно создана резервная копия файла E:\TTG Autopacker\Backup\ForThreads.cs">
+</Event><Event ErrorLevel="0" Project="TTG Tools" Source="FontEditor.cs" Description="Успешно создана резервная копия файла E:\TTG Autopacker\Backup\FontEditor.cs">
+</Event><Event ErrorLevel="0" Project="TTG Tools" Source="FontEditor.Designer.cs" Description="Успешно создана резервная копия файла E:\TTG Autopacker\Backup\FontEditor.Designer.cs">
+</Event><Event ErrorLevel="0" Project="TTG Tools" Source="FormSettings.cs" Description="Успешно создана резервная копия файла E:\TTG Autopacker\Backup\FormSettings.cs">
+</Event><Event ErrorLevel="0" Project="TTG Tools" Source="FormSettings.Designer.cs" Description="Успешно создана резервная копия файла E:\TTG Autopacker\Backup\FormSettings.Designer.cs">
+</Event><Event ErrorLevel="0" Project="TTG Tools" Source="TextEditor.cs" Description="Успешно создана резервная копия файла E:\TTG Autopacker\Backup\TextEditor.cs">
+</Event><Event ErrorLevel="0" Project="TTG Tools" Source="TextEditor.Designer.cs" Description="Успешно создана резервная копия файла E:\TTG Autopacker\Backup\TextEditor.Designer.cs">
+</Event><Event ErrorLevel="0" Project="TTG Tools" Source="MainMenu.cs" Description="Успешно создана резервная копия файла E:\TTG Autopacker\Backup\MainMenu.cs">
+</Event><Event ErrorLevel="0" Project="TTG Tools" Source="MainMenu.Designer.cs" Description="Успешно создана резервная копия файла E:\TTG Autopacker\Backup\MainMenu.Designer.cs">
+</Event><Event ErrorLevel="0" Project="TTG Tools" Source="Methods.cs" Description="Успешно создана резервная копия файла E:\TTG Autopacker\Backup\Methods.cs">
+</Event><Event ErrorLevel="0" Project="TTG Tools" Source="Program.cs" Description="Успешно создана резервная копия файла E:\TTG Autopacker\Backup\Program.cs">
+</Event><Event ErrorLevel="0" Project="TTG Tools" Source="Properties\AssemblyInfo.cs" Description="Успешно создана резервная копия файла E:\TTG Autopacker\Backup\Properties\AssemblyInfo.cs">
+</Event><Event ErrorLevel="0" Project="TTG Tools" Source="Properties\Resources.Designer.cs" Description="Успешно создана резервная копия файла E:\TTG Autopacker\Backup\Properties\Resources.Designer.cs">
+</Event><Event ErrorLevel="0" Project="TTG Tools" Source="Properties\Settings.Designer.cs" Description="Успешно создана резервная копия файла E:\TTG Autopacker\Backup\Properties\Settings.Designer.cs">
+</Event><Event ErrorLevel="0" Project="TTG Tools" Source="TextCollector.cs" Description="Успешно создана резервная копия файла E:\TTG Autopacker\Backup\TextCollector.cs">
+</Event><Event ErrorLevel="0" Project="TTG Tools" Source="TextCollector.Designer.cs" Description="Успешно создана резервная копия файла E:\TTG Autopacker\Backup\TextCollector.Designer.cs">
+</Event><Event ErrorLevel="0" Project="TTG Tools" Source="Properties\Settings.settings" Description="Успешно создана резервная копия файла E:\TTG Autopacker\Backup\Properties\Settings.settings">
+</Event><Event ErrorLevel="0" Project="TTG Tools" Source="Resources\IconSave.ico" Description="Успешно создана резервная копия файла E:\TTG Autopacker\Backup\Resources\IconSave.ico">
+</Event><Event ErrorLevel="0" Project="TTG Tools" Source="ttgtool.ico" Description="Успешно создана резервная копия файла E:\TTG Autopacker\Backup\ttgtool.ico">
+</Event><Event ErrorLevel="0" Project="TTG Tools" Source="About.resx" Description="Успешно создана резервная копия файла E:\TTG Autopacker\Backup\About.resx">
+</Event><Event ErrorLevel="0" Project="TTG Tools" Source="AutoPacker.resx" Description="Успешно создана резервная копия файла E:\TTG Autopacker\Backup\AutoPacker.resx">
+</Event><Event ErrorLevel="0" Project="TTG Tools" Source="FontEditor.resx" Description="Успешно создана резервная копия файла E:\TTG Autopacker\Backup\FontEditor.resx">
+</Event><Event ErrorLevel="0" Project="TTG Tools" Source="MainMenu.resx" Description="Успешно создана резервная копия файла E:\TTG Autopacker\Backup\MainMenu.resx">
+</Event><Event ErrorLevel="0" Project="TTG Tools" Source="Properties\Resources.resx" Description="Успешно создана резервная копия файла E:\TTG Autopacker\Backup\Properties\Resources.resx">
+</Event><Event ErrorLevel="0" Project="TTG Tools" Source="FormSettings.resx" Description="Успешно создана резервная копия файла E:\TTG Autopacker\Backup\FormSettings.resx">
+</Event><Event ErrorLevel="0" Project="TTG Tools" Source="TextCollector.resx" Description="Успешно создана резервная копия файла E:\TTG Autopacker\Backup\TextCollector.resx">
+</Event><Event ErrorLevel="0" Project="TTG Tools" Source="TextEditor.resx" Description="Успешно создана резервная копия файла E:\TTG Autopacker\Backup\TextEditor.resx">
+</Event><Event ErrorLevel="0" Project="TTG Tools" Source="TTG Tools.csproj" Description="Проект успешно преобразован">
+</Event><Event ErrorLevel="3" Project="TTG Tools" Source="TTG Tools.csproj" Description="Converted">
+</Event><Event ErrorLevel="0" Project="TTG Tools" Source="TTG Tools.csproj" Description="Сканирование завершено: обновление для файлов проекта не требуется.">
+</Event></UpgradeLog>
