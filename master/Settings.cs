@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Xml.Serialization;
 
 namespace TTG_Tools
@@ -6,15 +7,70 @@ namespace TTG_Tools
     [Serializable()]
     public class Settings
     {
+        public static string ConfigDirectory
+        {
+            get
+            {
+                string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+                if (String.IsNullOrEmpty(appData))
+                {
+                    return AppDomain.CurrentDomain.BaseDirectory;
+                }
+
+                return Path.Combine(appData, "TTG Tools");
+            }
+        }
+
+        public static string ConfigPath
+        {
+            get
+            {
+                return Path.Combine(ConfigDirectory, "config.xml");
+            }
+        }
+
+        public static string LegacyConfigPath
+        {
+            get
+            {
+                return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "config.xml");
+            }
+        }
+
+        public static string EnsureConfigAvailable()
+        {
+            string xmlPath = ConfigPath;
+            if (File.Exists(xmlPath))
+            {
+                return xmlPath;
+            }
+
+            string legacyPath = LegacyConfigPath;
+            if (!File.Exists(legacyPath))
+            {
+                return xmlPath;
+            }
+
+            if (String.Equals(Path.GetFullPath(legacyPath), Path.GetFullPath(xmlPath), StringComparison.OrdinalIgnoreCase))
+            {
+                return xmlPath;
+            }
+
+            Directory.CreateDirectory(ConfigDirectory);
+            File.Copy(legacyPath, xmlPath, false);
+            return xmlPath;
+        }
+
         public static void SaveConfig(Settings settings)
         {
-            string xmlPath = System.AppDomain.CurrentDomain.BaseDirectory + "config.xml";
-            XmlSerializer xmlS = new XmlSerializer(typeof(Settings));
-            System.IO.TextWriter xmlW = new System.IO.StreamWriter(xmlPath);
-            xmlS.Serialize(xmlW, settings);
+            string xmlPath = ConfigPath;
+            Directory.CreateDirectory(ConfigDirectory);
 
-            xmlW.Flush();
-            xmlW.Close();
+            XmlSerializer xmlS = new XmlSerializer(typeof(Settings));
+            using (TextWriter xmlW = new StreamWriter(xmlPath))
+            {
+                xmlS.Serialize(xmlW, settings);
+            }
         }
 
         private string _pathForInputFolder;

@@ -52,6 +52,16 @@ namespace TTG_Tools
             }
             else
             {
+                // PROGRESS TICK from ForThreads. Format:
+                //   "##PROG##processed/total|fileName"
+                // Updates the progress bar / status label without polluting
+                // the operation log.
+                if (report.StartsWith("##PROG##"))
+                {
+                    HandleProgressTick(report.Substring(8));
+                    return;
+                }
+
                 // DETECTA A MENSAGEM ESPECIAL DE ERRO
                 if (report.StartsWith("##POPUP##"))
                 {
@@ -74,10 +84,51 @@ namespace TTG_Tools
             }
         }
 
+        // Parses "processed/total|fileName" payloads from ##PROG## reports
+        // and drives the progress bar and status label.
+        private void HandleProgressTick(string payload)
+        {
+            try
+            {
+                int pipe = payload.IndexOf('|');
+                string counts = pipe >= 0 ? payload.Substring(0, pipe) : payload;
+                string fileName = pipe >= 0 ? payload.Substring(pipe + 1) : string.Empty;
+
+                int slash = counts.IndexOf('/');
+                if (slash <= 0) return;
+
+                int processed = int.Parse(counts.Substring(0, slash));
+                int total = int.Parse(counts.Substring(slash + 1));
+
+                progressBar1.Maximum = 100;
+                if (total > 0)
+                {
+                    int percent = (int)Math.Round(processed * 100.0 / total);
+                    if (percent < 0) percent = 0;
+                    if (percent > 100) percent = 100;
+                    progressBar1.Value = percent;
+                    progressLabel.Text = processed >= total
+                        ? ""
+                        : "Processing " + processed + "/" + total + " (" + percent + "%): " + fileName;
+                }
+                else
+                {
+                    progressBar1.Value = 0;
+                    progressLabel.Text = "";
+                }
+            }
+            catch
+            {
+                // Malformed tick — ignore so a typo can't crash the UI thread.
+            }
+        }
+
 
         private void button1_Click(object sender, EventArgs e)
         {
             if (MainMenu.settings.clearMessages) listBox1.Items.Clear();
+            progressBar1.Value = 0;
+            progressLabel.Text = "Preparing import...";
 
             try
             {
@@ -86,6 +137,7 @@ namespace TTG_Tools
             }
             catch
             {
+                progressLabel.Text = "";
                 MessageBox.Show("Open and close program or fix path in config.xml!", "Error!");
                 return;
             }
@@ -127,6 +179,8 @@ namespace TTG_Tools
         private void buttonDecrypt_Click(object sender, EventArgs e)
         {
             if (MainMenu.settings.clearMessages) listBox1.Items.Clear();
+            progressBar1.Value = 0;
+            progressLabel.Text = "Preparing export...";
 
             string versionOfGame = MainMenu.gamelist[comboBox1.SelectedIndex].gamename;
             numKey = comboBox1.SelectedIndex;
@@ -146,6 +200,7 @@ namespace TTG_Tools
             }
             catch
             {
+                progressLabel.Text = "";
                 MessageBox.Show("Open and close program or fix path in config.xml!", "Error!");
                 return;
             }

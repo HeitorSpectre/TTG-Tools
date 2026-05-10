@@ -17,6 +17,42 @@ namespace TTG_Tools
         public event ProgressHandler Progress;
         public event ReportHandler ReportForWork;
 
+        // Encodes a progress tick into the existing ReportForWork channel so
+        // the form layer doesn't need a second event. AutoPacker recognises
+        // the "##PROG##" prefix and routes the line to the progress bar /
+        // status label instead of dumping it into the operation log.
+        // Format: "##PROG##processed/total|fileName"
+        private void EmitProgress(int processed, int total, string fileName)
+        {
+            if (ReportForWork == null || total <= 0) return;
+            string safeName = fileName ?? string.Empty;
+            ReportForWork("##PROG##" + processed + "/" + total + "|" + safeName);
+        }
+
+        // Counts the inputs every destination/extension loop will walk. We
+        // can't lean on inputFiles.Length inside the loop because totals are
+        // only known per destination — we need the global denominator up
+        // front to drive a single ProgressBar.
+        private static int CountTotalInputs(string pathInput, IEnumerable<string> destinations)
+        {
+            if (string.IsNullOrEmpty(pathInput) || !Directory.Exists(pathInput)) return 0;
+            int total = 0;
+            DirectoryInfo dir = new DirectoryInfo(pathInput);
+            foreach (string ext in destinations)
+            {
+                try
+                {
+                    total += dir.GetFiles('*' + ext, SearchOption.AllDirectories).Length;
+                }
+                catch
+                {
+                    // Skip unreadable subtree silently — counter just under-
+                    // estimates; the bar will land at <100% but still moves.
+                }
+            }
+            return total;
+        }
+
         // Import files (Encrypt, Pack, Import)
         public void DoImportEncoding(object parametres)
         {
@@ -61,6 +97,13 @@ namespace TTG_Tools
             // Lista para armazenar arquivos que falharam
             List<string> failedFiles = new List<string>();
 
+            // Progress tracking: pre-count every input we'll touch so the
+            // ProgressBar has a stable denominator. Each top-level input
+            // file (one per destination/extension pass) counts as one tick.
+            int totalInputs = CountTotalInputs(pathInput, destination.Distinct());
+            int processedInputs = 0;
+            EmitProgress(0, totalInputs, "Starting...");
+
             try
             {
                 for (int d = 0; d < destination.Count; d++)
@@ -77,6 +120,7 @@ namespace TTG_Tools
 
                         for (int i = 0; i < inputFiles.Length; i++)
                         {
+                            EmitProgress(processedInputs, totalInputs, inputFiles[i].Name);
                             // 1. Calcular a subpasta relativa (Ex: \EP1\MENU\)
                             string relativePath = inputFiles[i].DirectoryName.Substring(dir.FullName.Length);
                             if (relativePath.StartsWith("\\") || relativePath.StartsWith("/")) relativePath = relativePath.Substring(1);
@@ -107,20 +151,30 @@ namespace TTG_Tools
                                     fileDestination = inputFiles[i].Directory.GetFiles(onlyNameImporting + "(*)" + whatImport);
                                 }
 
-                                // Wii/TPL import support: Auto(De)Packer originally only watches
-                                // dds/pvr for textures and ttf for fonts. If user provides tpl/fnt,
+                                // Wii import support: Auto(De)Packer originally only watches
+                                // dds/pvr for textures and ttf for fonts. If user provides tga/tpl/fnt,
                                 // we still need to trigger DoWork.
                                 if (fileDestination.Length == 0)
                                 {
                                     if (destinationForExport == ".d3dtx" && whatImport == ".dds" && MainMenu.settings.swizzleNintendoWii)
                                     {
+                                        string wiiTgaPattern = q == 0
+                                            ? onlyNameImporting + ".tga"
+                                            : onlyNameImporting + "(*)" + ".tga";
                                         string wiiPattern = q == 0
                                             ? onlyNameImporting + ".tpl"
                                             : onlyNameImporting + "(*)" + ".tpl";
-                                        fileDestination = inputFiles[i].Directory.GetFiles(wiiPattern);
+                                        FileInfo[] tgaCandidates = inputFiles[i].Directory.GetFiles(wiiTgaPattern);
+                                        fileDestination = tgaCandidates.Length > 0 ? tgaCandidates : inputFiles[i].Directory.GetFiles(wiiPattern);
                                     }
                                     else if (destinationForExport == ".font" && MainMenu.settings.swizzleNintendoWii)
                                     {
+                                        string tgaPattern = q == 0
+                                            ? onlyNameImporting + ".tga"
+                                            : onlyNameImporting + "(*)" + ".tga";
+                                        string ddsPattern = q == 0
+                                            ? onlyNameImporting + ".dds"
+                                            : onlyNameImporting + "(*)" + ".dds";
                                         string tplPattern = q == 0
                                             ? onlyNameImporting + ".tpl"
                                             : onlyNameImporting + "(*)" + ".tpl";
@@ -128,14 +182,30 @@ namespace TTG_Tools
                                             ? onlyNameImporting + ".fnt"
                                             : onlyNameImporting + "(*)" + ".fnt";
 
-                                        FileInfo[] tplCandidates = inputFiles[i].Directory.GetFiles(tplPattern);
-                                        if (tplCandidates.Length > 0)
+                                        FileInfo[] tgaCandidates = inputFiles[i].Directory.GetFiles(tgaPattern);
+                                        if (tgaCandidates.Length > 0)
                                         {
-                                            fileDestination = tplCandidates;
+                                            fileDestination = tgaCandidates;
                                         }
                                         else
                                         {
-                                            fileDestination = inputFiles[i].Directory.GetFiles(fntPattern);
+                                            FileInfo[] ddsCandidates = inputFiles[i].Directory.GetFiles(ddsPattern);
+                                            if (ddsCandidates.Length > 0)
+                                            {
+                                                fileDestination = ddsCandidates;
+                                            }
+                                            else
+                                            {
+                                                FileInfo[] tplCandidates = inputFiles[i].Directory.GetFiles(tplPattern);
+                                                if (tplCandidates.Length > 0)
+                                                {
+                                                    fileDestination = tplCandidates;
+                                                }
+                                                else
+                                                {
+                                                    fileDestination = inputFiles[i].Directory.GetFiles(fntPattern);
+                                                }
+                                            }
                                         }
                                     }
                                 }
@@ -269,6 +339,9 @@ namespace TTG_Tools
                             {
                                 Methods.DeleteCurrentFile(inputFiles[i].FullName);
                             }
+
+                            processedInputs++;
+                            EmitProgress(processedInputs, totalInputs, inputFiles[i].Name);
                         }
                     }
                     else
@@ -277,6 +350,8 @@ namespace TTG_Tools
                         return;
                     }
                 }
+
+                EmitProgress(totalInputs, totalInputs, "Done.");
 
                 string message = "";
 
@@ -652,6 +727,10 @@ namespace TTG_Tools
                     string message = "";
                     bool emptyFiles = true;
 
+                    int totalInputs = CountTotalInputs(pathInput, destinationForExportList);
+                    int processedInputs = 0;
+                    EmitProgress(0, totalInputs, "Starting...");
+
                     foreach (string destinationForExport in destinationForExportList)
                     {
                         DirectoryInfo dir = new DirectoryInfo(pathInput);
@@ -665,6 +744,7 @@ namespace TTG_Tools
 
                             for (int i = 0; i < inputFiles.Length; i++)
                             {
+                                EmitProgress(processedInputs, totalInputs, inputFiles[i].Name);
                                 // 1. Calcular a subpasta relativa
                                 string relativePath = inputFiles[i].DirectoryName.Substring(dir.FullName.Length);
                                 if (relativePath.StartsWith("\\") || relativePath.StartsWith("/")) relativePath = relativePath.Substring(1);
@@ -759,9 +839,13 @@ namespace TTG_Tools
 
                                 }
 
+                                processedInputs++;
+                                EmitProgress(processedInputs, totalInputs, inputFiles[i].Name);
                             }
                         }
                     }
+
+                    EmitProgress(totalInputs, totalInputs, "Done.");
 
                     foreach (int extractList in extractedFormat)
                     {

@@ -54,6 +54,8 @@
             this.menuStrip1 = new System.Windows.Forms.MenuStrip();
             this.settingsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.sortLabel = new System.Windows.Forms.Label();
+            this.progressBar1 = new System.Windows.Forms.ProgressBar();
+            this.progressLabel = new System.Windows.Forms.Label();
             this.groupBox1.SuspendLayout();
             this.groupBox2.SuspendLayout();
             this.menuStrip1.SuspendLayout();
@@ -96,12 +98,12 @@
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
             this.listBox1.FormattingEnabled = true;
-            this.listBox1.Location = new System.Drawing.Point(10, 197);
+            this.listBox1.Location = new System.Drawing.Point(10, 232);
             this.listBox1.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
             this.listBox1.Name = "listBox1";
             this.listBox1.ScrollAlwaysVisible = true;
             this.listBox1.SelectionMode = System.Windows.Forms.SelectionMode.MultiExtended;
-            this.listBox1.Size = new System.Drawing.Size(801, 394);
+            this.listBox1.Size = new System.Drawing.Size(801, 359);
             this.listBox1.TabIndex = 2;
             // 
             // buttonDecrypt
@@ -349,16 +351,37 @@
             this.settingsToolStripMenuItem.Size = new System.Drawing.Size(61, 20);
             this.settingsToolStripMenuItem.Text = "Settings";
             this.settingsToolStripMenuItem.Click += new System.EventHandler(this.settingsToolStripMenuItem_Click);
-            // 
+            //
             // sortLabel
-            // 
+            //
             this.sortLabel.AutoSize = true;
             this.sortLabel.Location = new System.Drawing.Point(19, 169);
             this.sortLabel.Name = "sortLabel";
             this.sortLabel.Size = new System.Drawing.Size(51, 13);
             this.sortLabel.TabIndex = 16;
             this.sortLabel.Text = "Sort label";
-            // 
+            //
+            // progressLabel
+            //
+            this.progressLabel.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top
+                        | System.Windows.Forms.AnchorStyles.Left)
+                        | System.Windows.Forms.AnchorStyles.Right)));
+            this.progressLabel.Location = new System.Drawing.Point(10, 188);
+            this.progressLabel.Name = "progressLabel";
+            this.progressLabel.Size = new System.Drawing.Size(801, 15);
+            this.progressLabel.TabIndex = 17;
+            this.progressLabel.Text = "";
+            //
+            // progressBar1
+            //
+            this.progressBar1.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top
+                        | System.Windows.Forms.AnchorStyles.Left)
+                        | System.Windows.Forms.AnchorStyles.Right)));
+            this.progressBar1.Location = new System.Drawing.Point(10, 206);
+            this.progressBar1.Name = "progressBar1";
+            this.progressBar1.Size = new System.Drawing.Size(801, 18);
+            this.progressBar1.TabIndex = 18;
+            //
             // AutoPacker
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -366,6 +389,8 @@
             this.ClientSize = new System.Drawing.Size(821, 612);
             this.Controls.Add(this.textBox1);
             this.Controls.Add(this.sortLabel);
+            this.Controls.Add(this.progressLabel);
+            this.Controls.Add(this.progressBar1);
             this.Controls.Add(this.checkCustomKey);
             this.Controls.Add(this.label1);
             this.Controls.Add(this.groupBox1);
@@ -420,6 +445,8 @@
         private System.Windows.Forms.RadioButton rbWiiSwizzle;
         private System.Windows.Forms.RadioButton rbNoSwizzle;
         private System.Windows.Forms.Label sortLabel;
+        private System.Windows.Forms.ProgressBar progressBar1;
+        private System.Windows.Forms.Label progressLabel;
     }
 }
 

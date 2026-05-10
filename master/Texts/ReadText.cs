@@ -390,6 +390,13 @@ namespace TTG_Tools.Texts
                         if (tmpTxt.actorSpeechOriginal.Contains("\r\n")) tmpTxt.actorSpeechOriginal = tmpTxt.actorSpeechOriginal.Replace("\r\n", "\n");
                         if (tmpTxt.actorSpeechTranslation.Contains("\r\n")) tmpTxt.actorSpeechTranslation = tmpTxt.actorSpeechTranslation.Replace("\r\n", "\n");
 
+                        // Restore raw CR escaped by SaveText.OldMethod's
+                        // EscapeForOldMethod ("\\r" -> 0x0D). Required for
+                        // byte-identical roundtrip of CSI3 PS2 BMS3 langdb
+                        // (whose speeches use 0x0D as internal separators).
+                        if (tmpTxt.actorSpeechOriginal.Contains("\\r")) tmpTxt.actorSpeechOriginal = tmpTxt.actorSpeechOriginal.Replace("\\r", "\r");
+                        if (tmpTxt.actorSpeechTranslation.Contains("\\r")) tmpTxt.actorSpeechTranslation = tmpTxt.actorSpeechTranslation.Replace("\\r", "\r");
+
                         strings[i] = tmpTxt;
                     }
                     break;
