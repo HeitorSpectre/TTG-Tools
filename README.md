@@ -18,7 +18,7 @@ This version of TTG Tools includes some modifications and has been uploaded with
 - Josh Tamely for the Oodle wrapper  
 - Hajin Jang for the Zlib wrapper  
 - [Nemiroff](https://github.com/Nemiroff/TTG-Tools) for fixing a bug in the Font Editor  
-- Krisp for adding Xbox and Wii textures support and font editing with Swizzle
+- [Krisp](https://github.com/KSP0O) for adding Xbox and Wii textures support and font editing with Swizzle
 - [Pashok6798](https://www.zoneofgames.ru) for all your support to the community and for trusting us.
 - [Benny](https://quickandeasysoftware.net) for sending the encryption key for Poker Night at the Inventory - Remastered
 
