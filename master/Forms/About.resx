@@ -120,11 +120,10 @@
   <data name="richTextBox1.Text" xml:space="preserve">
     <value>TTG Tools 
 By Den Em (Е.Д.В.) and Pashok6798
-Modded by Krisp and HeitorSpectre (from Den Em's and Pashok6798 agreement)
+Modded by HeitorSpectre (from Den Em's and Pashok6798 agreement)
 Source code on:
 GitHub: https://github.com/HeitorSpectre/TTG-Tools
 Check all releases here: https://github.com/HeitorSpectre/TTG-Tools/releases
-(Original developer's e-mail: d3n123@rambler.ru)
 
 Special thanks to:
 
@@ -136,9 +135,11 @@ Special thanks to:
 - Josh Tamely for oodle wrapper
 - Hajin Jang for Zlib.Wrapper
 - Nemiroff thanks for fixing a bug in the Font Editor.
-- Krisp for adding Xbox texture support and font editing with Swizzle.  
+- Krisp for adding Nintendo Wii and Xbox texture support and font editing with Swizzle.  
 - Pashok6798 for all your support to the community and for trusting us.
 - BennyBoy for sending the encryption key for Poker Night at the Inventory - Remastered
+- Gekonnn for LencTools.
+- PUC-Rio for lua source code.
 
 List of supported games:
 Telltale's Texas Hold Em, Tales of Monkey Island, Sam &amp; Max: Season One, Sam &amp; Max: Season Two, Wallace and Gromit's Grand Adventures, CSI: Deadly Intent, Sam &amp; Max: The Devil's Playhouse, Puzzle Agent 1, CSI: Fatal Conspiracy, CSI: 3 Dimensions of Murder, Poker Night at the Inventory, Back to the Future: The Game, Strong Bad, Hector: The Badge of Carnage, Puzzle Agent 2, Jurassic Park: The Game, The Walking Dead, Poker Night 2, The Wolf Among Us, The Walking Dead Season Two, Tales from the Borderlands, Game of Thrones - A Telltale Games Series, Minecraft: Story Mode (Seasons One and Two), The Walking Dead: Michonne, Batman (Seasons One and Two), The Walking Dead: The Final Season, The Walking Dead : The Telltale Definitive Series, Sam &amp; Max Save the World Remastered, Sam &amp; Max Beyond Time and Space Remastered, Sam &amp; Max The Devil's Playhouse Remastered and Poker Night at the Inventory - Remastered.
@@ -146,6 +147,23 @@ Maybe some games doesn't work.
 
 ===
 [Version history]
+
+v.1.16.1 (03.07.2026)
++ Auto(De)Packer:
+Added PS2 texture and font extraction and reinsertion support.
+Added CJK text normalization on import (removes spacing between CJK characters, converts ASCII dots near CJK to a full-width Chinese period, and fixes punctuation before line breaks).
+Fixed a crash when opening Poker Night at the Inventory - Remastered .font files.
+Fixed an error when extracting files with search or format filters enabled.
++ Font Editor:
+Added PS2 font editing support.
+Added Xbox 360 texture and font editing for older games that previously had no support (in development).
+Fixed the font texture preview showing all gray (added BC4 / DX10 decoding).
++ Lua Editor:
+Added a new Lua Editor to extract, reinsert, create and edit custom Lua scripts for the games.
++ TTG Tools:
+Added settings profiles (a separate configuration per game) and unified the settings into a single tabbed window.
+Input and Output folders are now created automatically next to the program on first launch.
+Reorganized the source code.
 
 v.1.16.0 (09.05.2026)
 + TTG Tools:
