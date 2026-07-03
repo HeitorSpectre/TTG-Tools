@@ -225,6 +225,8 @@ namespace TTG_Tools
         private int _ASCII_N;
         private bool _deleteD3DTXafterImport;
         private bool _deleteDDSafterImport;
+        //Extract textures as PNG (and convert back on import) instead of DDS, for beginner-friendly editing.
+        private bool _extractTexturesAsPng;
         private bool _importingOfName;
         private bool _sortSameString;
         private bool _exportRealID;
@@ -259,6 +261,9 @@ namespace TTG_Tools
         private bool _swizzleNintendoWii;
         private bool _swizzlePS2;
         private bool _supportTwdNintendoSwitch;
+
+        //Telltale Explorer Style text format ([id] / Category= / Speech=) for export and import.
+        private bool _telltaleExplorerFormat;
 
         //Name of the currently active settings profile (Issue #84: lets users keep one
         //named configuration per game instead of reconfiguring the single global config).
@@ -349,6 +354,19 @@ namespace TTG_Tools
             set
             {
                 _deleteDDSafterImport = value;
+            }
+        }
+
+        [XmlAttribute("extractTexturesAsPng")]
+        public bool extractTexturesAsPng
+        {
+            get
+            {
+                return _extractTexturesAsPng;
+            }
+            set
+            {
+                _extractTexturesAsPng = value;
             }
         }
 
@@ -493,6 +511,19 @@ namespace TTG_Tools
             set
             {
                 _tsvFormat = value;
+            }
+        }
+
+        [XmlAttribute("telltaleExplorerFormat")]
+        public bool telltaleExplorerFormat
+        {
+            get
+            {
+                return _telltaleExplorerFormat;
+            }
+            set
+            {
+                _telltaleExplorerFormat = value;
             }
         }
 

@@ -435,18 +435,7 @@ namespace TTG_Tools.Texts
                     if (MainMenu.settings.sortSameString) txts = Methods.SortString(txts);
 
                     string outputFile = MainMenu.settings.pathForOutputFolder + "\\" + fi.Name.Remove(fi.Name.Length - 6, 6);
-                    outputFile += MainMenu.settings.tsvFormat ? "tsv" : "txt";
-
-                    switch (MainMenu.settings.newTxtFormat)
-                    {
-                        case true:
-                            Texts.SaveText.NewMethod(txts.txtList, false, outputFile);
-                            break;
-
-                        default:
-                        Texts.SaveText.OldMethod(txts.txtList, false, false, outputFile);
-                            break;
-                    }
+                    Texts.SaveText.SaveByFormat(txts.txtList, false, false, outputFile);
 
                     txts.txtList.Clear();
                     txts = null;
@@ -989,12 +978,7 @@ namespace TTG_Tools.Texts
 
                         string outputFile = MainMenu.settings.pathForOutputFolder + Path.DirectorySeparatorChar
                             + fi.Name.Remove(fi.Name.Length - 6, 6);
-                        outputFile += MainMenu.settings.tsvFormat ? "tsv" : "txt";
-
-                        if (MainMenu.settings.newTxtFormat)
-                            Texts.SaveText.NewMethod(txts.txtList, false, outputFile);
-                        else
-                            Texts.SaveText.OldMethod(txts.txtList, false, false, outputFile);
+                        Texts.SaveText.SaveByFormat(txts.txtList, false, false, outputFile);
 
                         txts.txtList.Clear();
                         return fi.Name + " (BMS3 / CSI3 PS2) successfully extracted.";

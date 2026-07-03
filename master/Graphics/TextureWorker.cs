@@ -1060,10 +1060,22 @@ namespace TTG_Tools.Graphics
                         {
                             result = "File " + fi.Name + " successfully extracted. Texture format " + Convert.ToString(oldTex.TextureFormat) + " (" + Encoding.ASCII.GetString(BitConverter.GetBytes(oldTex.TextureFormat)) + "). ";
 
-                            string format = oldTex.isIOS ? ".pvr" : ".dds";
+                            byte[] oldPng = null;
+                            if (MainMenu.settings.extractTexturesAsPng && !oldTex.isIOS)
+                                oldPng = DDS.DdsPngConverter.DdsToPng(oldTex.Content);
 
-                            if (File.Exists(OutputDir + Path.DirectorySeparatorChar + fi.Name.Replace(".d3dtx", format))) File.Delete(OutputDir + Path.DirectorySeparatorChar + fi.Name.Replace(".d3dtx", format));
-                            File.WriteAllBytes(OutputDir + Path.DirectorySeparatorChar + fi.Name.Replace(".d3dtx", format), oldTex.Content);
+                            if (oldPng != null)
+                            {
+                                string pngPath = OutputDir + Path.DirectorySeparatorChar + fi.Name.Replace(".d3dtx", ".png");
+                                if (File.Exists(pngPath)) File.Delete(pngPath);
+                                File.WriteAllBytes(pngPath, oldPng);
+                            }
+                            else
+                            {
+                                string format = oldTex.isIOS ? ".pvr" : ".dds";
+                                if (File.Exists(OutputDir + Path.DirectorySeparatorChar + fi.Name.Replace(".d3dtx", format))) File.Delete(OutputDir + Path.DirectorySeparatorChar + fi.Name.Replace(".d3dtx", format));
+                                File.WriteAllBytes(OutputDir + Path.DirectorySeparatorChar + fi.Name.Replace(".d3dtx", format), oldTex.Content);
+                            }
 
                             if (additionalMessage != null) result += additionalMessage;
                         }
@@ -1075,7 +1087,18 @@ namespace TTG_Tools.Graphics
                     else
                     {
                         result = "File " + fi.Name + " successfully imported. ";
-                        byte[] NewContent = oldTex.isIOS ? File.ReadAllBytes(fi.FullName.Remove(fi.FullName.Length - 5) + "pvr") : File.ReadAllBytes(fi.FullName.Remove(fi.FullName.Length - 5) + "dds");
+
+                        string oldBasePath = fi.FullName.Remove(fi.FullName.Length - 5);
+                        byte[] NewContent = null;
+                        if (MainMenu.settings.extractTexturesAsPng && !oldTex.isIOS && File.Exists(oldBasePath + "png"))
+                        {
+                            uint bcFmt;
+                            if (DDS.DdsPngConverter.TryNormalize(oldTex.TextureFormat, out bcFmt))
+                                NewContent = DDS.DdsPngConverter.PngToDds(File.ReadAllBytes(oldBasePath + "png"), bcFmt, oldTex.Mip);
+                        }
+                        if (NewContent == null)
+                            NewContent = oldTex.isIOS ? File.ReadAllBytes(oldBasePath + "pvr") : File.ReadAllBytes(oldBasePath + "dds");
+
                         oldTex.Content = new byte[NewContent.Length];
                         Array.Copy(NewContent, 0, oldTex.Content, 0, oldTex.Content.Length);
 
@@ -1143,6 +1166,20 @@ namespace TTG_Tools.Graphics
                 {
                     result = "File " + fi.Name + " successfully extracted. ";
 
+                    //Optional PNG extraction for supported formats; unsupported formats fall back to DDS.
+                    if (MainMenu.settings.extractTexturesAsPng && !tex.isPVR && DDS.DdsPngConverter.IsConvertible(tex.TextureFormat))
+                    {
+                        byte[] png = DDS.DdsPngConverter.DdsToPng(tex.Tex.Content);
+                        if (png != null)
+                        {
+                            string pngPath = OutputDir + "\\" + fi.Name.Replace(".d3dtx", ".png");
+                            if (File.Exists(pngPath)) File.Delete(pngPath);
+                            File.WriteAllBytes(pngPath, png);
+                            if (additionalMessage != null) result += additionalMessage;
+                            return result;
+                        }
+                    }
+
                     string format = tex.isPVR ? ".pvr" : ".dds";
 
                     if (File.Exists(OutputDir + "\\" + fi.Name.Replace(".d3dtx", format))) File.Delete(OutputDir + "\\" + fi.Name.Replace(".d3dtx", format));
@@ -1160,28 +1197,43 @@ namespace TTG_Tools.Graphics
                     bool importedFromPvr = false;
                     string importPath = textureBasePath + "dds";
 
-                    if (tex.isPVR)
+                    byte[] NewContent = null;
+
+                    //If a PNG was extracted (PNG mode) and the format is supported, convert it back
+                    //to a DDS of the original format. A missing PNG or unsupported format falls
+                    //through to the regular DDS/PVR import below.
+                    string pngImportPath = textureBasePath + "png";
+                    if (MainMenu.settings.extractTexturesAsPng && !tex.isPVR
+                        && DDS.DdsPngConverter.IsConvertible(tex.TextureFormat) && File.Exists(pngImportPath))
                     {
-                        if (File.Exists(textureBasePath + "dds"))
-                        {
-                            importPath = textureBasePath + "dds";
-                        }
-                        else if (File.Exists(textureBasePath + "pvr"))
-                        {
-                            importPath = textureBasePath + "pvr";
-                            importedFromPvr = true;
-                        }
-                        else
-                        {
-                            throw new FileNotFoundException("Could not find .dds or .pvr texture to import.", textureBasePath + "dds");
-                        }
-                    }
-                    else if (!File.Exists(importPath))
-                    {
-                        throw new FileNotFoundException("Could not find .dds texture to import.", importPath);
+                        NewContent = DDS.DdsPngConverter.PngToDds(File.ReadAllBytes(pngImportPath), tex.TextureFormat, tex.Tex.MipCount);
                     }
 
-                    byte[] NewContent = File.ReadAllBytes(importPath);
+                    if (NewContent == null)
+                    {
+                        if (tex.isPVR)
+                        {
+                            if (File.Exists(textureBasePath + "dds"))
+                            {
+                                importPath = textureBasePath + "dds";
+                            }
+                            else if (File.Exists(textureBasePath + "pvr"))
+                            {
+                                importPath = textureBasePath + "pvr";
+                                importedFromPvr = true;
+                            }
+                            else
+                            {
+                                throw new FileNotFoundException("Could not find .dds or .pvr texture to import.", textureBasePath + "dds");
+                            }
+                        }
+                        else if (!File.Exists(importPath))
+                        {
+                            throw new FileNotFoundException("Could not find .dds texture to import.", importPath);
+                        }
+
+                        NewContent = File.ReadAllBytes(importPath);
+                    }
                     tex.Tex.Content = new byte[NewContent.Length];
                     Array.Copy(NewContent, 0, tex.Tex.Content, 0, tex.Tex.Content.Length);
 

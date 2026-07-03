@@ -25,9 +25,15 @@ namespace TTG_Tools
         private const int HighlightMaxSize = 200_000;
         private bool fullHighlightEnabled = true;
 
+        //Warn only once per app session, not every time the editor is opened.
+        private static bool _javaChecked;
+
         public LuaEditor()
         {
             InitializeComponent();
+
+            //The Lua Editor decompiles scripts with unluac.jar, which needs Java (JDK 21).
+            Shown += (s, e) => WarnIfJdkMissing();
 
             highlightTimer = new System.Windows.Forms.Timer { Interval = 350 };
             highlightTimer.Tick += (s, e) => { highlightTimer.Stop(); HighlightCurrentLine(); };
@@ -510,6 +516,56 @@ namespace TTG_Tools
         {
             if (data == null || data.Length < 4) return false;
             return data[0] == 0x1B && data[1] == 0x4C && data[2] == 0x75 && data[3] == 0x61;
+        }
+
+        //Checks whether the Java runtime (JDK 21) is available. The Lua Editor relies on
+        //unluac.jar to decompile scripts, and that requires Java. Detects the major version
+        //from "java -version" and warns the user if Java is missing or older than 21.
+        private void WarnIfJdkMissing()
+        {
+            if (_javaChecked) return;
+            _javaChecked = true;
+
+            int major = -1;
+            try
+            {
+                var psi = new ProcessStartInfo("java", "-version")
+                {
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true
+                };
+
+                using (var p = Process.Start(psi))
+                {
+                    //java -version prints to stderr on most JDKs, but read both to be safe.
+                    string output = p.StandardError.ReadToEnd() + "\n" + p.StandardOutput.ReadToEnd();
+                    p.WaitForExit();
+
+                    Match m = Regex.Match(output, "version \"(\\d+)");
+                    if (m.Success) int.TryParse(m.Groups[1].Value, out major);
+                }
+            }
+            catch
+            {
+                major = -1; //java not found / couldn't start
+            }
+
+            if (major < 0)
+            {
+                MessageBox.Show(
+                    "The Lua Editor needs the Java Development Kit (JDK 21) to decompile Lua scripts, but Java was not found on your PC.\r\n\r\n" +
+                    "Please install JDK 21 and make sure the \"java\" command is available in your PATH, otherwise decompiling won't work.",
+                    "JDK 21 required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+            else if (major < 21)
+            {
+                MessageBox.Show(
+                    "The Lua Editor was designed for JDK 21, but Java " + major + " was detected.\r\n\r\n" +
+                    "Some Lua scripts may not decompile correctly. Installing JDK 21 is recommended.",
+                    "JDK 21 recommended", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
         }
 
         private string RunProcess(string exe, string args, string workingDir, bool captureStdout, out int exitCode, out string stdout)

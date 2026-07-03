@@ -44,6 +44,65 @@ namespace TTG_Tools.Graphics.Xbox360
             return outp;
         }
 
+        /// <summary>Codifica RGBA em blocos DXT3/BC2 (alpha explicito 4 bits + cor DXT1, 16 B/bloco).</summary>
+        public static byte[] EncodeDxt3(byte[] rgba, int w, int h)
+        {
+            int bw = (w + 3) / 4, bh = (h + 3) / 4;
+            byte[] outp = new byte[bw * bh * 16];
+            int o = 0;
+            var px = new int[16 * 4];
+            for (int by = 0; by < bh; by++)
+                for (int bx = 0; bx < bw; bx++)
+                {
+                    GatherBlock(rgba, w, h, bx, by, px);
+                    ulong abits = 0;
+                    for (int i = 0; i < 16; i++)
+                    {
+                        int a4 = (px[i * 4 + 3] * 15 + 127) / 255; // 8-bit alpha -> 4-bit
+                        abits |= (ulong)(a4 & 0xF) << (4 * i);
+                    }
+                    for (int i = 0; i < 8; i++) outp[o + i] = (byte)(abits >> (8 * i));
+                    EncodeColorBlock(px, outp, o + 8);
+                    o += 16;
+                }
+            return outp;
+        }
+
+        /// <summary>Codifica RGBA em blocos BC4/ATI1 (canal unico = vermelho, 8 B/bloco).</summary>
+        public static byte[] EncodeBc4(byte[] rgba, int w, int h)
+        {
+            int bw = (w + 3) / 4, bh = (h + 3) / 4;
+            byte[] outp = new byte[bw * bh * 8];
+            int o = 0;
+            var px = new int[16 * 4];
+            for (int by = 0; by < bh; by++)
+                for (int bx = 0; bx < bw; bx++)
+                {
+                    GatherBlock(rgba, w, h, bx, by, px);
+                    EncodeGrayBlock(px, 0, outp, o); // red channel
+                    o += 8;
+                }
+            return outp;
+        }
+
+        /// <summary>Codifica RGBA em blocos BC5/ATI2 (dois canais: vermelho + verde, 16 B/bloco).</summary>
+        public static byte[] EncodeBc5(byte[] rgba, int w, int h)
+        {
+            int bw = (w + 3) / 4, bh = (h + 3) / 4;
+            byte[] outp = new byte[bw * bh * 16];
+            int o = 0;
+            var px = new int[16 * 4];
+            for (int by = 0; by < bh; by++)
+                for (int bx = 0; bx < bw; bx++)
+                {
+                    GatherBlock(rgba, w, h, bx, by, px);
+                    EncodeGrayBlock(px, 0, outp, o);     // red
+                    EncodeGrayBlock(px, 1, outp, o + 8); // green
+                    o += 16;
+                }
+            return outp;
+        }
+
         // Coleta os 16 pixels RGBA de um bloco 4x4 (replica a borda se exceder).
         private static void GatherBlock(byte[] rgba, int w, int h, int bx, int by, int[] px)
         {
@@ -108,10 +167,17 @@ namespace TTG_Tools.Graphics.Xbox360
         // ---- bloco de alpha (DXT5, modo 8 alphas) ----
         private static void EncodeAlphaBlock(int[] px, byte[] outp, int o)
         {
+            EncodeGrayBlock(px, 3, outp, o); // DXT5 alpha = channel 3
+        }
+
+        // Bloco de 8 bytes com 8 valores interpolados de um unico canal (usado por
+        // DXT5 alpha, BC4 e BC5). ch = 0 R, 1 G, 2 B, 3 A.
+        private static void EncodeGrayBlock(int[] px, int ch, byte[] outp, int o)
+        {
             int aMin = 255, aMax = 0;
             for (int i = 0; i < 16; i++)
             {
-                int a = px[i * 4 + 3];
+                int a = px[i * 4 + ch];
                 if (a < aMin) aMin = a;
                 if (a > aMax) aMax = a;
             }
@@ -126,7 +192,7 @@ namespace TTG_Tools.Graphics.Xbox360
             ulong bits = 0;
             for (int i = 0; i < 16; i++)
             {
-                int a = px[i * 4 + 3];
+                int a = px[i * 4 + ch];
                 int best = 0, bestD = int.MaxValue;
                 for (int p = 0; p < 8; p++)
                 {

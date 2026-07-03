@@ -127,22 +127,60 @@ Check all releases here: https://github.com/HeitorSpectre/TTG-Tools/releases
 
 Special thanks to:
 
-- Den Em for accept to upload his source code.
-- Aluigi for source code of ttarchext;
-- Taylor Hornby for C# source code of Blowfish encryption
-- Gdkchan, Stella/AboodXD for swizzle method of Nintendo Switch
-- Daemon1 and tge for PS4 swizzle algorithm
-- Josh Tamely for oodle wrapper
-- Hajin Jang for Zlib.Wrapper
-- Nemiroff thanks for fixing a bug in the Font Editor.
-- Krisp for adding Nintendo Wii and Xbox texture support and font editing with Swizzle.  
-- Pashok6798 for all your support to the community and for trusting us.
-- BennyBoy for sending the encryption key for Poker Night at the Inventory - Remastered
-- Gekonnn for LencTools.
-- PUC-Rio for lua source code.
+- [Den Em](https://steamcommunity.com/id/DenEm) for allowing the source code to be uploaded.
+- [Aluigi](https://aluigi.altervista.org/) for the source code of `ttarchext`.
+- [Taylor Hornby](https://github.com/defuse) for the C# source code of Blowfish encryption.
+- [Gdkchan](https://github.com/gdkchan), Stella/[AboodXD](https://github.com/aboood40091) for the Nintendo Switch swizzle method.
+- [Daemon1](https://reshax.com/profile/8-id-daemon/) and tge for the PS4 swizzle algorithm.
+- [Josh Tamely](https://github.com/Tamely) for the Oodle wrapper.
+- [Hajin Jang](https://github.com/ied206/ZLibWrapper) for the Zlib wrapper.
+- [Nemiroff](https://github.com/Nemiroff/TTG-Tools) for fixing a bug in the Font Editor.
+- [Krisp](https://github.com/KSP0O) for adding Xbox and Wii textures support and font editing with Swizzle.
+- [Pashok6798](https://www.zoneofgames.ru) for all your support to the community and for trusting us.
+- [Benny](https://quickandeasysoftware.net) for sending the encryption key for Poker Night at the Inventory - Remastered.
+- [Gekonnn](https://github.com/gekonnn/lenctools) for LencTools.
+- [PUC-Rio](http://www.lua.inf.puc-rio.br/) for lua source code.
 
 List of supported games:
-Telltale's Texas Hold Em, Tales of Monkey Island, Sam &amp; Max: Season One, Sam &amp; Max: Season Two, Wallace and Gromit's Grand Adventures, CSI: Deadly Intent, Sam &amp; Max: The Devil's Playhouse, Puzzle Agent 1, CSI: Fatal Conspiracy, CSI: 3 Dimensions of Murder, Poker Night at the Inventory, Back to the Future: The Game, Strong Bad, Hector: The Badge of Carnage, Puzzle Agent 2, Jurassic Park: The Game, The Walking Dead, Poker Night 2, The Wolf Among Us, The Walking Dead Season Two, Tales from the Borderlands, Game of Thrones - A Telltale Games Series, Minecraft: Story Mode (Seasons One and Two), The Walking Dead: Michonne, Batman (Seasons One and Two), The Walking Dead: The Final Season, The Walking Dead : The Telltale Definitive Series, Sam &amp; Max Save the World Remastered, Sam &amp; Max Beyond Time and Space Remastered, Sam &amp; Max The Devil's Playhouse Remastered and Poker Night at the Inventory - Remastered.
+- Telltale Texas Hold 'Em
+- Bone: Out from Boneville
+- CSI: 3 Dimensions of Murder
+- Bone: The Great Cow Race
+- Sam &amp; Max: Save the World (2006)
+- CSI: Hard Evidence
+- Sam &amp; Max: Beyond Time and Space (2007)
+- Strong Bad's Cool Game for Attractive People
+- Wallace &amp; Gromit's Grand Adventures
+- CSI: Deadly Intent
+- Tales of Monkey Island
+- Sam &amp; Max: The Devil's Playhouse (2010)
+- Puzzle Agent 1
+- Poker Night at the Inventory
+- CSI: Fatal Conspiracy
+- Back to the Future: The Game
+- Hector: Badge of Carnage
+- Puzzle Agent 2
+- Jurassic Park: The Game
+- Law &amp; Order: Legacies
+- The Walking Dead: Season One
+- Poker Night 2
+- The Wolf Among Us
+- The Walking Dead: Season Two
+- Tales from the Borderlands (2015 &amp; 2021 versions)
+- Game of Thrones: The Telltale Series
+- Minecraft: Story Mode - A Telltale Games Series
+- The Walking Dead: Michonne - A Telltale Miniseries
+- Batman - The Telltale Series
+- The Walking Dead: A New Frontier
+- Marvel's Guardians of the Galaxy: The Telltale Series
+- Minecraft: Story Mode - Season Two
+- Batman: The Enemy Within - The Telltale Series
+- The Walking Dead: The Final Season
+- The Walking Dead: The Telltale Definitive Series
+- Sam &amp; Max: Save the World - Remastered
+- Sam &amp; Max: Beyond Time and Space - Remastered
+- Sam &amp; Max: The Devil's Playhouse - Remastered
+- Poker Night at the Inventory - Remastered
 Maybe some games doesn't work.
 
 ===

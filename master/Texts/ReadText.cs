@@ -23,8 +23,75 @@ namespace TTG_Tools.Texts
                     return 2;
                 }
             }
-            
+
+            //Telltale Explorer Style: first line is an [id] header, followed by Category= and Speech=.
+            if (strs.Length >= 3 && IsIdHeader(strs[0]) && strs[1].IndexOf("Category=") == 0 && strs[2].IndexOf("Speech=") == 0)
+            {
+                return 3;
+            }
+
             return 0;
+        }
+
+        //A Telltale Explorer entry header looks like "[123456]" (only digits inside the brackets).
+        private static bool IsIdHeader(string line)
+        {
+            if (line == null) return false;
+            line = line.Trim();
+            if (line.Length < 3 || line[0] != '[' || line[line.Length - 1] != ']') return false;
+            return Methods.IsNumeric(line.Substring(1, line.Length - 2));
+        }
+
+        private static List<CommonText> TelltaleExplorerMode(string FilePath)
+        {
+            List<CommonText> txts = new List<CommonText>();
+            FileInfo fi = new FileInfo(FilePath);
+
+            try
+            {
+                string[] lines = File.ReadAllLines(FilePath, Encoding.UTF8);
+                CommonText cur = new CommonText();
+                bool have = false;
+
+                for (int i = 0; i < lines.Length; i++)
+                {
+                    string line = lines[i];
+
+                    if (IsIdHeader(line))
+                    {
+                        if (have) txts.Add(cur);
+
+                        string idText = line.Trim();
+                        cur = new CommonText();
+                        cur.strNumber = Convert.ToUInt32(idText.Substring(1, idText.Length - 2));
+                        cur.actorName = "";
+                        cur.actorSpeechOriginal = "";
+                        cur.actorSpeechTranslation = "";
+                        cur.flags = "";
+                        cur.isBothSpeeches = false;
+                        have = true;
+                    }
+                    else if (have && line.IndexOf("Category=") == 0)
+                    {
+                        cur.actorName = line.Substring("Category=".Length);
+                    }
+                    else if (have && line.IndexOf("Speech=") == 0)
+                    {
+                        string speech = line.Substring("Speech=".Length);
+                        cur.actorSpeechOriginal = speech;
+                        cur.actorSpeechTranslation = speech;
+                    }
+                }
+
+                if (have) txts.Add(cur);
+
+                return txts;
+            }
+            catch
+            {
+                MessageBox.Show("Something wrong with file\r\n" + fi.Name, "Error");
+                return null;
+            }
         }
 
         private static List<CommonText> OldTextMode(string FilePath)
@@ -422,6 +489,25 @@ namespace TTG_Tools.Texts
 
                 case 2:
                     strings = NewTextMode(FilePath);
+
+                    for (int i = 0; i < strings.Count; i++)
+                    {
+                        CommonText tmpTxt = strings[i];
+
+                        if (tmpTxt.actorSpeechTranslation.Contains("\\t")) tmpTxt.actorSpeechTranslation = tmpTxt.actorSpeechTranslation.Replace("\\t", "\t");
+                        if (tmpTxt.actorSpeechTranslation.Contains("\\r")) tmpTxt.actorSpeechTranslation = tmpTxt.actorSpeechTranslation.Replace("\\r", "\r");
+                        if (tmpTxt.actorSpeechTranslation.Contains("\\n")) tmpTxt.actorSpeechTranslation = tmpTxt.actorSpeechTranslation.Replace("\\n", "\n");
+
+                        if (tmpTxt.actorSpeechOriginal.Contains("\\t")) tmpTxt.actorSpeechOriginal = tmpTxt.actorSpeechOriginal.Replace("\\t", "\t");
+                        if (tmpTxt.actorSpeechOriginal.Contains("\\r")) tmpTxt.actorSpeechOriginal = tmpTxt.actorSpeechOriginal.Replace("\\r", "\r");
+                        if (tmpTxt.actorSpeechOriginal.Contains("\\n")) tmpTxt.actorSpeechOriginal = tmpTxt.actorSpeechOriginal.Replace("\\n", "\n");
+
+                        strings[i] = tmpTxt;
+                    }
+                    break;
+
+                case 3:
+                    strings = TelltaleExplorerMode(FilePath);
 
                     for (int i = 0; i < strings.Count; i++)
                     {

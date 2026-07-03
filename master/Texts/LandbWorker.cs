@@ -610,18 +610,7 @@ namespace TTG_Tools.Texts
                     if (MainMenu.settings.sortSameString) txts = Methods.SortString(txts);
 
                     string outputFile = MainMenu.settings.pathForOutputFolder + "\\" + fi.Name.Remove(fi.Name.Length - 5, 5);
-                    outputFile += MainMenu.settings.tsvFormat ? "tsv" : "txt";
-
-                    switch(MainMenu.settings.newTxtFormat)
-                    {
-                        case true:
-                            Texts.SaveText.NewMethod(txts.txtList, landbs.isUnicode, outputFile);
-                            break;
-
-                        default:
-                            Texts.SaveText.OldMethod(txts.txtList, false, landbs.isUnicode, outputFile);
-                            break;
-                    }
+                    Texts.SaveText.SaveByFormat(txts.txtList, false, landbs.isUnicode, outputFile);
 
                     txts.txtList.Clear();
                     txts = null;

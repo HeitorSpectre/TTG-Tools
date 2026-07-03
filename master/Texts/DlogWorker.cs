@@ -495,18 +495,7 @@ namespace TTG_Tools.Texts
                     if (MainMenu.settings.sortSameString) txts = Methods.SortString(txts);
 
                     string outputFile = MainMenu.settings.pathForOutputFolder + Path.DirectorySeparatorChar + fi.Name.Remove(fi.Name.Length - 4, 4);
-                    outputFile += MainMenu.settings.tsvFormat ? "tsv" : "txt";
-
-                    switch(MainMenu.settings.newTxtFormat)
-                    {
-                        case true:
-                            Texts.SaveText.NewMethod(txts.txtList, false, outputFile);
-                            break;
-
-                        default:
-                            Texts.SaveText.OldMethod(txts.txtList, false, false, outputFile);
-                            break;
-                    }
+                    Texts.SaveText.SaveByFormat(txts.txtList, false, false, outputFile);
 
                     txts.txtList.Clear();
                     txts = null;

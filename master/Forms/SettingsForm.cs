@@ -30,11 +30,11 @@ namespace TTG_Tools
         private RadioButton rbNormalUnicode, rbNonNormalUnicode2, rbNewBttF, rbTwdNintendoSwitch;
 
         // Text
-        private RadioButton rbTxt, rbTsv, rbNewTxt;
+        private RadioButton rbTxt, rbTsv, rbNewTxt, rbTelltaleExplorer;
         private CheckBox chkChangeLangFlags, chkImportNames, chkSortStrings, chkExportRealID, chkIgnoreEmpty;
 
         // Image / textures
-        private CheckBox chkDeleteDDS, chkDeleteD3DTX;
+        private CheckBox chkDeleteDDS, chkDeleteD3DTX, chkExtractPng;
 
         // Normalization
         private CheckBox chkNormNewline, chkRemoveBlanksCjk, chkReplaceDot;
@@ -58,7 +58,7 @@ namespace TTG_Tools
             StartPosition = FormStartPosition.CenterParent;
             MaximizeBox = false;
             MinimizeBox = false;
-            ClientSize = new Size(474, 340);
+            ClientSize = new Size(474, 358);
 
             // ---- Profile bar ----
             Label lblProfile = new Label { Left = 12, Top = 16, Width = 48, Text = "Profile" };
@@ -77,7 +77,7 @@ namespace TTG_Tools
             Controls.Add(btnDeleteProfile);
 
             // ---- Tabs ----
-            TabControl tabs = new TabControl { Left = 12, Top = 44, Width = 450, Height = 250 };
+            TabControl tabs = new TabControl { Left = 12, Top = 44, Width = 450, Height = 268 };
             TabPage tabGeneral = new TabPage("General / folders");
             TabPage tabLanguage = new TabPage("Language");
             TabPage tabText = new TabPage("Text");
@@ -93,11 +93,11 @@ namespace TTG_Tools
             BuildNormalizationTab(tabNorm);
 
             // ---- Bottom buttons ----
-            btnSave = new Button { Left = 206, Top = 304, Width = 72, Text = "Save" };
+            btnSave = new Button { Left = 206, Top = 322, Width = 72, Text = "Save" };
             btnSave.Click += btnSave_Click;
-            btnOk = new Button { Left = 300, Top = 304, Width = 72, Text = "OK" };
+            btnOk = new Button { Left = 300, Top = 322, Width = 72, Text = "OK" };
             btnOk.Click += btnOk_Click;
-            btnCancel = new Button { Left = 390, Top = 304, Width = 72, Text = "Cancel" };
+            btnCancel = new Button { Left = 390, Top = 322, Width = 72, Text = "Cancel" };
             btnCancel.Click += (s, e) => Close();
             Controls.Add(btnSave);
             Controls.Add(btnOk);
@@ -185,20 +185,22 @@ namespace TTG_Tools
 
         private void BuildTextTab(TabPage tab)
         {
-            GroupBox grp = new GroupBox { Left = 12, Top = 10, Width = 418, Height = 90, Text = "Text file format" };
+            GroupBox grp = new GroupBox { Left = 12, Top = 10, Width = 418, Height = 108, Text = "Text file format" };
             rbTxt = new RadioButton { Left = 12, Top = 18, Width = 398, Text = "Plain text (.txt)" };
             rbTsv = new RadioButton { Left = 12, Top = 40, Width = 398, Text = "TSV (.tsv)" };
             rbNewTxt = new RadioButton { Left = 12, Top = 62, Width = 398, Text = "New txt format (langid / actor / speech)" };
+            rbTelltaleExplorer = new RadioButton { Left = 12, Top = 84, Width = 398, Text = "Telltale Explorer Style ([id] / Category / Speech)" };
             rbNewTxt.CheckedChanged += newTxtFormatRB_CheckedChanged;
             grp.Controls.Add(rbTxt);
             grp.Controls.Add(rbTsv);
             grp.Controls.Add(rbNewTxt);
+            grp.Controls.Add(rbTelltaleExplorer);
 
-            chkChangeLangFlags = new CheckBox { Left = 26, Top = 106, AutoSize = true, Text = "Change language flags" };
-            chkImportNames = new CheckBox { Left = 12, Top = 128, AutoSize = true, Text = "Import actor names" };
-            chkSortStrings = new CheckBox { Left = 12, Top = 150, AutoSize = true, Text = "Sort identical strings" };
-            chkExportRealID = new CheckBox { Left = 12, Top = 172, AutoSize = true, Text = "Export real ID" };
-            chkIgnoreEmpty = new CheckBox { Left = 12, Top = 194, AutoSize = true, Text = "Ignore empty strings" };
+            chkChangeLangFlags = new CheckBox { Left = 26, Top = 124, AutoSize = true, Text = "Change language flags" };
+            chkImportNames = new CheckBox { Left = 12, Top = 146, AutoSize = true, Text = "Import actor names" };
+            chkSortStrings = new CheckBox { Left = 12, Top = 168, AutoSize = true, Text = "Sort identical strings" };
+            chkExportRealID = new CheckBox { Left = 12, Top = 190, AutoSize = true, Text = "Export real ID" };
+            chkIgnoreEmpty = new CheckBox { Left = 12, Top = 212, AutoSize = true, Text = "Ignore empty strings" };
 
             tab.Controls.Add(grp);
             tab.Controls.Add(chkChangeLangFlags);
@@ -210,8 +212,12 @@ namespace TTG_Tools
 
         private void BuildImageTab(TabPage tab)
         {
-            chkDeleteDDS = new CheckBox { Left = 12, Top = 16, AutoSize = true, Text = "Delete DDS files after import" };
-            chkDeleteD3DTX = new CheckBox { Left = 12, Top = 40, AutoSize = true, Text = "Delete D3DTX files after import" };
+            chkExtractPng = new CheckBox { Left = 12, Top = 16, AutoSize = true, Text = "Extract textures as PNG (convert back on import)" };
+            Label pngHint = new Label { Left = 28, Top = 38, AutoSize = true, MaximumSize = new Size(400, 0), ForeColor = SystemColors.GrayText, Text = "Beginner-friendly. Unsupported formats (BC6/BC7/PVRTC) fall back to DDS automatically." };
+            chkDeleteDDS = new CheckBox { Left = 12, Top = 72, AutoSize = true, Text = "Delete DDS files after import" };
+            chkDeleteD3DTX = new CheckBox { Left = 12, Top = 96, AutoSize = true, Text = "Delete D3DTX files after import" };
+            tab.Controls.Add(chkExtractPng);
+            tab.Controls.Add(pngHint);
             tab.Controls.Add(chkDeleteDDS);
             tab.Controls.Add(chkDeleteD3DTX);
         }
@@ -260,6 +266,7 @@ namespace TTG_Tools
 
                 if (MainMenu.settings.tsvFormat) rbTsv.Checked = true;
                 else if (MainMenu.settings.newTxtFormat) rbNewTxt.Checked = true;
+                else if (MainMenu.settings.telltaleExplorerFormat) rbTelltaleExplorer.Checked = true;
                 else rbTxt.Checked = true;
 
                 chkChangeLangFlags.Enabled = MainMenu.settings.newTxtFormat;
@@ -272,6 +279,7 @@ namespace TTG_Tools
                 chkIgnoreEmpty.Checked = MainMenu.settings.ignoreEmptyStrings;
 
                 chkDeleteDDS.Checked = MainMenu.settings.deleteDDSafterImport;
+                chkExtractPng.Checked = MainMenu.settings.extractTexturesAsPng;
                 chkDeleteD3DTX.Checked = MainMenu.settings.deleteD3DTXafterImport;
 
                 chkNormNewline.Checked = MainMenu.settings.normalizePunctuationBeforeNewlineInImport;
@@ -294,6 +302,7 @@ namespace TTG_Tools
             MainMenu.settings.sortSameString = chkSortStrings.Checked;
             MainMenu.settings.deleteD3DTXafterImport = chkDeleteD3DTX.Checked;
             MainMenu.settings.deleteDDSafterImport = chkDeleteDDS.Checked;
+            MainMenu.settings.extractTexturesAsPng = chkExtractPng.Checked;
             MainMenu.settings.exportRealID = chkExportRealID.Checked;
             MainMenu.settings.importingOfName = chkImportNames.Checked;
             MainMenu.settings.changeLangFlags = chkChangeLangFlags.Checked;
@@ -305,16 +314,10 @@ namespace TTG_Tools
 
             SettingsShared.SaveUnicodeMode(rbNonNormalUnicode2, rbNewBttF, rbTwdNintendoSwitch);
 
-            if (rbTsv.Checked)
-            {
-                MainMenu.settings.tsvFormat = true;
-                MainMenu.settings.newTxtFormat = false;
-            }
-            else
-            {
-                MainMenu.settings.newTxtFormat = rbNewTxt.Checked;
-                MainMenu.settings.tsvFormat = false;
-            }
+            //The four format radios are mutually exclusive, so each flag mirrors its radio.
+            MainMenu.settings.tsvFormat = rbTsv.Checked;
+            MainMenu.settings.newTxtFormat = rbNewTxt.Checked;
+            MainMenu.settings.telltaleExplorerFormat = rbTelltaleExplorer.Checked;
 
             MainMenu.settings.ASCII_N = (int)numAscii.Value;
 

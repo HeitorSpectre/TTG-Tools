@@ -50,6 +50,59 @@ namespace TTG_Tools.Texts
             return s;
         }
 
+        // Central format dispatcher used by every text export path. outputPathNoExt already
+        // ends with a dot (e.g. "name."), so the extension is appended here based on settings.
+        public static void SaveByFormat(List<CommonText> txt, bool isDoubledFile, bool isUnicode, string outputPathNoExt)
+        {
+            if (MainMenu.settings.telltaleExplorerFormat)
+            {
+                TelltaleExplorerMethod(txt, isUnicode, outputPathNoExt + "txt");
+                return;
+            }
+
+            string outputPath = outputPathNoExt + (MainMenu.settings.tsvFormat ? "tsv" : "txt");
+
+            if (MainMenu.settings.newTxtFormat) NewMethod(txt, isUnicode, outputPath);
+            else OldMethod(txt, isDoubledFile, isUnicode, outputPath);
+        }
+
+        // Telltale Explorer Style format: one entry per string, delimited by an [id] line,
+        // followed by "Category=" (actor) and "Speech=" (text). Control characters are escaped
+        // (\r \n \t) so each speech stays on a single line; ReadText reverses this on import.
+        public static void TelltaleExplorerMethod(List<CommonText> txt, bool isUnicode, string outputPath)
+        {
+            if (File.Exists(outputPath)) File.Delete(outputPath);
+
+            FileStream fs = new FileStream(outputPath, FileMode.CreateNew);
+            StreamWriter sw = new StreamWriter(fs, Encoding.UTF8);
+
+            try
+            {
+                for (int i = 0; i < txt.Count; i++)
+                {
+                    sw.Write("[" + txt[i].strNumber + "]\r\n");
+                    sw.Write("Category=" + txt[i].actorName + "\r\n");
+
+                    string speech = txt[i].actorSpeechTranslation ?? "";
+                    if (speech.Contains("\r")) speech = speech.Replace("\r", "\\r");
+                    if (speech.Contains("\n")) speech = speech.Replace("\n", "\\n");
+                    if (speech.Contains("\t")) speech = speech.Replace("\t", "\\t");
+
+                    speech = isUnicode && MainMenu.settings.unicodeSettings == 1 ? Methods.ConvertString(speech, true) : speech;
+
+                    sw.Write("Speech=" + speech + "\r\n");
+                }
+
+                sw.Close();
+                fs.Close();
+            }
+            catch
+            {
+                if (sw != null) sw.Close();
+                if (fs != null) fs.Close();
+            }
+        }
+
         public static void OldMethod(List<CommonText> txt, bool isDoubledFile, bool isUnicode, string outputPath)
         {
             if (File.Exists(outputPath)) File.Delete(outputPath);

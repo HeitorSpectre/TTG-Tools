@@ -127,6 +127,7 @@
     <Compile Include="Graphics\DDS\Caps.cs" />
     <Compile Include="Graphics\DDS\dds.cs" />
     <Compile Include="Graphics\DDS\Decompress.cs" />
+    <Compile Include="Graphics\DDS\DdsPngConverter.cs" />
     <Compile Include="Graphics\DDS\Flags.cs" />
     <Compile Include="Graphics\DDS\SomeActions.cs" />
     <Compile Include="Graphics\FontWorker.cs" />
