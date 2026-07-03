@@ -189,6 +189,8 @@ Maybe some games doesn't work.
 v.1.16.1 (03.07.2026)
 + Auto(De)Packer:
 Added PS2 texture and font extraction and reinsertion support.
+Added the "Telltale Explorer Style" text format ([id] / Category / Speech) for export and import.
+Added an option to extract textures as PNG and convert them back on import (supports uncompressed and BC1-BC5; unsupported formats fall back to DDS).
 Added CJK text normalization on import (removes spacing between CJK characters, converts ASCII dots near CJK to a full-width Chinese period, and fixes punctuation before line breaks).
 Fixed a crash when opening Poker Night at the Inventory - Remastered .font files.
 Fixed an error when extracting files with search or format filters enabled.
@@ -198,9 +200,11 @@ Added Xbox 360 texture and font editing for older games that previously had no s
 Fixed the font texture preview showing all gray (added BC4 / DX10 decoding).
 + Lua Editor:
 Added a new Lua Editor to extract, reinsert, create and edit custom Lua scripts for the games.
+The Lua Editor now warns when JDK 21 (required by the decompiler) is not installed.
 + TTG Tools:
 Added settings profiles (a separate configuration per game) and unified the settings into a single tabbed window.
 Input and Output folders are now created automatically next to the program on first launch.
+Rebuilt the About window as a read-only panel with clickable links.
 Reorganized the source code.
 
 v.1.16.0 (09.05.2026)
