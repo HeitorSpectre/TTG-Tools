@@ -504,7 +504,7 @@ namespace TTG_Tools.Texts
                 }
                 
                 index = type == 1 ? Methods.GetIndex(commonTexts, landb.landbs[i].anmID) : Methods.GetIndex(commonTexts, landb.landbs[i].stringNumber);
-                if (index != -1) landb.landbs[i].actorSpeech = commonTexts[index].actorSpeechTranslation;
+                if (index != -1) landb.landbs[i].actorSpeech = Methods.NormalizeImportedText(commonTexts[index].actorSpeechTranslation);
 
                 if (landb.isUnicode && MainMenu.settings.unicodeSettings == 1) landb.landbs[i].actorSpeech = Methods.ConvertString(landb.landbs[i].actorSpeech, false);
                 /*if(landb.isUnicode && (MainMenu.settings.unicodeSettings == 2) && (landb.landbs[i].actorName.Contains("\""))) 

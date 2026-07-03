@@ -12,7 +12,7 @@
     <AssemblyName>TTG Tools</AssemblyName>
     <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
-    <ApplicationIcon>ttgtool.ico</ApplicationIcon>
+    <ApplicationIcon>Resources\ttgtool.ico</ApplicationIcon>
     <IsWebBootstrapper>false</IsWebBootstrapper>
     <FileUpgradeFlags>
     </FileUpgradeFlags>
@@ -88,37 +88,31 @@
     <Reference Include="System.XML" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="About.cs">
+    <Compile Include="Forms\About.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="About.Designer.cs">
+    <Compile Include="Forms\About.Designer.cs">
       <DependentUpon>About.cs</DependentUpon>
     </Compile>
-    <Compile Include="ArchivePacker.cs">
+    <Compile Include="Forms\ArchivePacker.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="ArchivePacker.Designer.cs">
+    <Compile Include="Forms\ArchivePacker.Designer.cs">
       <DependentUpon>ArchivePacker.cs</DependentUpon>
     </Compile>
-    <Compile Include="ArchiveUnpacker.cs">
+    <Compile Include="Forms\ArchiveUnpacker.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="ArchiveUnpacker.Designer.cs">
+    <Compile Include="Forms\ArchiveUnpacker.Designer.cs">
       <DependentUpon>ArchiveUnpacker.cs</DependentUpon>
     </Compile>
-    <Compile Include="AutoDePackerSettings.cs">
+    <Compile Include="Forms\AutoPacker.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="AutoDePackerSettings.Designer.cs">
-      <DependentUpon>AutoDePackerSettings.cs</DependentUpon>
-    </Compile>
-    <Compile Include="AutoPacker.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="AutoPacker.Designer.cs">
+    <Compile Include="Forms\AutoPacker.Designer.cs">
       <DependentUpon>AutoPacker.cs</DependentUpon>
     </Compile>
-    <Compile Include="blowfish.cs" />
+    <Compile Include="Core\blowfish.cs" />
     <Compile Include="ClassesStructs\fileInfoClass.cs" />
     <Compile Include="ClassesStructs\FlagsClass.cs" />
     <Compile Include="ClassesStructs\PropertyClass.cs" />
@@ -127,7 +121,7 @@
     <Compile Include="ClassesStructs\Text\LangdbClass.cs" />
     <Compile Include="ClassesStructs\Ttarch2Class.cs" />
     <Compile Include="ClassesStructs\TtarchClass.cs" />
-    <Compile Include="CRCs.cs" />
+    <Compile Include="Core\CRCs.cs" />
     <Compile Include="ClassesStructs\FontClass.cs" />
     <Compile Include="ClassesStructs\TextureClass.cs" />
     <Compile Include="Graphics\DDS\Caps.cs" />
@@ -139,45 +133,64 @@
     <Compile Include="Graphics\WiiSupport.cs" />
     <Compile Include="Graphics\PVR\pvr.cs" />
     <Compile Include="Graphics\Swizzles\PS4.cs" />
+    <Compile Include="Graphics\Swizzles\PS2.cs" />
     <Compile Include="Graphics\Swizzles\PSVita.cs" />
     <Compile Include="Graphics\Swizzles\SwizzleUtilities.cs" />
     <Compile Include="Graphics\Swizzles\Xbox360.cs" />
+    <Compile Include="Graphics\Xbox360\D3dtx.cs" />
+    <Compile Include="Graphics\Xbox360\DxtEncoder.cs" />
+    <Compile Include="Graphics\Xbox360\LzxDecoder.cs" />
+    <Compile Include="Graphics\Xbox360\LzxEncoder.cs" />
+    <Compile Include="Graphics\Xbox360\TelltaleType2.cs" />
+    <Compile Include="Graphics\Xbox360\XboxTexture.cs" />
+    <Compile Include="Graphics\Xbox360\Xbox360Support.cs" />
+    <Compile Include="Graphics\Xbox360\XboxFontSupport.cs" />
     <Compile Include="InEngineWords\ClassStructsNames.cs" />
     <Compile Include="InEngineWords\VariableTypes.cs" />
-    <Compile Include="Settings.cs" />
-    <Compile Include="ForThreads.cs" />
-    <Compile Include="FontEditor.cs">
+    <Compile Include="Core\Settings.cs" />
+    <Compile Include="Core\SettingsShared.cs" />
+    <Compile Include="Forms\SettingsForm.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="FontEditor.Designer.cs">
+    <Compile Include="Core\ForThreads.cs" />
+    <Compile Include="Forms\FontEditor.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\FontEditor.Designer.cs">
       <DependentUpon>FontEditor.cs</DependentUpon>
     </Compile>
-    <Compile Include="FormSettings.cs">
+    <Compile Include="Controls\BufferedPanel.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Controls\CodeRichTextBox.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Forms\LuaEditor.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="FormSettings.Designer.cs">
-      <DependentUpon>FormSettings.cs</DependentUpon>
+    <Compile Include="Forms\LuaEditor.Designer.cs">
+      <DependentUpon>LuaEditor.cs</DependentUpon>
     </Compile>
     <Compile Include="Graphics\Swizzles\NintendoSwitch.cs" />
-    <Compile Include="TextEditor.cs">
+    <Compile Include="Forms\TextEditor.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="TextEditor.Designer.cs">
+    <Compile Include="Forms\TextEditor.Designer.cs">
       <DependentUpon>TextEditor.cs</DependentUpon>
     </Compile>
-    <Compile Include="MainMenu.cs">
+    <Compile Include="Forms\MainMenu.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="MainMenu.Designer.cs">
+    <Compile Include="Forms\MainMenu.Designer.cs">
       <DependentUpon>MainMenu.cs</DependentUpon>
     </Compile>
-    <Compile Include="ModCreator.cs">
+    <Compile Include="Forms\ModCreator.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="ModCreator.Designer.cs">
+    <Compile Include="Forms\ModCreator.Designer.cs">
       <DependentUpon>ModCreator.cs</DependentUpon>
     </Compile>
-    <Compile Include="Methods.cs" />
+    <Compile Include="Core\Methods.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Graphics\TextureWorker.cs" />
@@ -187,34 +200,35 @@
     <Compile Include="Texts\LangdbWorker.cs" />
     <Compile Include="Texts\ReadText.cs" />
     <Compile Include="Texts\SaveText.cs" />
-    <Compile Include="Updater.cs" />
+    <Compile Include="Core\Updater.cs" />
     <Compile Include="Wrapper\OodleTools.cs" />
-    <EmbeddedResource Include="About.resx">
+    <EmbeddedResource Include="Forms\About.resx">
       <DependentUpon>About.cs</DependentUpon>
       <SubType>Designer</SubType>
     </EmbeddedResource>
-    <EmbeddedResource Include="ArchivePacker.resx">
+    <EmbeddedResource Include="Forms\ArchivePacker.resx">
       <DependentUpon>ArchivePacker.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="ArchiveUnpacker.resx">
+    <EmbeddedResource Include="Forms\ArchiveUnpacker.resx">
       <DependentUpon>ArchiveUnpacker.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="AutoDePackerSettings.resx">
-      <DependentUpon>AutoDePackerSettings.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="AutoPacker.resx">
+    <EmbeddedResource Include="Forms\AutoPacker.resx">
       <DependentUpon>AutoPacker.cs</DependentUpon>
       <SubType>Designer</SubType>
     </EmbeddedResource>
-    <EmbeddedResource Include="FontEditor.resx">
+    <EmbeddedResource Include="Forms\FontEditor.resx">
       <DependentUpon>FontEditor.cs</DependentUpon>
       <SubType>Designer</SubType>
     </EmbeddedResource>
-    <EmbeddedResource Include="MainMenu.resx">
+    <EmbeddedResource Include="Forms\LuaEditor.resx">
+      <DependentUpon>LuaEditor.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Forms\MainMenu.resx">
       <DependentUpon>MainMenu.cs</DependentUpon>
       <SubType>Designer</SubType>
     </EmbeddedResource>
-    <EmbeddedResource Include="ModCreator.resx">
+    <EmbeddedResource Include="Forms\ModCreator.resx">
       <DependentUpon>ModCreator.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Properties\Resources.resx">
@@ -222,11 +236,7 @@
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
       <SubType>Designer</SubType>
     </EmbeddedResource>
-    <EmbeddedResource Include="FormSettings.resx">
-      <DependentUpon>FormSettings.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="TextEditor.resx">
+    <EmbeddedResource Include="Forms\TextEditor.resx">
       <DependentUpon>TextEditor.cs</DependentUpon>
       <SubType>Designer</SubType>
     </EmbeddedResource>
@@ -249,7 +259,10 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Resources\IconSave.ico" />
-    <Content Include="ttgtool.ico" />
+    <Content Include="Resources\ttgtool.ico" />
+    <Content Include="LencTools\**\*.*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
   <ItemGroup>
     <BootstrapperPackage Include="Microsoft.Net.Client.3.5">

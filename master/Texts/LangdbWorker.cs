@@ -273,7 +273,7 @@ namespace TTG_Tools.Texts
                 }
 
                 index = type == 1 ? Methods.GetIndex(commonTexts, langdb.langdbs[i].anmID) : Methods.GetIndex(commonTexts, langdb.langdbs[i].stringNumber);
-                if (index != -1) langdb.langdbs[i].actorSpeech = commonTexts[index].actorSpeechTranslation;
+                if (index != -1) langdb.langdbs[i].actorSpeech = Methods.NormalizeImportedText(commonTexts[index].actorSpeechTranslation);
 
                 if(MainMenu.settings.newTxtFormat && MainMenu.settings.changeLangFlags && (index != -1))
                 {
@@ -677,12 +677,12 @@ namespace TTG_Tools.Texts
                 e.oldNameStart = br.BaseStream.Position - entriesStart;
                 byte[] prefixBytes = br.ReadBytes(prefixLen);
                 br.ReadByte(); // explicit NUL
-                e.actorName = enc.GetString(prefixBytes);
+                e.actorName = Methods.DecodeCsiPs2ControllerTags(enc.GetString(prefixBytes));
 
                 e.oldTextStart = br.BaseStream.Position - entriesStart;
                 byte[] textBytes = br.ReadBytes(textLen);
                 br.ReadByte(); // explicit NUL
-                e.actorSpeech = enc.GetString(textBytes);
+                e.actorSpeech = Methods.DecodeCsiPs2ControllerTags(enc.GetString(textBytes));
 
                 // anm and vox are NUL-terminated C-strings (no length prefix).
                 // Empty = single NUL byte.
@@ -761,8 +761,8 @@ namespace TTG_Tools.Texts
 
         private static void WriteBMS3Entry(BinaryWriter bw, ref BMS3Entry e, Encoding enc, long entriesStart, bool isLastEntry)
         {
-            byte[] prefixBytes = enc.GetBytes(e.actorName ?? string.Empty);
-            byte[] textBytes = enc.GetBytes(e.actorSpeech ?? string.Empty);
+            byte[] prefixBytes = enc.GetBytes(Methods.EncodeCsiPs2ControllerTags(e.actorName ?? string.Empty));
+            byte[] textBytes = enc.GetBytes(Methods.EncodeCsiPs2ControllerTags(e.actorSpeech ?? string.Empty));
             byte[] anmBytes = enc.GetBytes(e.anmFile ?? string.Empty);
             byte[] voxBytes = enc.GetBytes(e.voxFile ?? string.Empty);
             long unalignedEntrySize = 44L + prefixBytes.Length + textBytes.Length + anmBytes.Length + voxBytes.Length;
@@ -912,9 +912,7 @@ namespace TTG_Tools.Texts
         {
             FileInfo fi = new FileInfo(InputFile);
             byte[] buffer = File.ReadAllBytes(InputFile);
-            Encoding enc;
-            try { enc = Encoding.GetEncoding(MainMenu.settings.ASCII_N); }
-            catch { enc = Encoding.GetEncoding(1252); }
+            Encoding enc = Encoding.GetEncoding(1252);
 
             using (MemoryStream ms = new MemoryStream(buffer))
             using (BinaryReader br = new BinaryReader(ms))
@@ -1020,7 +1018,7 @@ namespace TTG_Tools.Texts
 
                             if (MainMenu.settings.importingOfName)
                                 e.actorName = imported.txtList[idx].actorName;
-                            e.actorSpeech = imported.txtList[idx].actorSpeechTranslation;
+                            e.actorSpeech = Methods.NormalizeImportedText(imported.txtList[idx].actorSpeechTranslation);
 
                             if (MainMenu.settings.newTxtFormat && MainMenu.settings.changeLangFlags
                                 && imported.txtList[idx].flags != null)

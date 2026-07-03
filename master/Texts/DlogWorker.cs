@@ -384,7 +384,7 @@ namespace TTG_Tools.Texts
                     }
 
                     index = Methods.GetIndex(commonTexts, dlog.landb.landbs[i].lang[j].stringNumber);
-                    if(index != -1) dlog.landb.landbs[i].lang[j].actorSpeech = commonTexts[index].actorSpeechTranslation;
+                    if(index != -1) dlog.landb.landbs[i].lang[j].actorSpeech = Methods.NormalizeImportedText(commonTexts[index].actorSpeechTranslation);
                 }
             }
 

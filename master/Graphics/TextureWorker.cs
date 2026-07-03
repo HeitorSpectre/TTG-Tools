@@ -879,7 +879,21 @@ namespace TTG_Tools.Graphics
             FileInfo fi = new FileInfo(InputFile);
 
             string ext = fi.Extension.ToLowerInvariant();
-            if (MainMenu.settings.swizzleNintendoWii && (ext == ".d3dtx" || ext == ".font"))
+            if ((extract || MainMenu.settings.swizzlePS2) && (ext == ".d3dtx" || ext == ".font"))
+            {
+                string ps2Result;
+                if (extract && PS2.TryExtractContainer(InputFile, OutputDir, out ps2Result))
+                {
+                    return ps2Result;
+                }
+
+                if (!extract && PS2.TryRepackContainer(InputFile, fi.DirectoryName, OutputDir, out ps2Result))
+                {
+                    return ps2Result;
+                }
+            }
+
+            if ((extract || MainMenu.settings.swizzleNintendoWii) && (ext == ".d3dtx" || ext == ".font"))
             {
                 string wiiResult;
                 if (extract && WiiSupport.TryExtractWiiContainer(InputFile, OutputDir, out wiiResult))
@@ -897,6 +911,30 @@ namespace TTG_Tools.Graphics
                         File.WriteAllBytes(outPath, encryptedData);
                     }
                     return wiiResult;
+                }
+            }
+
+            // Xbox 360 Telltale textures/fonts (raw tiled DXT or LZX-compressed
+            // "Type 2"). Auto-detected by header markers - returns false for
+            // non-Xbox files so the regular pipeline takes over.
+            if (ext == ".d3dtx" || ext == ".font")
+            {
+                string xboxResult;
+                if (extract && Xbox360.Xbox360Support.TryExtractContainer(InputFile, OutputDir, out xboxResult))
+                {
+                    return xboxResult;
+                }
+
+                if (!extract && Xbox360.Xbox360Support.TryRepackContainer(InputFile, fi.DirectoryName, OutputDir, out xboxResult))
+                {
+                    if (FullEncrypt && EncKey != null)
+                    {
+                        string outPath = Path.Combine(OutputDir, fi.Name);
+                        byte[] encryptedData = File.ReadAllBytes(outPath);
+                        Methods.meta_crypt(encryptedData, EncKey, version, false);
+                        File.WriteAllBytes(outPath, encryptedData);
+                    }
+                    return xboxResult;
                 }
             }
 
