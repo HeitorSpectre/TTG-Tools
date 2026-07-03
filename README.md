@@ -27,18 +27,21 @@ This version of TTG Tools includes some modifications and has been uploaded with
 
 TTG Tools makes it easier to translate and modify Telltale Games and Skunkape Games. It currently supports (at least tested on) the following games:
 
-* Telltale Texas Hold'em
+* Telltale Texas Hold ‘Em
 * Bone: Out from Boneville
 * CSI: 3 Dimensions of Murder
 * Bone: The Great Cow Race
 * Sam & Max: Save the World (2006)
+* CSI: Hard Evidence
 * Sam & Max: Beyond Time and Space (2007)
 * Strong Bad's Cool Game for Attractive People
 * Wallace & Gromit's Grand Adventures
+* CSI: Deadly Intent
 * Tales of Monkey Island
 * Sam & Max: The Devil's Playhouse (2010)
 * Puzzle Agent 1
 * Poker Night at the Inventory
+* CSI: Fatal Conspiracy
 * Back to the Future: The Game
 * Hector: Badge of Carnage
 * Puzzle Agent 2
@@ -50,13 +53,13 @@ TTG Tools makes it easier to translate and modify Telltale Games and Skunkape Ga
 * The Walking Dead: Season Two
 * Tales from the Borderlands (2015 & 2021 versions)
 * Game of Thrones: The Telltale Series
-* Minecraft: Story Mode - Season One
-* The Walking Dead: Michonne
-* Batman: The Telltale Series
+* Minecraft: Story Mode - A Telltale Games Series
+* The Walking Dead: Michonne - A Telltale Miniseries
+* Batman - The Telltale Series
 * The Walking Dead: A New Frontier
 * Marvel’s Guardians of the Galaxy: The Telltale Series
 * Minecraft: Story Mode - Season Two
-* Batman: The Enemy Within
+* Batman: The Enemy Within - The Telltale Series
 * The Walking Dead: The Final Season
 * The Walking Dead: The Telltale Definitive Series
 * Sam & Max: Save the World - Remastered
