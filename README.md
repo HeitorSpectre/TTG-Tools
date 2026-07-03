@@ -9,15 +9,15 @@ This version of TTG Tools includes some modifications and has been uploaded with
 
 ## Special Thanks
 
-- Den Em for allowing the source code to be uploaded  
-- Aluigi for the source code of `ttarchext`  
-- Taylor Hornby for the C# source code of Blowfish encryption  
-- Gdkchan, Stella/AboodXD for the Nintendo Switch swizzle method  
-- Daemon1 and tge for the PS4 swizzle algorithm  
-- Josh Tamely for the Oodle wrapper  
-- Hajin Jang for the Zlib wrapper  
-- [Nemiroff](https://github.com/Nemiroff/TTG-Tools) for fixing a bug in the Font Editor  
-- [Krisp](https://github.com/KSP0O) for adding Xbox and Wii textures support and font editing with Swizzle
+- [Den Em](https://steamcommunity.com/id/DenEm) for allowing the source code to be uploaded. 
+- [Aluigi](https://aluigi.altervista.org/) for the source code of `ttarchext`.
+- [Taylor Hornby](https://github.com/defuse) for the C# source code of Blowfish encryption. 
+- [Gdkchan](https://github.com/gdkchan), Stella/[AboodXD](https://github.com/aboood40091) for the Nintendo Switch swizzle method.
+- [Daemon1](https://reshax.com/profile/8-id-daemon/) and tge for the PS4 swizzle algorithm.  
+- [Josh Tamely](https://github.com/Tamely) for the Oodle wrapper.  
+- [Hajin Jang](https://github.com/ied206/ZLibWrapper) for the Zlib wrapper.
+- [Nemiroff](https://github.com/Nemiroff/TTG-Tools) for fixing a bug in the Font Editor.  
+- [Krisp](https://github.com/KSP0O) for adding Xbox and Wii textures support and font editing with Swizzle.
 - [Pashok6798](https://www.zoneofgames.ru) for all your support to the community and for trusting us.
 - [Benny](https://quickandeasysoftware.net) for sending the encryption key for Poker Night at the Inventory - Remastered.
 - [Gekonnn](https://github.com/gekonnn/lenctools) for LencTools.
