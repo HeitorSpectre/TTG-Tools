@@ -1,6 +1,6 @@
 # TTG Tools by Den Em and Pashok6798
 
-TTG Tools is a powerful utility for modifying files from Telltale Games, including texts (.landb, .langdb, and .dlog for *Sam & Max*, and .prop containing texts in *The Walking Dead*), textures (.d3dtx) for PC, Xbox 360, PS4, PS3, PS Vita, Nintendo Switch, Nintendo Wii, IOS and Android, fonts (.font), as well as extracting and creating archive files (.ttarch, .ttarch2 and obb). It also allows decryption of .lua and .lenc files used by Telltale Games.
+TTG Tools is a powerful utility for modifying files from Telltale Games and Skunkape Games, including texts (.landb, .langdb, and .dlog for *Sam & Max*, and .prop containing texts in *The Walking Dead: Season One and Poker Night at the Inventory - Remastered*), textures (.d3dtx) for PC, Xbox 360, PS4, PS3, PS2, PS Vita, Nintendo Switch, Nintendo Wii, IOS and Android, fonts (.font), as well as extracting and creating archive files (.ttarch, .ttarch2 and .obb). It also allows extract, edit and decryption of .lua and .lenc files used by Telltale Games and Skunkape Games.
 
 This version of TTG Tools includes some modifications and has been uploaded with the permission of Den Em and Pashok6798 agreement.
 
@@ -20,7 +20,9 @@ This version of TTG Tools includes some modifications and has been uploaded with
 - [Nemiroff](https://github.com/Nemiroff/TTG-Tools) for fixing a bug in the Font Editor  
 - [Krisp](https://github.com/KSP0O) for adding Xbox and Wii textures support and font editing with Swizzle
 - [Pashok6798](https://www.zoneofgames.ru) for all your support to the community and for trusting us.
-- [Benny](https://quickandeasysoftware.net) for sending the encryption key for Poker Night at the Inventory - Remastered
+- [Benny](https://quickandeasysoftware.net) for sending the encryption key for Poker Night at the Inventory - Remastered.
+- [Gekonnn]([[https://github.com/gekonnn/lenctools]) for LencTools.
+- [PUC-Rio]([http://www.lua.inf.puc-rio.br/]) for lua source code.
 
 ## Features
 
