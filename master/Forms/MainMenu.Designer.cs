@@ -95,7 +95,7 @@
             this.archivePackerBtn.Name = "archivePackerBtn";
             this.archivePackerBtn.Size = new System.Drawing.Size(111, 23);
             this.archivePackerBtn.TabIndex = 12;
-            this.archivePackerBtn.Text = "Archive packer";
+            this.archivePackerBtn.Text = "Archive Packer";
             this.archivePackerBtn.UseVisualStyleBackColor = true;
             this.archivePackerBtn.Click += new System.EventHandler(this.button5_Click);
             // 
@@ -106,7 +106,7 @@
             this.arcUnpackerBtn.Name = "arcUnpackerBtn";
             this.arcUnpackerBtn.Size = new System.Drawing.Size(111, 23);
             this.arcUnpackerBtn.TabIndex = 13;
-            this.arcUnpackerBtn.Text = "Archive unpacker";
+            this.arcUnpackerBtn.Text = "Archive Unpacker";
             this.arcUnpackerBtn.UseVisualStyleBackColor = true;
             this.arcUnpackerBtn.Click += new System.EventHandler(this.arcUnpackerBtn_Click);
             // 

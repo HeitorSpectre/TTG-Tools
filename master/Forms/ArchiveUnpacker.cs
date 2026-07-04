@@ -42,6 +42,270 @@ namespace TTG_Tools
             return folderDialog.ShowDialog() == CommonFileDialogResult.Ok ? folderDialog.FileName : null;
         }
 
+        #region Automatic game detection
+
+        //Tries to figure out which game an archive belongs to by locating the key from MainMenu.gamelist
+        //that correctly decrypts it. Returns the game index, or -1 when the game can't be told apart
+        //(archive is not encrypted, or no key in the list matched). Never throws and never touches the
+        //shared ttarch/ttarch2 state, so it's safe to run on a background thread before the real read.
+        private static int TryDetectGameIndex(string path)
+        {
+            try
+            {
+                string ext = Path.GetExtension(path).ToLower();
+
+                if (ext == ".ttarch") return DetectTtarchKey(path);
+                if (ext == ".ttarch2" || ext == ".obb") return DetectTtarch2Key(path);
+            }
+            catch { }
+
+            return -1;
+        }
+
+        private static int DetectTtarchKey(string path)
+        {
+            byte[] header;
+            int version;
+
+            //Read the raw (still encrypted) directory header. Returns false when the archive isn't
+            //Blowfish-encrypted, in which case the game can't be identified from the header.
+            if (!TryReadTtarchRawHeader(path, out header, out version) || header == null) return -1;
+
+            for (int g = 0; g < MainMenu.gamelist.Count; g++)
+            {
+                try
+                {
+                    byte[] copy = (byte[])header.Clone();
+                    BlowFishCS.BlowFish dec = new BlowFishCS.BlowFish(MainMenu.gamelist[g].key, version);
+                    byte[] decrypted = dec.Crypt_ECB(copy, version, true);
+
+                    if (IsSaneTtarchHeader(decrypted)) return g;
+                }
+                catch { }
+            }
+
+            return -1;
+        }
+
+        private static bool TryReadTtarchRawHeader(string path, out byte[] header, out int version)
+        {
+            header = null;
+            version = 0;
+
+            using (FileStream fs = new FileStream(path, FileMode.Open, FileAccess.Read))
+            using (BinaryReader br = new BinaryReader(fs))
+            {
+                version = br.ReadInt32();
+                int encryption = br.ReadInt32();
+                int two = br.ReadInt32();
+
+                int val = 0;
+
+                if (version > 2)
+                {
+                    val = br.ReadInt32();
+                    int countCompressedBlocks = br.ReadInt32();
+
+                    if (val == 2)
+                    {
+                        for (int k = 0; k < countCompressedBlocks; k++) br.ReadInt32();
+                    }
+
+                    br.ReadUInt32(); //Size of block with files
+
+                    if (version >= 4)
+                    {
+                        br.ReadInt32(); //priority
+                        br.ReadInt32(); //priority2
+
+                        if (version >= 7)
+                        {
+                            br.ReadInt32();
+                            br.ReadInt32();
+                            br.ReadInt32(); //chunkSize
+
+                            if (version > 7)
+                            {
+                                br.ReadByte();
+                                if (version == 9) br.ReadUInt32(); //crc32
+                            }
+                        }
+                    }
+                }
+
+                int headerSize = br.ReadInt32();
+                int cHeaderSize = -1;
+
+                if (version >= 7 && val == 2) cHeaderSize = br.ReadInt32();
+
+                byte[] raw = (version >= 7 && val == 2) ? br.ReadBytes(cHeaderSize) : br.ReadBytes(headerSize);
+
+                if (version >= 7 && val == 2) raw = DecompressForDetect(raw, -1, 0);
+
+                //Not Blowfish-encrypted: the header parses regardless of the key, so the game
+                //can't be identified. Leave the current selection untouched.
+                if (encryption != 1) return false;
+
+                header = raw;
+                return header != null;
+            }
+        }
+
+        private static bool IsSaneTtarchHeader(byte[] header)
+        {
+            if (header == null || header.Length < 8) return false;
+
+            using (MemoryStream ms = new MemoryStream(header))
+            using (BinaryReader br = new BinaryReader(ms))
+            {
+                int dirsCount = br.ReadInt32();
+                if (dirsCount < 0 || dirsCount > 100000) return false;
+
+                for (int d = 0; d < dirsCount; d++)
+                {
+                    if (ms.Position + 4 > ms.Length) return false;
+                    int nameLen = br.ReadInt32();
+                    if (nameLen < 0 || nameLen > 4096 || ms.Position + nameLen > ms.Length) return false;
+                    if (!IsPrintableAscii(br.ReadBytes(nameLen))) return false;
+                }
+
+                if (ms.Position + 4 > ms.Length) return false;
+                int filesCount = br.ReadInt32();
+                if (filesCount <= 0 || filesCount > 5000000) return false;
+
+                if (ms.Position + 4 > ms.Length) return false;
+                int fnameLen = br.ReadInt32();
+                if (fnameLen <= 0 || fnameLen > 4096 || ms.Position + fnameLen > ms.Length) return false;
+
+                return IsPrintableAscii(br.ReadBytes(fnameLen));
+            }
+        }
+
+        private static int DetectTtarch2Key(string path)
+        {
+            using (FileStream fs = new FileStream(path, FileMode.Open, FileAccess.Read))
+            using (BinaryReader br = new BinaryReader(fs))
+            {
+                string magic = Encoding.ASCII.GetString(br.ReadBytes(4));
+
+                //Only encrypted archives (ECTT/eCTT) can be told apart by their key.
+                bool isEncrypted = magic == "ECTT" || magic == "eCTT";
+                if (!isEncrypted) return -1;
+
+                int compressAlgorithm = (magic == "eCTT" || magic == "zCTT") ? 2 : 1;
+                if (magic == "eCTT" || magic == "zCTT") br.ReadInt32();
+
+                uint chunkSize = br.ReadUInt32();
+                int blocksCount = br.ReadInt32();
+                if (blocksCount <= 0) return -1;
+
+                ulong val1 = br.ReadUInt64();
+                ulong firstBlock = 0;
+
+                for (int i = 0; i < blocksCount; i++)
+                {
+                    ulong val2 = br.ReadUInt64();
+                    if (i == 0) firstBlock = val2 - val1;
+                    val1 = val2;
+                }
+
+                long cFilesOffset = br.BaseStream.Position;
+                if (firstBlock == 0 || firstBlock > (ulong)(fs.Length - cFilesOffset)) return -1;
+
+                byte[] block0 = br.ReadBytes((int)firstBlock);
+
+                for (int g = 0; g < MainMenu.gamelist.Count; g++)
+                {
+                    try
+                    {
+                        byte[] tmp = (byte[])block0.Clone();
+                        BlowFishCS.BlowFish dec = new BlowFishCS.BlowFish(MainMenu.gamelist[g].key, 7);
+                        tmp = dec.Crypt_ECB(tmp, 7, true);
+
+                        byte[] decompressed = DecompressForDetect(tmp, compressAlgorithm, chunkSize);
+
+                        if (IsSaneTtarch2Sub(decompressed)) return g;
+                    }
+                    catch { }
+                }
+            }
+
+            return -1;
+        }
+
+        private static bool IsSaneTtarch2Sub(byte[] data)
+        {
+            if (data == null || data.Length < 16) return false;
+
+            using (MemoryStream ms = new MemoryStream(data))
+            using (BinaryReader br = new BinaryReader(ms))
+            {
+                string sub = Encoding.ASCII.GetString(br.ReadBytes(4));
+                if (sub == "3ATT") br.ReadInt32();
+
+                if (ms.Position + 8 > ms.Length) return false;
+                uint nameSize = br.ReadUInt32();
+                uint filesCount = br.ReadUInt32();
+
+                if (filesCount == 0 || filesCount > 10000000) return false;
+                if (nameSize == 0 || nameSize > 200000000) return false;
+
+                return true;
+            }
+        }
+
+        //Self-contained decompression for detection so the shared ttarch/ttarch2 state is never touched.
+        //algorithm: -1 = try zlib/deflate/oodle in turn, 1 = deflate, 2 = oodle, anything else = zlib.
+        private static byte[] DecompressForDetect(byte[] bytes, int algorithm, uint chunkSize)
+        {
+            try
+            {
+                switch (algorithm)
+                {
+                    case 1: return DeflateDecompressor(bytes);
+                    case 2: return OodleDecompressForDetect(bytes, chunkSize);
+                    case -1:
+                        try { return ZLibDecompressor(bytes); }
+                        catch
+                        {
+                            try { return DeflateDecompressor(bytes); }
+                            catch { return OodleDecompressForDetect(bytes, chunkSize); }
+                        }
+                    default: return ZLibDecompressor(bytes);
+                }
+            }
+            catch { return null; }
+        }
+
+        private static byte[] OodleDecompressForDetect(byte[] bytes, uint chunkSize)
+        {
+            long decBufSize = chunkSize > 0 ? (long)chunkSize : bytes.Length;
+            byte[] outBuf = new byte[decBufSize];
+
+            int size = OodleTools.Imports.OodleLZ_Decompress(bytes, bytes.Length, outBuf, decBufSize, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3);
+            if (size <= 0) return null;
+
+            byte[] tmp = new byte[size];
+            Array.Copy(outBuf, 0, tmp, 0, size);
+            return tmp;
+        }
+
+        private static bool IsPrintableAscii(byte[] bytes)
+        {
+            if (bytes == null || bytes.Length == 0) return false;
+
+            for (int i = 0; i < bytes.Length; i++)
+            {
+                byte b = bytes[i];
+                //Allow standard printable ASCII plus a few separators that show up in paths.
+                if (b < 0x20 || b > 0x7E) return false;
+            }
+
+            return true;
+        }
+
+        #endregion
+
         private async Task OpenArchiveFile(string filePath)
         {
             try
@@ -54,6 +318,18 @@ namespace TTG_Tools
                 ttarch2 = null;
 
                 if (progressBar1.Value > 0) progressBar1.Value = 0;
+
+                //Auto-detect which game this archive belongs to by finding the key that decrypts it.
+                //Skipped when the user opted for a custom key, so manual choice is always honored.
+                if (!useCustomKeyCB.Checked)
+                {
+                    int detected = await Task.Run(() => TryDetectGameIndex(fi.FullName));
+
+                    if (detected >= 0 && detected < gameListCB.Items.Count && detected != gameListCB.SelectedIndex)
+                    {
+                        gameListCB.SelectedIndex = detected;
+                    }
+                }
 
                 byte[] key = MainMenu.gamelist[gameListCB.SelectedIndex].key;
 
@@ -94,7 +370,7 @@ namespace TTG_Tools
                         return;
                 }
 
-                if (Form.ActiveForm != null) Form.ActiveForm.Text = "Archive unpacker. Opened file: " + fi.Name;
+                if (Form.ActiveForm != null) Form.ActiveForm.Text = "Archive Unpacker. Opened file: " + fi.Name;
             }
             catch (Exception ex)
             {

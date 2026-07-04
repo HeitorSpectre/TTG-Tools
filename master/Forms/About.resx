@@ -201,9 +201,12 @@ Fixed the font texture preview showing all gray (added BC4 / DX10 decoding).
 + Lua Editor:
 Added a new Lua Editor to extract, reinsert, create and edit custom Lua scripts for the games.
 The Lua Editor now warns when JDK 21 (required by the decompiler) is not installed.
++ Archive Unpacker:
+Added automatic game detection: when an archive is opened, the tool finds the game whose key decrypts it and selects it automatically (encrypted .ttarch/.ttarch2/.obb; skipped when a custom key is used).
 + TTG Tools:
 Added settings profiles (a separate configuration per game) and unified the settings into a single tabbed window.
 Input and Output folders are now created automatically next to the program on first launch.
+Renamed the main menu buttons and windows to "Archive Unpacker" and "Archive Packer".
 Rebuilt the About window as a read-only panel with clickable links.
 Reorganized the source code.
 

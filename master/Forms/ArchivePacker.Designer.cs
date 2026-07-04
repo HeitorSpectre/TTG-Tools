@@ -393,7 +393,7 @@
             this.MaximizeBox = false;
             this.MinimizeBox = true;
             this.Name = "ArchivePacker";
-            this.Text = "Archive packer";
+            this.Text = "Archive Packer";
             this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.ArchivePacker_FormClosing);
             this.Load += new System.EventHandler(this.ArchivePacker_Load);
             this.groupBox1.ResumeLayout(false);
