@@ -22,6 +22,7 @@ This version of TTG Tools includes some modifications and has been uploaded with
 - [Benny](https://quickandeasysoftware.net) for sending the encryption key for Poker Night at the Inventory - Remastered.
 - [Gekonnn](https://github.com/gekonnn/lenctools) for LencTools.
 - [PUC-Rio](http://www.lua.inf.puc-rio.br/) for lua source code.
+- AMD (AddrLib), Exzap and [AboodXD](https://github.com/aboood40091) for the Nintendo Wii U (GX2) swizzle method.
 
 ## Features
 
