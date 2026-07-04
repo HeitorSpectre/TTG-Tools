@@ -216,6 +216,7 @@ namespace TTG_Tools
                 if (MainMenu.settings.swizzlePS4) NewTex.platform.platform = 11;
                 if (MainMenu.settings.swizzleXbox360) NewTex.platform.platform = 4;
                 if (MainMenu.settings.swizzlePSVita) NewTex.platform.platform = 9;
+                if (MainMenu.settings.swizzleNintendoWiiU) NewTex.platform.platform = 13;
             }
             else
             {
@@ -353,6 +354,16 @@ namespace TTG_Tools
                             {
                                 NewTex.Tex.Textures[i].MipSize = NewTex.Tex.Textures[i].Block.Length;
                             }
+                        }
+                        break;
+                    case 13:
+                        // Nintendo Wii U (GX2): DDS BGRA -> GX2 RGBA (uncompressed only), then
+                        // linear -> tiled/padded. The atlas often grows, so keep MipSize in sync.
+                        if (WiiU.IsSupportedFormat(NewTex.TextureFormat))
+                        {
+                            WiiU.FixColorChannels(NewTex.Tex.Textures[i].Block, NewTex.TextureFormat);
+                            NewTex.Tex.Textures[i].Block = WiiU.Swizzle(NewTex.Tex.Textures[i].Block, NewTex.Width, NewTex.Height, NewTex.TextureFormat, i);
+                            NewTex.Tex.Textures[i].MipSize = NewTex.Tex.Textures[i].Block.Length;
                         }
                         break;
                 }

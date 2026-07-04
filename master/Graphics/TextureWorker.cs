@@ -1318,6 +1318,7 @@ namespace TTG_Tools.Graphics
                         if (MainMenu.settings.swizzlePS4) tex.platform.platform = 11;
                         if (MainMenu.settings.swizzleXbox360) tex.platform.platform = 4;
                         if (MainMenu.settings.swizzlePSVita) tex.platform.platform = 9;
+                        if (MainMenu.settings.swizzleNintendoWiiU) tex.platform.platform = 13;
 
                         for(mode = 2; mode < 4; mode++)
                         {
@@ -1636,6 +1637,27 @@ namespace TTG_Tools.Graphics
                 }
             }
             // ====================================================================================
+            // NINTENDO WII U (GX2) - the swizzled/padded mip is larger than the linear DDS mip
+            // (macro tiling pads block dimensions to 32x16, micro to 8x8), so record the padded
+            // size in the header before writing, exactly like the other tiled platforms above.
+            // ====================================================================================
+            if (tex.platform.platform == 13 && Swizzles.WiiU.IsSupportedFormat(tex.TextureFormat))
+            {
+                tex.Tex.TexSize = 0;
+
+                for (int i = 0; i < tex.Tex.MipCount; i++)
+                {
+                    int wiiuMipSize = Swizzles.WiiU.GetSwizzledMipSize(tex.Width, tex.Height, tex.TextureFormat, i);
+
+                    if (wiiuMipSize > tex.Tex.Textures[i].MipSize)
+                    {
+                        tex.Tex.Textures[i].MipSize = wiiuMipSize;
+                    }
+
+                    tex.Tex.TexSize += (uint)tex.Tex.Textures[i].MipSize;
+                }
+            }
+            // ====================================================================================
 
             if (mode == 1 || mode == 2)
             {
@@ -1950,6 +1972,15 @@ namespace TTG_Tools.Graphics
 
                                 if (w > 1) w /= 2;
                                 if (h > 1) h /= 2;
+                            }
+                        }
+                        else if (tex.platform.platform == 13 && Swizzles.WiiU.IsSupportedFormat(tex.TextureFormat)) // Nintendo Wii U (GX2) Swizzle
+                        {
+                            for (int i = 0; i < tex.Tex.MipCount; i++)
+                            {
+                                // Inverse of extraction: DDS BGRA -> GX2 RGBA, then linear -> tiled/padded.
+                                Swizzles.WiiU.FixColorChannels(tex.Tex.Textures[i].Block, tex.TextureFormat);
+                                tex.Tex.Textures[i].Block = Swizzles.WiiU.Swizzle(tex.Tex.Textures[i].Block, tex.Width, tex.Height, tex.TextureFormat, i);
                             }
                         }
 
@@ -2695,6 +2726,18 @@ namespace TTG_Tools.Graphics
 
                         if (w > 1) w /= 2;
                         if (h > 1) h /= 2;
+                    }
+                }
+                else if (tex.platform.platform == 13 && Swizzles.WiiU.IsSupportedFormat(tex.TextureFormat)) // Nintendo Wii U (GX2) Deswizzle
+                {
+                    needsReconstruction = true;
+
+                    for (int i = 0; i < tex.Tex.MipCount; i++)
+                    {
+                        // Mip index i is mip level i (0 = largest); the swizzle module derives this
+                        // mip's dimensions, tile mode and padding from the base size + level.
+                        tex.Tex.Textures[i].Block = Swizzles.WiiU.Deswizzle(tex.Tex.Textures[i].Block, tex.Width, tex.Height, tex.TextureFormat, i);
+                        Swizzles.WiiU.FixColorChannels(tex.Tex.Textures[i].Block, tex.TextureFormat); // GX2 RGBA -> DDS BGRA
                     }
                 }
 

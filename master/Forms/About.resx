@@ -132,6 +132,7 @@ Special thanks to:
 - [Taylor Hornby](https://github.com/defuse) for the C# source code of Blowfish encryption.
 - [Gdkchan](https://github.com/gdkchan), Stella/[AboodXD](https://github.com/aboood40091) for the Nintendo Switch swizzle method.
 - [Daemon1](https://reshax.com/profile/8-id-daemon/) and tge for the PS4 swizzle algorithm.
+- AMD (AddrLib), Exzap and [AboodXD](https://github.com/aboood40091) for the Nintendo Wii U (GX2) swizzle method.
 - [Josh Tamely](https://github.com/Tamely) for the Oodle wrapper.
 - [Hajin Jang](https://github.com/ied206/ZLibWrapper) for the Zlib wrapper.
 - [Nemiroff](https://github.com/Nemiroff/TTG-Tools) for fixing a bug in the Font Editor.
@@ -189,6 +190,7 @@ Maybe some games doesn't work.
 v.1.16.1 (03.07.2026)
 + Auto(De)Packer:
 Added PS2 texture and font extraction and reinsertion support.
+Added Nintendo Wii U (GX2) texture and font extraction and reinsertion support (Minecraft: Story Mode).
 Added the "Telltale Explorer Style" text format ([id] / Category / Speech) for export and import.
 Added an option to extract textures as PNG and convert them back on import (supports uncompressed and BC1-BC5; unsupported formats fall back to DDS).
 Added CJK text normalization on import (removes spacing between CJK characters, converts ASCII dots near CJK to a full-width Chinese period, and fixes punctuation before line breaks).
@@ -196,6 +198,7 @@ Fixed a crash when opening Poker Night at the Inventory - Remastered .font files
 Fixed an error when extracting files with search or format filters enabled.
 + Font Editor:
 Added PS2 font editing support.
+Added Nintendo Wii U (GX2) font editing support.
 Added Xbox 360 texture and font editing for older games that previously had no support (in development).
 Fixed the font texture preview showing all gray (added BC4 / DX10 decoding).
 + Lua Editor:

@@ -138,6 +138,7 @@
     <Compile Include="Graphics\Swizzles\PSVita.cs" />
     <Compile Include="Graphics\Swizzles\SwizzleUtilities.cs" />
     <Compile Include="Graphics\Swizzles\Xbox360.cs" />
+    <Compile Include="Graphics\Swizzles\WiiU.cs" />
     <Compile Include="Graphics\Xbox360\D3dtx.cs" />
     <Compile Include="Graphics\Xbox360\DxtEncoder.cs" />
     <Compile Include="Graphics\Xbox360\LzxDecoder.cs" />
