@@ -306,13 +306,47 @@ namespace TTG_Tools
 
         #endregion
 
+        private bool _isOpening;
+        private string _pendingOpenPath;
+
+        //Drag-and-drop (and the Open menu) can fire a new open while the previous archive is still
+        //loading on a background thread. Serialize the opens so two of them never race on the shared
+        //ttarch/ttarch2 state: while one is loading, a new request just replaces the "pending" path
+        //and the running loop picks it up when it finishes, so the last file dropped always wins.
         private async Task OpenArchiveFile(string filePath)
+        {
+            if (_isOpening)
+            {
+                _pendingOpenPath = filePath;
+                return;
+            }
+
+            _isOpening = true;
+            try
+            {
+                while (filePath != null)
+                {
+                    _pendingOpenPath = null;
+                    await OpenArchiveFileCore(filePath);
+                    filePath = _pendingOpenPath;
+                }
+            }
+            finally
+            {
+                _isOpening = false;
+            }
+        }
+
+        private async Task OpenArchiveFileCore(string filePath)
         {
             try
             {
                 FileInfo fi = new FileInfo(filePath);
 
                 if(fi.Attributes.HasFlag(FileAttributes.ReadOnly) || !fi.Attributes.HasFlag(FileAttributes.Normal)) fi.Attributes = FileAttributes.Normal;
+
+                //Immediate feedback so the title reflects the drop right away, even while it loads.
+                Text = "Archive Unpacker. Loading: " + fi.Name;
 
                 ttarch = null;
                 ttarch2 = null;
@@ -367,13 +401,15 @@ namespace TTG_Tools
 
                     default:
                         MessageBox.Show("Unsupported file format. Please choose a .ttarch, .ttarch2 or .obb file.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        Text = "Archive Unpacker";
                         return;
                 }
 
-                if (Form.ActiveForm != null) Form.ActiveForm.Text = "Archive Unpacker. Opened file: " + fi.Name;
+                Text = "Archive Unpacker. Opened file: " + fi.Name;
             }
             catch (Exception ex)
             {
+                Text = "Archive Unpacker";
                 MessageBox.Show("Failed to open archive. " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
