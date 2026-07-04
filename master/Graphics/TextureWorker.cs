@@ -1319,6 +1319,7 @@ namespace TTG_Tools.Graphics
                         if (MainMenu.settings.swizzleXbox360) tex.platform.platform = 4;
                         if (MainMenu.settings.swizzlePSVita) tex.platform.platform = 9;
                         if (MainMenu.settings.swizzleNintendoWiiU) tex.platform.platform = 13;
+                        if (MainMenu.settings.swizzlePS3) tex.platform.platform = 5;
 
                         for(mode = 2; mode < 4; mode++)
                         {
@@ -1981,6 +1982,16 @@ namespace TTG_Tools.Graphics
                                 // Inverse of extraction: DDS BGRA -> GX2 RGBA, then linear -> tiled/padded.
                                 Swizzles.WiiU.FixColorChannels(tex.Tex.Textures[i].Block, tex.TextureFormat);
                                 tex.Tex.Textures[i].Block = Swizzles.WiiU.Swizzle(tex.Tex.Textures[i].Block, tex.Width, tex.Height, tex.TextureFormat, i);
+                            }
+                        }
+                        else if (tex.platform.platform == 5 && Swizzles.PS3.IsSupportedFormat(tex.TextureFormat)) // Sony PS3 (RSX) Swizzle
+                        {
+                            // Inverse of extraction: DDS BGRA -> RSX RGBA, then linear -> Morton.
+                            // Size-preserving (pow2 uncompressed), so no MipSize pre-pass is needed.
+                            for (int i = 0; i < tex.Tex.MipCount; i++)
+                            {
+                                Swizzles.PS3.FixColorChannels(tex.Tex.Textures[i].Block, tex.TextureFormat);
+                                tex.Tex.Textures[i].Block = Swizzles.PS3.Swizzle(tex.Tex.Textures[i].Block, tex.Width, tex.Height, tex.TextureFormat, i);
                             }
                         }
 
@@ -2738,6 +2749,20 @@ namespace TTG_Tools.Graphics
                         // mip's dimensions, tile mode and padding from the base size + level.
                         tex.Tex.Textures[i].Block = Swizzles.WiiU.Deswizzle(tex.Tex.Textures[i].Block, tex.Width, tex.Height, tex.TextureFormat, i);
                         Swizzles.WiiU.FixColorChannels(tex.Tex.Textures[i].Block, tex.TextureFormat); // GX2 RGBA -> DDS BGRA
+                    }
+                }
+                else if (tex.platform.platform == 5 && Swizzles.PS3.IsSupportedFormat(tex.TextureFormat)) // Sony PS3 (RSX) Deswizzle
+                {
+                    // Only the uncompressed formats are Morton swizzled on the RSX; BC1/BC3
+                    // (platform 5 too) fail IsSupportedFormat and pass through as linear.
+                    needsReconstruction = true;
+
+                    for (int i = 0; i < tex.Tex.MipCount; i++)
+                    {
+                        // Mip index i is mip level i (0 = largest); the swizzle module derives
+                        // this mip's dimensions from the base size + level.
+                        tex.Tex.Textures[i].Block = Swizzles.PS3.Deswizzle(tex.Tex.Textures[i].Block, tex.Width, tex.Height, tex.TextureFormat, i);
+                        Swizzles.PS3.FixColorChannels(tex.Tex.Textures[i].Block, tex.TextureFormat); // RSX RGBA -> DDS BGRA
                     }
                 }
 

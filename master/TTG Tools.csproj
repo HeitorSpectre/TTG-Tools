@@ -134,6 +134,7 @@
     <Compile Include="Graphics\WiiSupport.cs" />
     <Compile Include="Graphics\PVR\pvr.cs" />
     <Compile Include="Graphics\Swizzles\PS4.cs" />
+    <Compile Include="Graphics\Swizzles\PS3.cs" />
     <Compile Include="Graphics\Swizzles\PS2.cs" />
     <Compile Include="Graphics\Swizzles\PSVita.cs" />
     <Compile Include="Graphics\Swizzles\SwizzleUtilities.cs" />

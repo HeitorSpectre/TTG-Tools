@@ -210,7 +210,7 @@ namespace TTG_Tools
             checkEncLangdb.Checked = MainMenu.settings.encLangdb;
             CheckNewEngine.Checked = MainMenu.settings.encNewLua;
 
-            if (MainMenu.settings.swizzlePS4 || MainMenu.settings.swizzleNintendoSwitch || MainMenu.settings.swizzleXbox360 || MainMenu.settings.swizzlePSVita || MainMenu.settings.swizzleNintendoWii || MainMenu.settings.swizzlePS2 || MainMenu.settings.swizzleNintendoWiiU)
+            if (MainMenu.settings.swizzlePS4 || MainMenu.settings.swizzleNintendoSwitch || MainMenu.settings.swizzleXbox360 || MainMenu.settings.swizzlePSVita || MainMenu.settings.swizzleNintendoWii || MainMenu.settings.swizzlePS2 || MainMenu.settings.swizzleNintendoWiiU || MainMenu.settings.swizzlePS3)
             {
                 if (MainMenu.settings.swizzleNintendoSwitch) rbSwitchSwizzle.Checked = true;
                 else if (MainMenu.settings.swizzlePS4) rbPS4Swizzle.Checked = true;
@@ -219,6 +219,7 @@ namespace TTG_Tools
                 else if (MainMenu.settings.swizzleNintendoWii) rbWiiSwizzle.Checked = true;
                 else if (MainMenu.settings.swizzlePS2) rbPS2Swizzle.Checked = true;
                 else if (MainMenu.settings.swizzleNintendoWiiU) rbWiiUSwizzle.Checked = true;
+                else if (MainMenu.settings.swizzlePS3) rbPS3Swizzle.Checked = true;
             }
             else rbNoSwizzle.Checked = true;
 
@@ -346,6 +347,7 @@ namespace TTG_Tools
                 MainMenu.settings.swizzleNintendoWii = false;
                 MainMenu.settings.swizzlePS2 = false;
                 MainMenu.settings.swizzleNintendoWiiU = false;
+                MainMenu.settings.swizzlePS3 = false;
                 Settings.SaveConfig(MainMenu.settings);
             }
         }
@@ -361,6 +363,7 @@ namespace TTG_Tools
                 MainMenu.settings.swizzleNintendoWii = false;
                 MainMenu.settings.swizzlePS2 = false;
                 MainMenu.settings.swizzleNintendoWiiU = false;
+                MainMenu.settings.swizzlePS3 = false;
                 Settings.SaveConfig(MainMenu.settings);
             }
         }
@@ -376,6 +379,7 @@ namespace TTG_Tools
                 MainMenu.settings.swizzleNintendoWii = false;
                 MainMenu.settings.swizzlePS2 = false;
                 MainMenu.settings.swizzleNintendoWiiU = false;
+                MainMenu.settings.swizzlePS3 = false;
                 Settings.SaveConfig(MainMenu.settings);
             }
         }
@@ -391,6 +395,7 @@ namespace TTG_Tools
                 MainMenu.settings.swizzleNintendoWii = false;
                 MainMenu.settings.swizzlePS2 = false;
                 MainMenu.settings.swizzleNintendoWiiU = false;
+                MainMenu.settings.swizzlePS3 = false;
                 Settings.SaveConfig(MainMenu.settings);
             }
         }
@@ -406,6 +411,7 @@ namespace TTG_Tools
                 MainMenu.settings.swizzleNintendoWii = false;
                 MainMenu.settings.swizzlePS2 = false;
                 MainMenu.settings.swizzleNintendoWiiU = false;
+                MainMenu.settings.swizzlePS3 = false;
                 Settings.SaveConfig(MainMenu.settings);
             }
         }
@@ -422,6 +428,7 @@ namespace TTG_Tools
                 MainMenu.settings.swizzleNintendoWii = true;
                 MainMenu.settings.swizzlePS2 = false;
                 MainMenu.settings.swizzleNintendoWiiU = false;
+                MainMenu.settings.swizzlePS3 = false;
                 Settings.SaveConfig(MainMenu.settings);
             }
         }
@@ -437,6 +444,7 @@ namespace TTG_Tools
                 MainMenu.settings.swizzleNintendoWii = false;
                 MainMenu.settings.swizzlePS2 = true;
                 MainMenu.settings.swizzleNintendoWiiU = false;
+                MainMenu.settings.swizzlePS3 = false;
                 Settings.SaveConfig(MainMenu.settings);
             }
         }
@@ -452,6 +460,23 @@ namespace TTG_Tools
                 MainMenu.settings.swizzleNintendoWii = false;
                 MainMenu.settings.swizzlePS2 = false;
                 MainMenu.settings.swizzleNintendoWiiU = true;
+                MainMenu.settings.swizzlePS3 = false;
+                Settings.SaveConfig(MainMenu.settings);
+            }
+        }
+
+        private void rbPS3Swizzle_CheckedChanged(object sender, EventArgs e)
+        {
+            if (rbPS3Swizzle.Checked)
+            {
+                MainMenu.settings.swizzlePSVita = false;
+                MainMenu.settings.swizzlePS4 = false;
+                MainMenu.settings.swizzleNintendoSwitch = false;
+                MainMenu.settings.swizzleXbox360 = false;
+                MainMenu.settings.swizzleNintendoWii = false;
+                MainMenu.settings.swizzlePS2 = false;
+                MainMenu.settings.swizzleNintendoWiiU = false;
+                MainMenu.settings.swizzlePS3 = true;
                 Settings.SaveConfig(MainMenu.settings);
             }
         }

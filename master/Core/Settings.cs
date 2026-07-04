@@ -260,6 +260,7 @@ namespace TTG_Tools
         private bool _swizzlePSVita;
         private bool _swizzleNintendoWii;
         private bool _swizzleNintendoWiiU;
+        private bool _swizzlePS3;
         private bool _swizzlePS2;
         private bool _supportTwdNintendoSwitch;
 
@@ -838,6 +839,19 @@ namespace TTG_Tools
             set
             {
                 _swizzleNintendoWiiU = value;
+            }
+        }
+
+        [XmlAttribute("swizzlePS3")]
+        public bool swizzlePS3
+        {
+            get
+            {
+                return _swizzlePS3;
+            }
+            set
+            {
+                _swizzlePS3 = value;
             }
         }
 
