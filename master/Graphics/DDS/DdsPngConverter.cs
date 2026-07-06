@@ -176,6 +176,66 @@ namespace TTG_Tools.Graphics.DDS
             }
         }
 
+        // Converts an edited PNG into a single-mip PVR3 file holding uncompressed ARGB4444
+        // (Telltale eSurface_ARGB4, 0x04). This is the format the community iOS mods use to
+        // re-inject edited UI/textures: 2 bytes/pixel (half of ARGB8), no PVRTC re-encoder
+        // needed, and natively supported by the iOS engine. The 16-bit value is packed as
+        // B<<12 | G<<8 | R<<4 | A (alpha in the low nibble) so it is the exact inverse of
+        // TextureWorker.DecodeUncompressedToRgba's 0x04 path. The PVR pixel-format label is
+        // "rgba4444" (ChannelType 4), matching GenPvrHeader's 0x04 case so the re-insert
+        // pipeline reads it back as texture format 0x04.
+        public static byte[] PngToPvrArgb4(byte[] png)
+        {
+            try
+            {
+                int w, h;
+                byte[] rgba = PngToRgba(png, out w, out h);
+                if (rgba == null || w <= 0 || h <= 0) return null;
+
+                int px = w * h;
+                byte[] data = new byte[px * 2];
+                for (int i = 0; i < px; i++)
+                {
+                    int r = (rgba[i * 4] * 15 + 127) / 255;
+                    int g = (rgba[i * 4 + 1] * 15 + 127) / 255;
+                    int b = (rgba[i * 4 + 2] * 15 + 127) / 255;
+                    int a = (rgba[i * 4 + 3] * 15 + 127) / 255;
+                    int v = (b << 12) | (g << 8) | (r << 4) | a;
+                    data[i * 2] = (byte)(v & 0xFF);
+                    data[i * 2 + 1] = (byte)((v >> 8) & 0xFF);
+                }
+
+                return BuildArgb4PvrHeader(w, h).Concat(data);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        // 52-byte PVR3 header for a single-mip uncompressed rgba4444 surface.
+        private static byte[] BuildArgb4PvrHeader(int width, int height)
+        {
+            byte[] hdr = new byte[52];
+            using (MemoryStream ms = new MemoryStream(hdr))
+            using (BinaryWriter bw = new BinaryWriter(ms))
+            {
+                bw.Write(BitConverter.ToUInt32(System.Text.Encoding.ASCII.GetBytes("PVR\x03"), 0)); // Version
+                bw.Write((uint)0);                                                                  // Flags
+                bw.Write(BitConverter.ToUInt64(System.Text.Encoding.ASCII.GetBytes("rgba\x4\x4\x4\x4"), 0)); // PixelFormat
+                bw.Write((uint)0);   // ColorSpace (linear)
+                bw.Write((uint)4);   // ChannelType (unsigned short normalised)
+                bw.Write((uint)height);
+                bw.Write((uint)width);
+                bw.Write((uint)1);   // Depth
+                bw.Write((uint)1);   // Surface
+                bw.Write((uint)1);   // Face
+                bw.Write((uint)1);   // Mip
+                bw.Write((uint)0);   // MetaSize
+            }
+            return hdr;
+        }
+
         // Standard 128-byte DDS header for uncompressed ARGB8 / A8, matching what
         // TextureWorker.ReadDDSHeader detects (DDPF_RGB 32bpp -> ARGB8, DDPF_ALPHA 8bpp -> A8).
         private static byte[] BuildUncompressedDdsHeader(uint format, int width, int height, int mipCount)

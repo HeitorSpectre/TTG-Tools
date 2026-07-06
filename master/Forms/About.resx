@@ -187,7 +187,7 @@ Maybe some games doesn't work.
 ===
 [Version history]
 
-v.1.16.1 (03.07.2026)
+v.1.16.1 (06.07.2026)
 + Auto(De)Packer:
 Added PS2 texture and font extraction and reinsertion support.
 Added Nintendo Wii U (GX2) texture and font extraction and reinsertion support (Minecraft: Story Mode).
@@ -195,6 +195,7 @@ Added Sony PlayStation 3 (RSX) texture and font extraction and reinsertion suppo
 Added the "Telltale Explorer Style" text format ([id] / Category / Speech) for export and import.
 Added an option to extract textures as PNG and convert them back on import (supports uncompressed and BC1-BC5; unsupported formats fall back to DDS).
 Added PS Vita (PVRTC) texture support: platform 9 textures always extract as editable PNG (PVRTC 2bpp/4bpp is decoded to RGBA with a self-contained decoder, no external library needed) and are reinserted as lossless uncompressed textures, so PVR files no longer need to be edited by hand (A8 stays A8 and BC formats are preserved).
+Added Apple iOS (PVRTC) texture support for both engine generations - older games (Back to the Future: The Game) and newer ones (Game of Thrones, Marvel's Guardians of the Galaxy). Textures always extract as editable PNG (PVRTC 2bpp/4bpp decoded to RGBA with the self-contained decoder) and are reinserted as uncompressed ARGB4444, the same format used by the community iOS mods, so PVR files no longer need to be edited by hand and no PVRTC re-encoder is required.
 Added CJK text normalization on import (removes spacing between CJK characters, converts ASCII dots near CJK to a full-width Chinese period, and fixes punctuation before line breaks).
 Fixed a crash when opening Poker Night at the Inventory - Remastered .font files.
 Fixed an error when extracting files with search or format filters enabled.
@@ -203,8 +204,10 @@ Improved the localized options layout and kept the settings area separated from 
 Added PS2 font editing support.
 Added Nintendo Wii U (GX2) font editing support.
 Added Sony PlayStation 3 (RSX) font editing support.
+Added Apple iOS font editing: glyph atlases now preview correctly and can be exported and imported as PNG (reinserted as uncompressed ARGB4444), for both the old and new engines.
 Added Xbox 360 texture and font editing for older games that previously had no support (in development).
 Fixed the font texture preview showing all gray (added BC4 / DX10 decoding).
+Fixed an iOS font import that read the PVR pixel format into the wrong field, corrupting PVRTC-format fonts when reopened, and a stream-handling bug that could break importing a texture from a PVR file.
 + Lua Editor:
 Added a new Lua Editor to extract, reinsert, create and edit custom Lua scripts for the games.
 The Lua Editor now warns when JDK 21 (required by the decompiler) is not installed.

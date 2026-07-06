@@ -224,8 +224,13 @@ namespace TTG_Tools
             }
             else
             {
-                Graphics.TextureWorker.ReadPvrHeader(ms, ref NewTex.Width, ref NewTex.Height, ref NewTex.Mip, ref NewTex.platform.platform, true);
-                NewTex.platform.platform = (NewTex.platform.platform != 7) || (NewTex.platform.platform != 9) ? 7 : NewTex.platform.platform;
+                // Read the imported PVR's real pixel format into TextureFormat (an edited iOS PNG
+                // comes back as rgba4444 -> 0x04). Previously the format was read into
+                // platform.platform by mistake and then discarded, so a PVRTC-format font kept its
+                // old format id while receiving uncompressed data - producing garbage on re-open.
+                Graphics.TextureWorker.ReadPvrHeader(ms, ref NewTex.Width, ref NewTex.Height, ref NewTex.Mip, ref NewTex.TextureFormat, true);
+                NewTex.platform.platform = 7; // iOS
+                NewTex.isPVR = true;
             }
 
             NewTex.Mip = 1; //There is no need more than one mip map!
@@ -655,6 +660,24 @@ namespace TTG_Tools
             if (texContent == null || texContent.Length == 0 || width <= 0 || height <= 0)
             {
                 return null;
+            }
+
+            // iOS glyph atlases are PVR-wrapped (PVRTC / ARGB4444). Decode them so they preview
+            // like every other platform. DecodePvrContentToRgba returns R,G,B,A; the bitmap buffer
+            // needs B,G,R,A (Format32bppArgb memory order).
+            int pvrW, pvrH;
+            byte[] pvrRgba = Graphics.TextureWorker.DecodePvrContentToRgba(texContent, out pvrW, out pvrH);
+            if (pvrRgba != null)
+            {
+                byte[] pvrBgra = new byte[pvrRgba.Length];
+                for (int i = 0; i < pvrRgba.Length; i += 4)
+                {
+                    pvrBgra[i] = pvrRgba[i + 2];
+                    pvrBgra[i + 1] = pvrRgba[i + 1];
+                    pvrBgra[i + 2] = pvrRgba[i];
+                    pvrBgra[i + 3] = pvrRgba[i + 3];
+                }
+                return BuildBitmapFromRgbaBuffer(pvrBgra, pvrW, pvrH);
             }
 
             byte[] ddsPixels;
@@ -2652,8 +2675,10 @@ namespace TTG_Tools
             }
             else if ((font.tex != null && font.tex[file_n].isIOS) || (font.NewTex != null && font.NewTex[file_n].isPVR))
             {
-                saveFD.Filter = "PVR files (*.pvr)|*.pvr";
-                saveFD.FileName = font.FontName + "_" + file_n.ToString() + ".pvr";
+                // iOS glyph atlases are PVRTC - export as an editable PNG (decoded), matching the
+                // texture editor. Re-import as PNG puts it back as uncompressed ARGB4444.
+                saveFD.Filter = "PNG files (*.png)|*.png";
+                saveFD.FileName = font.FontName + "_" + file_n.ToString() + ".png";
             }
             else
             {
@@ -2684,6 +2709,20 @@ namespace TTG_Tools
                     return;
                 }
 
+                // iOS: decode the PVR-wrapped glyph atlas to RGBA and save as PNG.
+                if ((font.tex != null && font.tex[file_n].isIOS) || (font.NewTex != null && font.NewTex[file_n].isPVR))
+                {
+                    byte[] iosContent = font.NewFormat ? font.NewTex[file_n].Tex.Content : font.tex[file_n].Content;
+                    int iosW, iosH;
+                    byte[] iosRgba = Graphics.TextureWorker.DecodePvrContentToRgba(iosContent, out iosW, out iosH);
+                    if (iosRgba != null)
+                    {
+                        Methods.DeleteCurrentFile(saveFD.FileName);
+                        File.WriteAllBytes(saveFD.FileName, Graphics.DDS.DdsPngConverter.RgbaToPng(iosRgba, iosW, iosH));
+                        return;
+                    }
+                }
+
                 FileStream fs = new FileStream(saveFD.FileName, FileMode.Create);
                 Methods.DeleteCurrentFile(saveFD.FileName);
 
@@ -2707,13 +2746,17 @@ namespace TTG_Tools
             int file_n = dataGridViewWithTextures.SelectedCells[0].RowIndex;
             OpenFileDialog openFD = new OpenFileDialog();
 
+            bool isIosFont = (font.tex != null && font.tex[file_n].isIOS) || (font.NewTex != null && font.NewTex[file_n].isPVR);
+
             openFD.Filter = wiiFontData != null
                 ? "TGA files (*.tga)|*.tga"
                 : (ps2FontDocument != null
                     ? "PNG files (*.png)|*.png"
                     : (xboxFontData != null
                         ? "TGA files (*.tga)|*.tga"
-                        : "dds files (*.dds)|*.dds"));
+                        : (isIosFont
+                            ? "PNG files (*.png)|*.png"
+                            : "dds files (*.dds)|*.dds")));
 
 
             if (openFD.ShowDialog() == DialogResult.OK)
@@ -2769,6 +2812,41 @@ namespace TTG_Tools
                     font.tex[file_n].TexSize = argb.Length;
                     font.tex[file_n].TextureFormat = (uint)TextureClass.OldTextureFormat.DX_ARGB8888;
                     ps2ImportedTexturePaths[file_n] = openFD.FileName;
+                }
+                else if (isIosFont)
+                {
+                    // iOS: convert the edited PNG to uncompressed ARGB4444 wrapped in a PVR, then
+                    // store it exactly like the texture editor's re-inject path so SaveFont writes
+                    // it back (new format -> platform 7 / ARGB4 via ReplaceTexture; old ERTM format
+                    // -> mobTexFormat RGBA4444 via ReplaceOldTextures).
+                    byte[] iosPvr = Graphics.DDS.DdsPngConverter.PngToPvrArgb4(File.ReadAllBytes(openFD.FileName));
+                    if (iosPvr == null)
+                    {
+                        MessageBox.Show(Loc.T("FontEditor.msgIosPngFailed", "Could not convert the PNG for this iOS font texture."),
+                            Loc.T("FontEditor.titleIosPng", "iOS font import"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return;
+                    }
+
+                    if (font.NewFormat)
+                    {
+                        string tmpPvr = Path.Combine(Path.GetTempPath(), "ttg_iosfont_" + Guid.NewGuid().ToString("N") + ".pvr");
+                        File.WriteAllBytes(tmpPvr, iosPvr);
+                        try { ReplaceTexture(tmpPvr, font.NewTex[file_n]); }
+                        finally { try { File.Delete(tmpPvr); } catch { } }
+                    }
+                    else
+                    {
+                        var t = font.tex[file_n];
+                        MemoryStream ms = new MemoryStream(iosPvr);
+                        Graphics.TextureWorker.ReadPvrHeader(ms, ref t.Width, ref t.Height, ref t.Mip, ref t.mobTexFormat, false);
+                        ms.Close();
+                        int headSize = 0x34; // single-mip PVR3 header, no metadata
+                        t.TexSize = 0x34 + 1 + (iosPvr.Length - headSize);
+                        t.Content = new byte[(iosPvr.Length - headSize) + 1];
+                        Array.Copy(iosPvr, headSize, t.Content, 0, t.Content.Length - 1);
+                        t.OriginalWidth = t.Width;
+                        t.OriginalHeight = t.Height;
+                    }
                 }
                 else
                 {

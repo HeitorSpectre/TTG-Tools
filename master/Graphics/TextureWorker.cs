@@ -22,6 +22,88 @@ namespace TTG_Tools.Graphics
             return textureFormat == 0x50 || textureFormat == 0x51 || textureFormat == 0x52 || textureFormat == 0x53 || textureFormat == 0x70;
         }
 
+        // Decodes a PVR3-wrapped iOS texture buffer (52-byte header + pixel data, as stored in
+        // OldT3Texture.Content / NewT3Texture.Tex.Content for iOS) into 32-bit RGBA. Handles the
+        // PVRTC 2bpp/4bpp variants plus uncompressed rgba8888 / rgba4444 (the latter is what an
+        // edited PNG is re-injected as). Returns null for anything else. Used by the Font Editor
+        // to preview and export iOS font glyph atlases as PNG.
+        public static byte[] DecodePvrContentToRgba(byte[] pvrContent, out int width, out int height)
+        {
+            width = 0; height = 0;
+            if (pvrContent == null || pvrContent.Length < 52) return null;
+            if (!(pvrContent[0] == 'P' && pvrContent[1] == 'V' && pvrContent[2] == 'R' && pvrContent[3] == 3)) return null;
+
+            ulong pixelFormat = BitConverter.ToUInt64(pvrContent, 8);
+            int h = (int)BitConverter.ToUInt32(pvrContent, 24);
+            int w = (int)BitConverter.ToUInt32(pvrContent, 28);
+            uint metaSize = BitConverter.ToUInt32(pvrContent, 48);
+            int dataOffset = 52 + (int)metaSize;
+            if (w <= 0 || h <= 0 || dataOffset >= pvrContent.Length) return null;
+
+            byte[] data = new byte[pvrContent.Length - dataOffset];
+            Array.Copy(pvrContent, dataOffset, data, 0, data.Length);
+            width = w; height = h;
+
+            switch (pixelFormat)
+            {
+                case (ulong)pvr.HeaderFormat.PVRTC2bppRGB:  return PVR.PvrtcDecoder.Decode(data, w, h, true, true);
+                case (ulong)pvr.HeaderFormat.PVRTC2bppRGBA: return PVR.PvrtcDecoder.Decode(data, w, h, true, false);
+                case (ulong)pvr.HeaderFormat.PVRTC4bppRGB:  return PVR.PvrtcDecoder.Decode(data, w, h, false, true);
+                case (ulong)pvr.HeaderFormat.PVRTC4bppRGBA: return PVR.PvrtcDecoder.Decode(data, w, h, false, false);
+                case 0x404040461626772UL: // rgba4444 (edited PNG re-injected as ARGB4444)
+                    return DecodeUncompressedToRgba(data, w, h, 0x04);
+                case 0x105050561626772UL: // rgba5551 (old iOS font atlases: 5-5-5-1, alpha in low bit)
+                {
+                    int px = w * h;
+                    if (data.Length < px * 2) return null;
+                    byte[] rgba = new byte[px * 4];
+                    for (int i = 0; i < px; i++)
+                    {
+                        int v = data[i * 2] | (data[i * 2 + 1] << 8);
+                        int r5 = (v >> 1) & 0x1F, g5 = (v >> 6) & 0x1F, b5 = (v >> 11) & 0x1F;
+                        rgba[i * 4] = (byte)((r5 << 3) | (r5 >> 2));
+                        rgba[i * 4 + 1] = (byte)((g5 << 3) | (g5 >> 2));
+                        rgba[i * 4 + 2] = (byte)((b5 << 3) | (b5 >> 2));
+                        rgba[i * 4 + 3] = (byte)((v & 1) != 0 ? 0xFF : 0x00);
+                    }
+                    return rgba;
+                }
+                case 0x808080861626772UL: // rgba8888 (stored R,G,B,A directly in the PVR)
+                {
+                    int px = w * h;
+                    if (data.Length < px * 4) return null;
+                    byte[] rgba = new byte[px * 4];
+                    Array.Copy(data, rgba, px * 4);
+                    return rgba;
+                }
+                default: return null;
+            }
+        }
+
+        // Classifies an old-engine iOS (ERTM/"PVR!") mobTexFormat. Returns true for the PVRTC
+        // variants these games use (all 4bpp) and reports whether alpha is present.
+        private static bool IsOldIosPvrtc(uint mob, out bool is2Bpp, out bool opaque)
+        {
+            is2Bpp = false; // no 2bpp variants exist in the old iOS format table
+            switch (mob)
+            {
+                case (uint)ClassesStructs.TextureClass.OldTexturePVRFormat.PVRTC4bppRGB_1:
+                case (uint)ClassesStructs.TextureClass.OldTexturePVRFormat.PVRTC4bppRGB_2:
+                    opaque = true;
+                    return true;
+                case (uint)ClassesStructs.TextureClass.OldTexturePVRFormat.PVRTC4bppRGBA_1:
+                case (uint)ClassesStructs.TextureClass.OldTexturePVRFormat.PVRTC4bppRGBA_2:
+                case (uint)ClassesStructs.TextureClass.OldTexturePVRFormat.PVRTC4bppRGBA_3:
+                case (uint)ClassesStructs.TextureClass.OldTexturePVRFormat.PVRTC4bppRGBA_4:
+                case (uint)ClassesStructs.TextureClass.OldTexturePVRFormat.PVRTC4bppRGBA_5:
+                    opaque = false;
+                    return true;
+                default:
+                    opaque = true;
+                    return false;
+            }
+        }
+
         // Decodes an uncompressed, de-swizzled Vita mip block into 32-bit RGBA (R,G,B,A order).
         // Supports ARGB8 (0x00, stored BGRA) and A8 (0x10, alpha-only shown as grayscale).
         private static byte[] DecodeUncompressedToRgba(byte[] block, int width, int height, uint textureFormat)
@@ -54,6 +136,20 @@ namespace TTG_Tools.Graphics
                     rgba[i * 4 + 1] = a;
                     rgba[i * 4 + 2] = a;
                     rgba[i * 4 + 3] = 0xFF;
+                }
+                return rgba;
+            }
+
+            if (textureFormat == 0x04) // ARGB4444 (2 bytes/pixel). Telltale eSurface_ARGB4 stores the
+            {                          // 16-bit value as B<<12 | G<<8 | R<<4 | A, i.e. alpha in the low nibble.
+                if (block.Length < pixels * 2) return null;
+                for (int i = 0; i < pixels; i++)
+                {
+                    int v = block[i * 2] | (block[i * 2 + 1] << 8);
+                    rgba[i * 4] = (byte)(((v >> 4) & 0xF) * 17);   // R
+                    rgba[i * 4 + 1] = (byte)(((v >> 8) & 0xF) * 17);  // G
+                    rgba[i * 4 + 2] = (byte)(((v >> 12) & 0xF) * 17); // B
+                    rgba[i * 4 + 3] = (byte)((v & 0xF) * 17);      // A
                 }
                 return rgba;
             }
@@ -364,6 +460,14 @@ namespace TTG_Tools.Graphics
                 metaHead.padding = br.ReadBytes((int)head.MetaSize - 12 - (int)metaHead.DataSize);
             }
 
+            // Take dimensions and mip count from the PVR itself so re-inserting a PNG that was
+            // wrapped as a single-mip PVR (iOS ARGB4444) does not inherit the original's larger
+            // mip count. Extracted .pvr files already match the source dimensions, so existing
+            // BC/PVR import flows are unaffected.
+            width = (int)head.Width;
+            height = (int)head.Height;
+            mip = (int)head.Mip;
+
             TexFormat = 0;
 
             if (NewFormat) {
@@ -399,6 +503,14 @@ namespace TTG_Tools.Graphics
 
                     case (ulong)pvr.HeaderFormat.BC7:
                         TexFormat = 0x46;
+                        break;
+
+                    case 0x404040461626772: //rgba4444 -> eSurface ARGB4 (0x04), used by iOS PNG re-inject
+                        TexFormat = 0x04;
+                        break;
+
+                    case 0x808080861626772: //rgba8888 -> eSurface ARGB8 (0x00)
+                        TexFormat = 0x00;
                         break;
                 }
             }
@@ -440,7 +552,8 @@ namespace TTG_Tools.Graphics
                 }
             }
 
-            br.Dispose();
+            // Note: do NOT dispose 'br' here - that would also close the caller's stream, which
+            // several callers (e.g. ReplaceTexture) keep reading from right after this returns.
             return 0;
         }
 
@@ -1113,6 +1226,31 @@ namespace TTG_Tools.Graphics
                             if (MainMenu.settings.extractTexturesAsPng && !oldTex.isIOS)
                                 oldPng = DDS.DdsPngConverter.DdsToPng(oldTex.Content);
 
+                            // Old-engine iOS (ERTM/"PVR!") textures are PVRTC 4bpp. Always decode to
+                            // PNG so they are editable, exactly like the PS Vita / new iOS path. The
+                            // raw PVRTC data follows the 52-byte PVR3 header in oldTex.Content.
+                            bool oldIos2Bpp, oldIosOpaque;
+                            if (oldTex.isIOS && oldTex.Content != null && oldTex.Content.Length > 52
+                                && IsOldIosPvrtc(oldTex.mobTexFormat, out oldIos2Bpp, out oldIosOpaque))
+                            {
+                                byte[] pvrtc = new byte[oldTex.Content.Length - 52];
+                                Array.Copy(oldTex.Content, 52, pvrtc, 0, pvrtc.Length);
+                                byte[] iosRgba = PVR.PvrtcDecoder.Decode(pvrtc, oldTex.Width, oldTex.Height, oldIos2Bpp, oldIosOpaque);
+                                if (iosRgba != null)
+                                    oldPng = DDS.DdsPngConverter.RgbaToPng(iosRgba, oldTex.Width, oldTex.Height);
+                            }
+                            // Old-engine iOS re-injected as uncompressed RGBA4444 (mob 0x8110): decode
+                            // straight to PNG so an already-edited texture can be re-opened and edited again.
+                            else if (oldTex.isIOS && oldTex.Content != null && oldTex.Content.Length >= 52 + oldTex.Width * oldTex.Height * 2
+                                && oldTex.mobTexFormat == (uint)ClassesStructs.TextureClass.OldTexturePVRFormat.PVRTC_RGBA4)
+                            {
+                                byte[] data = new byte[oldTex.Width * oldTex.Height * 2];
+                                Array.Copy(oldTex.Content, 52, data, 0, data.Length);
+                                byte[] iosRgba = DecodeUncompressedToRgba(data, oldTex.Width, oldTex.Height, 0x04);
+                                if (iosRgba != null)
+                                    oldPng = DDS.DdsPngConverter.RgbaToPng(iosRgba, oldTex.Width, oldTex.Height);
+                            }
+
                             if (oldPng != null)
                             {
                                 string pngPath = OutputDir + Path.DirectorySeparatorChar + fi.Name.Replace(".d3dtx", ".png");
@@ -1145,6 +1283,14 @@ namespace TTG_Tools.Graphics
                             if (DDS.DdsPngConverter.TryNormalize(oldTex.TextureFormat, out bcFmt))
                                 NewContent = DDS.DdsPngConverter.PngToDds(File.ReadAllBytes(oldBasePath + "png"), bcFmt, oldTex.Mip);
                         }
+
+                        // Old-engine iOS: re-inject the edited PNG as uncompressed ARGB4444, wrapped in
+                        // a PVR the existing isIOS import path understands (it maps rgba4444 -> the
+                        // RGBA4444 texture format). This mirrors the community mods' approach; no PVRTC
+                        // re-encoder is needed. Falls back to a raw .pvr if no PNG was produced.
+                        if (NewContent == null && oldTex.isIOS && File.Exists(oldBasePath + "png"))
+                            NewContent = DDS.DdsPngConverter.PngToPvrArgb4(File.ReadAllBytes(oldBasePath + "png"));
+
                         if (NewContent == null)
                             NewContent = oldTex.isIOS ? File.ReadAllBytes(oldBasePath + "pvr") : File.ReadAllBytes(oldBasePath + "dds");
 
@@ -1215,9 +1361,10 @@ namespace TTG_Tools.Graphics
                 {
                     result = "File " + fi.Name + " successfully extracted. ";
 
-                    // PS Vita (platform 9) always extracts to PNG regardless of the user's setting:
-                    // its textures are PVRTC/uncompressed and .pvr is not an editable format.
-                    bool forcePng = tex.platform.platform == 9;
+                    // PS Vita (platform 9) and iOS (platform 7) always extract to PNG regardless of
+                    // the user's setting: their textures are PVRTC/uncompressed and .pvr is not an
+                    // editable format. iOS PVRTC is stored linearly, exactly like Vita's.
+                    bool forcePng = tex.platform.platform == 9 || tex.platform.platform == 7;
 
                     //Optional PNG extraction for supported formats; unsupported formats fall back to DDS.
                     if ((MainMenu.settings.extractTexturesAsPng || forcePng) && !tex.isPVR && DDS.DdsPngConverter.IsConvertible(tex.TextureFormat))
@@ -1233,9 +1380,9 @@ namespace TTG_Tools.Graphics
                         }
                     }
 
-                    //PS Vita PVRTC textures (formats 0x50-0x53): decode to RGBA and export as PNG so
-                    //they are editable. The largest mip (index 0) holds the full-resolution image.
-                    if ((MainMenu.settings.extractTexturesAsPng || forcePng) && tex.platform.platform == 9
+                    //PS Vita / iOS PVRTC textures (formats 0x50-0x53): decode to RGBA and export as PNG
+                    //so they are editable. The largest mip (index 0) holds the full-resolution image.
+                    if ((MainMenu.settings.extractTexturesAsPng || forcePng) && (tex.platform.platform == 9 || tex.platform.platform == 7)
                         && PVR.PvrtcDecoder.IsPvrtcFormat(tex.TextureFormat)
                         && tex.Tex.Textures != null && tex.Tex.Textures.Length > 0
                         && tex.Tex.Textures[0].Block != null)
@@ -1256,9 +1403,10 @@ namespace TTG_Tools.Graphics
                         }
                     }
 
-                    //PS Vita uncompressed formats (ARGB8 0x00, A8 0x10): decode straight from the
-                    //(already de-swizzled) mip data so nothing on Vita ever falls back to .dds/.pvr.
-                    if (forcePng && (tex.TextureFormat == 0x00 || tex.TextureFormat == 0x10)
+                    //PS Vita / iOS uncompressed formats (ARGB8 0x00, ARGB4444 0x04, A8 0x10): decode
+                    //straight from the (already de-swizzled) mip data so nothing ever falls back to
+                    //.dds/.pvr. 0x04 covers iOS textures already re-injected as ARGB4444.
+                    if (forcePng && (tex.TextureFormat == 0x00 || tex.TextureFormat == 0x04 || tex.TextureFormat == 0x10)
                         && tex.Tex.Textures != null && tex.Tex.Textures.Length > 0
                         && tex.Tex.Textures[0].Block != null)
                     {
@@ -1313,6 +1461,16 @@ namespace TTG_Tools.Graphics
                             NewContent = DDS.DdsPngConverter.PngToDds(vitaPng, tex.TextureFormat, tex.Tex.MipCount);
                         else // ARGB8 (0x00) or PVRTC (0x50-0x53) -> lossless ARGB8
                             NewContent = DDS.DdsPngConverter.PngToUncompressedDds(vitaPng, 0x00, tex.Tex.MipCount);
+                    }
+
+                    //iOS (platform 7) always round-trips through the edited PNG, re-injected as
+                    //uncompressed ARGB4444 (format 0x04) wrapped in a PVR - the format the community
+                    //iOS mods use (half the size of ARGB8, natively supported, no PVRTC re-encoder).
+                    //Routed through the PVR import path below (ReadPvrHeader maps rgba4444 -> 0x04).
+                    if (tex.platform.platform == 7 && File.Exists(pngImportPath))
+                    {
+                        NewContent = DDS.DdsPngConverter.PngToPvrArgb4(File.ReadAllBytes(pngImportPath));
+                        if (NewContent != null) importedFromPvr = true;
                     }
 
                     if (NewContent == null && MainMenu.settings.extractTexturesAsPng && !tex.isPVR
