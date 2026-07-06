@@ -194,6 +194,7 @@ Added Nintendo Wii U (GX2) texture and font extraction and reinsertion support (
 Added Sony PlayStation 3 (RSX) texture and font extraction and reinsertion support (Minecraft: Story Mode). Uncompressed textures are deswizzled from the RSX Morton layout (with the red/blue channels corrected), while compressed textures (BC1/BC3) are read directly as they are stored linearly.
 Added the "Telltale Explorer Style" text format ([id] / Category / Speech) for export and import.
 Added an option to extract textures as PNG and convert them back on import (supports uncompressed and BC1-BC5; unsupported formats fall back to DDS).
+Added PS Vita (PVRTC) texture support: platform 9 textures always extract as editable PNG (PVRTC 2bpp/4bpp is decoded to RGBA with a self-contained decoder, no external library needed) and are reinserted as lossless uncompressed textures, so PVR files no longer need to be edited by hand (A8 stays A8 and BC formats are preserved).
 Added CJK text normalization on import (removes spacing between CJK characters, converts ASCII dots near CJK to a full-width Chinese period, and fixes punctuation before line breaks).
 Fixed a crash when opening Poker Night at the Inventory - Remastered .font files.
 Fixed an error when extracting files with search or format filters enabled.

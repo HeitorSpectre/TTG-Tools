@@ -133,6 +133,7 @@
     <Compile Include="Graphics\FontWorker.cs" />
     <Compile Include="Graphics\WiiSupport.cs" />
     <Compile Include="Graphics\PVR\pvr.cs" />
+    <Compile Include="Graphics\PVR\PvrtcDecoder.cs" />
     <Compile Include="Graphics\Swizzles\PS4.cs" />
     <Compile Include="Graphics\Swizzles\PS3.cs" />
     <Compile Include="Graphics\Swizzles\PS2.cs" />

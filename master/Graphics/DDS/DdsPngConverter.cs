@@ -121,6 +121,106 @@ namespace TTG_Tools.Graphics.DDS
             }
         }
 
+        // ---------- reinsertion: PNG -> uncompressed DDS (ARGB8 0x00 / A8 0x10) ----------
+        // Produces a full mip chain of uncompressed data readable by TextureWorker.ReadDDSHeader.
+        // Used for PS Vita, where PVRTC textures are re-imported as lossless ARGB8 (format 0x00)
+        // and A8 textures stay A8. Returns null on failure.
+        public static byte[] PngToUncompressedDds(byte[] png, uint format, int mipCount)
+        {
+            try
+            {
+                if (format != 0x00 && format != 0x10) return null;
+                if (mipCount < 1) mipCount = 1;
+
+                int w, h;
+                byte[] rgba0 = PngToRgba(png, out w, out h);
+                if (rgba0 == null || w <= 0 || h <= 0) return null;
+
+                using (MemoryStream body = new MemoryStream())
+                {
+                    int mw = w, mh = h;
+                    for (int m = 0; m < mipCount; m++)
+                    {
+                        byte[] rgba = (m == 0) ? rgba0 : Downscale(rgba0, w, h, mw, mh);
+                        int px = mw * mh;
+
+                        if (format == 0x00) // ARGB8 stored as BGRA
+                        {
+                            byte[] enc = new byte[px * 4];
+                            for (int i = 0; i < px; i++)
+                            {
+                                enc[i * 4] = rgba[i * 4 + 2];     // B
+                                enc[i * 4 + 1] = rgba[i * 4 + 1]; // G
+                                enc[i * 4 + 2] = rgba[i * 4];     // R
+                                enc[i * 4 + 3] = rgba[i * 4 + 3]; // A
+                            }
+                            body.Write(enc, 0, enc.Length);
+                        }
+                        else // A8: value is stored in the grayscale RGB channel on extract, so read R
+                        {
+                            byte[] enc = new byte[px];
+                            for (int i = 0; i < px; i++) enc[i] = rgba[i * 4];
+                            body.Write(enc, 0, enc.Length);
+                        }
+
+                        if (mw > 1) mw /= 2;
+                        if (mh > 1) mh /= 2;
+                    }
+
+                    return BuildUncompressedDdsHeader(format, w, h, mipCount).Concat(body.ToArray());
+                }
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        // Standard 128-byte DDS header for uncompressed ARGB8 / A8, matching what
+        // TextureWorker.ReadDDSHeader detects (DDPF_RGB 32bpp -> ARGB8, DDPF_ALPHA 8bpp -> A8).
+        private static byte[] BuildUncompressedDdsHeader(uint format, int width, int height, int mipCount)
+        {
+            byte[] h = new byte[128];
+            using (MemoryStream ms = new MemoryStream(h))
+            using (BinaryWriter bw = new BinaryWriter(ms))
+            {
+                bw.Write(new byte[] { (byte)'D', (byte)'D', (byte)'S', (byte)' ' });
+                bw.Write(124);                       // dwSize
+                bw.Write(0x0002100F);                // CAPS|HEIGHT|WIDTH|PITCH|PIXELFORMAT|MIPMAPCOUNT
+                bw.Write(height);
+                bw.Write(width);
+                int bpp = (format == 0x00) ? 4 : 1;
+                bw.Write(width * bpp);               // dwPitchOrLinearSize (row pitch of mip 0)
+                bw.Write(0);                         // depth
+                bw.Write(mipCount);
+                bw.Write(new byte[44]);              // reserved1[11]
+                bw.Write(32);                        // ddspf.dwSize
+                if (format == 0x00)
+                {
+                    bw.Write(0x41);                  // DDPF_RGB | DDPF_ALPHAPIXELS
+                    bw.Write(new byte[4]);           // fourCC = 0
+                    bw.Write(32);                    // RGBBitCount
+                    bw.Write(0x00FF0000);            // R mask
+                    bw.Write(0x0000FF00);            // G mask
+                    bw.Write(0x000000FF);            // B mask
+                    unchecked { bw.Write((int)0xFF000000); } // A mask
+                }
+                else // A8
+                {
+                    bw.Write(0x2);                   // DDPF_ALPHA (exact value ReadDDSHeader checks)
+                    bw.Write(new byte[4]);           // fourCC = 0
+                    bw.Write(8);                     // RGBBitCount
+                    bw.Write(0);                     // R mask
+                    bw.Write(0);                     // G mask
+                    bw.Write(0);                     // B mask
+                    unchecked { bw.Write((int)0xFF000000); } // A mask
+                }
+                bw.Write(0x401008);                  // caps: TEXTURE|COMPLEX|MIPMAP
+                bw.Write(new byte[16]);              // caps2..reserved2
+            }
+            return h;
+        }
+
         // ---------- format mapping ----------
         private static bool FourCcToFormat(string fourCc, out uint format)
         {
@@ -364,7 +464,8 @@ namespace TTG_Tools.Graphics.DDS
         }
 
         // ---------- PNG <-> RGBA (R,G,B,A) via GDI+ (which is B,G,R,A) ----------
-        private static byte[] RgbaToPng(byte[] rgba, int w, int h)
+        // Public so other decoders (e.g. PVRTC for PS Vita) can emit PNGs with the same encoding.
+        public static byte[] RgbaToPng(byte[] rgba, int w, int h)
         {
             using (Bitmap bmp = new Bitmap(w, h, PixelFormat.Format32bppArgb))
             {

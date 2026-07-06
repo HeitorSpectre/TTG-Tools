@@ -4,6 +4,8 @@
     {
         public enum HeaderFormat : ulong
         {
+            PVRTC2bppRGB = 0,
+            PVRTC2bppRGBA = 1,
             PVRTC4bppRGB = 2,
             PVRTC4bppRGBA = 3,
             PVRTCII2Bpp = 4,

@@ -16,7 +16,49 @@ namespace TTG_Tools.Graphics
 
         private static bool IsVitaPvrFormat(uint textureFormat)
         {
-            return textureFormat == 0x51 || textureFormat == 0x52 || textureFormat == 0x53 || textureFormat == 0x70;
+            // PS Vita PVRTC / ETC formats stored linearly (not Morton-swizzled like the
+            // uncompressed/BC formats). 0x50 = PVRTC2 (2bpp RGB), 0x51 = PVRTC4 (4bpp RGB),
+            // 0x52 = PVRTC2a (2bpp RGBA), 0x53 = PVRTC4a (4bpp RGBA), 0x70 = ETC1.
+            return textureFormat == 0x50 || textureFormat == 0x51 || textureFormat == 0x52 || textureFormat == 0x53 || textureFormat == 0x70;
+        }
+
+        // Decodes an uncompressed, de-swizzled Vita mip block into 32-bit RGBA (R,G,B,A order).
+        // Supports ARGB8 (0x00, stored BGRA) and A8 (0x10, alpha-only shown as grayscale).
+        private static byte[] DecodeUncompressedToRgba(byte[] block, int width, int height, uint textureFormat)
+        {
+            if (block == null || width <= 0 || height <= 0) return null;
+
+            int pixels = width * height;
+            byte[] rgba = new byte[pixels * 4];
+
+            if (textureFormat == 0x00) // ARGB8, stored as BGRA in memory
+            {
+                if (block.Length < pixels * 4) return null;
+                for (int i = 0; i < pixels; i++)
+                {
+                    rgba[i * 4] = block[i * 4 + 2];     // R
+                    rgba[i * 4 + 1] = block[i * 4 + 1]; // G
+                    rgba[i * 4 + 2] = block[i * 4];     // B
+                    rgba[i * 4 + 3] = block[i * 4 + 3]; // A
+                }
+                return rgba;
+            }
+
+            if (textureFormat == 0x10) // A8, alpha-only -> grayscale opaque so it is visible/editable
+            {
+                if (block.Length < pixels) return null;
+                for (int i = 0; i < pixels; i++)
+                {
+                    byte a = block[i];
+                    rgba[i * 4] = a;
+                    rgba[i * 4 + 1] = a;
+                    rgba[i * 4 + 2] = a;
+                    rgba[i * 4 + 3] = 0xFF;
+                }
+                return rgba;
+            }
+
+            return null;
         }
 
         private static void GetVitaSwizzleInfo(uint textureFormat, int width, int height, out int swizzleWidth, out int swizzleHeight, out int bytesPerPixelSet, out int formatBitsPerPixel)
@@ -734,7 +776,14 @@ namespace TTG_Tools.Graphics
                             head.ChannelType = 4; //Unsigned short normalised
                             break;
 
+                        case 0x50:
+                            head.PixelFormat = (ulong)pvr.HeaderFormat.PVRTC2bppRGB;
+                            break;
+
                         case 0x52:
+                            head.PixelFormat = (ulong)pvr.HeaderFormat.PVRTC2bppRGBA;
+                            break;
+
                         case 0x53:
                             head.PixelFormat = (ulong)pvr.HeaderFormat.PVRTC4bppRGBA;
                             break;
@@ -1166,8 +1215,12 @@ namespace TTG_Tools.Graphics
                 {
                     result = "File " + fi.Name + " successfully extracted. ";
 
+                    // PS Vita (platform 9) always extracts to PNG regardless of the user's setting:
+                    // its textures are PVRTC/uncompressed and .pvr is not an editable format.
+                    bool forcePng = tex.platform.platform == 9;
+
                     //Optional PNG extraction for supported formats; unsupported formats fall back to DDS.
-                    if (MainMenu.settings.extractTexturesAsPng && !tex.isPVR && DDS.DdsPngConverter.IsConvertible(tex.TextureFormat))
+                    if ((MainMenu.settings.extractTexturesAsPng || forcePng) && !tex.isPVR && DDS.DdsPngConverter.IsConvertible(tex.TextureFormat))
                     {
                         byte[] png = DDS.DdsPngConverter.DdsToPng(tex.Tex.Content);
                         if (png != null)
@@ -1177,6 +1230,50 @@ namespace TTG_Tools.Graphics
                             File.WriteAllBytes(pngPath, png);
                             if (additionalMessage != null) result += additionalMessage;
                             return result;
+                        }
+                    }
+
+                    //PS Vita PVRTC textures (formats 0x50-0x53): decode to RGBA and export as PNG so
+                    //they are editable. The largest mip (index 0) holds the full-resolution image.
+                    if ((MainMenu.settings.extractTexturesAsPng || forcePng) && tex.platform.platform == 9
+                        && PVR.PvrtcDecoder.IsPvrtcFormat(tex.TextureFormat)
+                        && tex.Tex.Textures != null && tex.Tex.Textures.Length > 0
+                        && tex.Tex.Textures[0].Block != null)
+                    {
+                        byte[] rgba = PVR.PvrtcDecoder.Decode(tex.Tex.Textures[0].Block, tex.Width, tex.Height,
+                            PVR.PvrtcDecoder.Is2Bpp(tex.TextureFormat), PVR.PvrtcDecoder.IsOpaque(tex.TextureFormat));
+                        if (rgba != null)
+                        {
+                            byte[] png = DDS.DdsPngConverter.RgbaToPng(rgba, tex.Width, tex.Height);
+                            if (png != null)
+                            {
+                                string pngPath = OutputDir + "\\" + fi.Name.Replace(".d3dtx", ".png");
+                                if (File.Exists(pngPath)) File.Delete(pngPath);
+                                File.WriteAllBytes(pngPath, png);
+                                if (additionalMessage != null) result += additionalMessage;
+                                return result;
+                            }
+                        }
+                    }
+
+                    //PS Vita uncompressed formats (ARGB8 0x00, A8 0x10): decode straight from the
+                    //(already de-swizzled) mip data so nothing on Vita ever falls back to .dds/.pvr.
+                    if (forcePng && (tex.TextureFormat == 0x00 || tex.TextureFormat == 0x10)
+                        && tex.Tex.Textures != null && tex.Tex.Textures.Length > 0
+                        && tex.Tex.Textures[0].Block != null)
+                    {
+                        byte[] rgba = DecodeUncompressedToRgba(tex.Tex.Textures[0].Block, tex.Width, tex.Height, tex.TextureFormat);
+                        if (rgba != null)
+                        {
+                            byte[] png = DDS.DdsPngConverter.RgbaToPng(rgba, tex.Width, tex.Height);
+                            if (png != null)
+                            {
+                                string pngPath = OutputDir + "\\" + fi.Name.Replace(".d3dtx", ".png");
+                                if (File.Exists(pngPath)) File.Delete(pngPath);
+                                File.WriteAllBytes(pngPath, png);
+                                if (additionalMessage != null) result += additionalMessage;
+                                return result;
+                            }
                         }
                     }
 
@@ -1203,7 +1300,22 @@ namespace TTG_Tools.Graphics
                     //to a DDS of the original format. A missing PNG or unsupported format falls
                     //through to the regular DDS/PVR import below.
                     string pngImportPath = textureBasePath + "png";
-                    if (MainMenu.settings.extractTexturesAsPng && !tex.isPVR
+
+                    //PS Vita (platform 9) always round-trips through the edited PNG. PVRTC (0x50-0x53)
+                    //and ARGB8 come back as lossless uncompressed ARGB8 (0x00) since PVRTC is not
+                    //re-encoded; A8 stays A8; BC stays BC. This mirrors the "always PNG" extraction.
+                    if (tex.platform.platform == 9 && File.Exists(pngImportPath))
+                    {
+                        byte[] vitaPng = File.ReadAllBytes(pngImportPath);
+                        if (tex.TextureFormat == 0x10)
+                            NewContent = DDS.DdsPngConverter.PngToUncompressedDds(vitaPng, 0x10, tex.Tex.MipCount);
+                        else if (DDS.DdsPngConverter.IsConvertible(tex.TextureFormat))
+                            NewContent = DDS.DdsPngConverter.PngToDds(vitaPng, tex.TextureFormat, tex.Tex.MipCount);
+                        else // ARGB8 (0x00) or PVRTC (0x50-0x53) -> lossless ARGB8
+                            NewContent = DDS.DdsPngConverter.PngToUncompressedDds(vitaPng, 0x00, tex.Tex.MipCount);
+                    }
+
+                    if (NewContent == null && MainMenu.settings.extractTexturesAsPng && !tex.isPVR
                         && DDS.DdsPngConverter.IsConvertible(tex.TextureFormat) && File.Exists(pngImportPath))
                     {
                         NewContent = DDS.DdsPngConverter.PngToDds(File.ReadAllBytes(pngImportPath), tex.TextureFormat, tex.Tex.MipCount);
