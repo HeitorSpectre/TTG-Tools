@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Windows.Forms;
@@ -42,9 +43,12 @@ namespace TTG_Tools
         private CheckBox chkNormNewline, chkRemoveBlanksCjk, chkReplaceDot;
 
         private Button btnSave, btnOk, btnCancel;
+        private Label lblSaveStatus;
+        private Timer _restartTimer;
 
         private bool _updatingUnicodeMode;
         private bool _loadingUi;
+        private bool _dirtyTrackingReady;
 
         public SettingsForm()
         {
@@ -60,17 +64,30 @@ namespace TTG_Tools
             StartPosition = FormStartPosition.CenterParent;
             MaximizeBox = false;
             MinimizeBox = false;
-            ClientSize = new Size(474, 358);
+            ClientSize = new Size(474, 382);
+
+            //Native Windows title bars do not support coloring only part of their text, so the
+            //save confirmation lives in a dedicated green status line at the top-left.
+            lblSaveStatus = new Label
+            {
+                Left = 12,
+                Top = 10,
+                Width = 438,
+                Height = 18,
+                ForeColor = Color.ForestGreen,
+                Visible = false
+            };
+            Controls.Add(lblSaveStatus);
 
             // ---- Profile bar ----
-            Label lblProfile = new Label { Left = 12, Top = 16, Width = 48, Text = Loc.T("Settings.lblProfile", "Profile") };
-            cbProfile = new ComboBox { Left = 62, Top = 12, Width = 176, DropDownStyle = ComboBoxStyle.DropDownList };
+            Label lblProfile = new Label { Left = 12, Top = 40, Width = 48, Text = Loc.T("Settings.lblProfile", "Profile") };
+            cbProfile = new ComboBox { Left = 62, Top = 36, Width = 176, DropDownStyle = ComboBoxStyle.DropDownList };
             cbProfile.SelectedIndexChanged += cbProfile_SelectedIndexChanged;
-            btnNewProfile = new Button { Left = 244, Top = 11, Width = 56, Text = Loc.T("Settings.btnNewProfile", "New") };
+            btnNewProfile = new Button { Left = 244, Top = 35, Width = 56, Text = Loc.T("Settings.btnNewProfile", "New") };
             btnNewProfile.Click += btnNewProfile_Click;
-            btnRenameProfile = new Button { Left = 304, Top = 11, Width = 72, Text = Loc.T("Settings.btnRenameProfile", "Rename") };
+            btnRenameProfile = new Button { Left = 304, Top = 35, Width = 72, Text = Loc.T("Settings.btnRenameProfile", "Rename") };
             btnRenameProfile.Click += btnRenameProfile_Click;
-            btnDeleteProfile = new Button { Left = 380, Top = 11, Width = 68, Text = Loc.T("Settings.btnDeleteProfile", "Delete") };
+            btnDeleteProfile = new Button { Left = 380, Top = 35, Width = 68, Text = Loc.T("Settings.btnDeleteProfile", "Delete") };
             btnDeleteProfile.Click += btnDeleteProfile_Click;
             Controls.Add(lblProfile);
             Controls.Add(cbProfile);
@@ -79,7 +96,7 @@ namespace TTG_Tools
             Controls.Add(btnDeleteProfile);
 
             // ---- Tabs ----
-            TabControl tabs = new TabControl { Left = 12, Top = 44, Width = 450, Height = 268 };
+            TabControl tabs = new TabControl { Left = 12, Top = 68, Width = 450, Height = 268 };
             TabPage tabGeneral = new TabPage(Loc.T("Settings.tabGeneral", "General / folders"));
             TabPage tabLanguage = new TabPage(Loc.T("Settings.tabLanguage", "Language"));
             TabPage tabText = new TabPage(Loc.T("Settings.tabText", "Text"));
@@ -95,12 +112,12 @@ namespace TTG_Tools
             BuildNormalizationTab(tabNorm);
 
             // ---- Bottom buttons ----
-            btnSave = new Button { Left = 206, Top = 322, Width = 72, Text = Loc.T("Settings.btnSave", "Save") };
+            btnSave = new Button { Left = 206, Top = 346, Width = 72, Text = Loc.T("Settings.btnSave", "Save") };
             btnSave.Click += btnSave_Click;
-            btnOk = new Button { Left = 300, Top = 322, Width = 72, Text = Loc.T("Settings.btnOk", "OK") };
+            btnOk = new Button { Left = 300, Top = 346, Width = 72, Text = Loc.T("Settings.btnOk", "OK") };
             btnOk.Click += btnOk_Click;
-            btnCancel = new Button { Left = 390, Top = 322, Width = 72, Text = Loc.T("Settings.btnCancel", "Cancel") };
-            btnCancel.Click += (s, e) => Close();
+            btnCancel = new Button { Left = 390, Top = 346, Width = 72, Text = Loc.T("Settings.btnCancel", "Cancel") };
+            btnCancel.Click += btnCancel_Click;
             Controls.Add(btnSave);
             Controls.Add(btnOk);
             Controls.Add(btnCancel);
@@ -258,6 +275,9 @@ namespace TTG_Tools
             //Let the shared reflow grow buttons/labels and the window so longer translations fit
             //(no-op for English). Handles e.g. the profile bar buttons in German/Turkish/Russian.
             Localizer.AutoFit(this);
+
+            WireDirtyTracking(this);
+            _dirtyTrackingReady = true;
         }
 
         //Fills the interface-language dropdown from the .lang files found in the Languages folder
@@ -483,26 +503,10 @@ namespace TTG_Tools
                 case 1259: numAscii.Value = 1258; break;
             }
 
-            //Terrible fix for users' windows-1252 encoding (kept from the old form).
-            if ((int)numAscii.Value == 1252)
-            {
-                if (rbNonNormalUnicode2.Checked) rbNormalUnicode.Checked = true;
-                rbNonNormalUnicode2.Enabled = false;
-            }
-            else
-            {
-                rbNonNormalUnicode2.Enabled = true;
-
-                if (!_loadingUi)
-                {
-                    switch (MainMenu.settings.unicodeSettings)
-                    {
-                        case 0: rbNormalUnicode.Checked = true; break;
-                        case 1: rbNonNormalUnicode2.Checked = true; break;
-                        case 2: rbNewBttF.Checked = true; break;
-                    }
-                }
-            }
+            //Unicode storage mode belongs to the game/file format, not to the selected Windows
+            //code page. The old UI disabled "NOT normal unicode" for code page 1252, which also
+            //blocked valid TFTB workflows in Portuguese, English and several other languages.
+            rbNonNormalUnicode2.Enabled = true;
         }
 
         private void checkLanguage_CheckedChanged(object sender, EventArgs e)
@@ -529,11 +533,21 @@ namespace TTG_Tools
         #region Save / OK
         private void btnSave_Click(object sender, EventArgs e)
         {
-            ApplyUiToSettings();
-            Settings.SaveConfig(MainMenu.settings);
+            SaveSettings(false);
         }
 
         private void btnOk_Click(object sender, EventArgs e)
+        {
+            SaveSettings(true);
+        }
+
+        private void btnCancel_Click(object sender, EventArgs e)
+        {
+            DialogResult = DialogResult.Cancel;
+            Close();
+        }
+
+        private bool SaveSettings(bool closeAfterSave)
         {
             ApplyUiToSettings();
 
@@ -545,30 +559,138 @@ namespace TTG_Tools
                 if (!pathsOk)
                 {
                     MessageBox.Show(Loc.T("Settings.msgSetPaths", "Please set correct paths for input and output folders!"));
-                    return;
+                    return false;
                 }
-
-                Settings.SaveConfig(MainMenu.settings);
-                MessageBox.Show(Loc.T("Settings.msgRestart", "Please restart application to confirm settings"));
-                Close();
-                return;
             }
 
-            Settings.SaveConfig(MainMenu.settings);
-
-            //The interface language only takes effect after a restart, so when it changed we
-            //restart the app automatically. The confirmation is shown in the just-selected
-            //language (we load it first) so the user immediately sees the change applied.
-            string newLang = string.IsNullOrEmpty(MainMenu.settings.interfaceLanguage) ? "en" : MainMenu.settings.interfaceLanguage;
-            if (!string.Equals(newLang, _initialInterfaceLanguage, StringComparison.OrdinalIgnoreCase))
+            try
             {
-                Localization.LoadLanguage(newLang);
-                MessageBox.Show(Loc.T("Settings.msgRestartLanguage", "The interface language has been changed. The application will now restart to apply it."));
-                Application.Restart();
-                return;
+                Settings.SaveConfig(MainMenu.settings);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    Loc.T("Settings.msgSaveFailed", "Could not save settings:") + "\r\n" + ex.Message,
+                    Loc.T("Common.error", "Error"),
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+                return false;
             }
 
-            Close();
+            string newLang = string.IsNullOrEmpty(MainMenu.settings.interfaceLanguage) ? "en" : MainMenu.settings.interfaceLanguage;
+            bool languageChanged = !string.Equals(newLang, _initialInterfaceLanguage, StringComparison.OrdinalIgnoreCase);
+
+            //Use the selected language for the title confirmation. The rest of the open forms
+            //are recreated by the restart below, which also restores the English Designer text
+            //correctly when switching from another language back to English.
+            if (languageChanged)
+                Localization.LoadLanguage(newLang);
+
+            ShowSavedStatus();
+            _initialInterfaceLanguage = newLang;
+
+            //On first run the Settings window is the application's main form, so closing it would
+            //end the program. Restart automatically and open the real main menu with the saved
+            //language. A language change during normal use follows the same reliable path.
+            if (Program.FirstTime || languageChanged)
+            {
+                BeginApplicationRestart();
+                return true;
+            }
+
+            if (closeAfterSave)
+            {
+                DialogResult = DialogResult.OK;
+                Close();
+            }
+
+            return true;
+        }
+
+        private void ShowSavedStatus()
+        {
+            Text = Loc.T("Settings.title", "Settings");
+            lblSaveStatus.Text = Loc.T("Settings.savedTitle", "Your settings have been saved.");
+            lblSaveStatus.Visible = true;
+        }
+
+        private void ClearSavedStatus(object sender, EventArgs e)
+        {
+            if (!_dirtyTrackingReady || _loadingUi || _restartTimer != null)
+                return;
+
+            lblSaveStatus.Text = "";
+            lblSaveStatus.Visible = false;
+        }
+
+        private void WireDirtyTracking(Control parent)
+        {
+            foreach (Control child in parent.Controls)
+            {
+                TextBoxBase text = child as TextBoxBase;
+                ComboBox combo = child as ComboBox;
+                CheckBox check = child as CheckBox;
+                RadioButton radio = child as RadioButton;
+                NumericUpDown number = child as NumericUpDown;
+
+                if (text != null && !text.ReadOnly) text.TextChanged += ClearSavedStatus;
+                if (combo != null) combo.SelectedIndexChanged += ClearSavedStatus;
+                if (check != null) check.CheckedChanged += ClearSavedStatus;
+                if (radio != null) radio.CheckedChanged += ClearSavedStatus;
+                if (number != null) number.ValueChanged += ClearSavedStatus;
+
+                if (child.Controls.Count > 0)
+                    WireDirtyTracking(child);
+            }
+        }
+
+        private void BeginApplicationRestart()
+        {
+            btnSave.Enabled = false;
+            btnOk.Enabled = false;
+            btnCancel.Enabled = false;
+
+            if (_restartTimer != null)
+            {
+                _restartTimer.Stop();
+                _restartTimer.Dispose();
+            }
+
+            //Leave the confirmation visible briefly before recreating the application.
+            _restartTimer = new Timer { Interval = 900 };
+            _restartTimer.Tick += RestartTimer_Tick;
+            _restartTimer.Start();
+        }
+
+        private void RestartTimer_Tick(object sender, EventArgs e)
+        {
+            _restartTimer.Stop();
+            _restartTimer.Dispose();
+            _restartTimer = null;
+
+            try
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = Application.ExecutablePath,
+                    WorkingDirectory = Application.StartupPath,
+                    UseShellExecute = true
+                });
+                Application.Exit();
+            }
+            catch (Exception ex)
+            {
+                btnSave.Enabled = !Program.FirstTime;
+                btnOk.Enabled = true;
+                btnCancel.Enabled = true;
+                MessageBox.Show(
+                    Loc.T("Settings.msgRestartFailed",
+                        "The settings were saved, but the application could not restart automatically. Please restart it manually.")
+                    + "\r\n" + ex.Message,
+                    Loc.T("Common.error", "Error"),
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+            }
         }
         #endregion
 

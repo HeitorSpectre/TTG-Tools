@@ -8,6 +8,8 @@ namespace TTG_Tools
     [Serializable()]
     public class Settings
     {
+        private static readonly object SaveLock = new object();
+
         public static string ConfigDirectory
         {
             get
@@ -69,24 +71,47 @@ namespace TTG_Tools
         /// </summary>
         public static Settings LoadConfigOrNull()
         {
+            Settings loaded;
+            if (TryDeserialize(ConfigPath, out loaded))
+                return loaded;
+
+            //An interrupted write or forced shutdown must not silently reset every option.
+            //Use the last atomic backup, then the legacy config, then the most recently saved
+            //profile (SaveConfig mirrors the active settings there after every successful save).
+            if (TryDeserialize(ConfigPath + ".bak", out loaded))
+                return loaded;
+
+            if (!String.Equals(Path.GetFullPath(LegacyConfigPath), Path.GetFullPath(ConfigPath),
+                    StringComparison.OrdinalIgnoreCase)
+                && TryDeserialize(LegacyConfigPath, out loaded))
+                return loaded;
+
             try
             {
-                string xmlPath = ConfigPath;
-                if (!File.Exists(xmlPath))
+                if (Directory.Exists(ProfilesDirectory))
                 {
-                    return null;
-                }
+                    string[] profiles = Directory.GetFiles(ProfilesDirectory, "*.xml");
+                    Array.Sort(profiles, delegate (string left, string right)
+                    {
+                        return File.GetLastWriteTimeUtc(right).CompareTo(File.GetLastWriteTimeUtc(left));
+                    });
 
-                XmlSerializer xmlS = new XmlSerializer(typeof(Settings));
-                using (XmlReader reader = new XmlTextReader(xmlPath))
-                {
-                    return (Settings)xmlS.Deserialize(reader);
+                    foreach (string profile in profiles)
+                    {
+                        if (!TryDeserialize(profile, out loaded))
+                            continue;
+
+                        loaded.activeProfile = SanitizeProfileName(Path.GetFileNameWithoutExtension(profile));
+                        return loaded;
+                    }
                 }
             }
             catch
             {
-                return null;
+                //Loading settings is best-effort; callers retain their existing defaults.
             }
+
+            return null;
         }
 
         public static void SaveConfig(Settings settings)
@@ -107,10 +132,73 @@ namespace TTG_Tools
 
         private static void SerializeTo(Settings settings, string path)
         {
-            XmlSerializer xmlS = new XmlSerializer(typeof(Settings));
-            using (TextWriter xmlW = new StreamWriter(path))
+            if (settings == null)
+                throw new ArgumentNullException("settings");
+
+            lock (SaveLock)
             {
-                xmlS.Serialize(xmlW, settings);
+                string directory = Path.GetDirectoryName(path);
+                if (!String.IsNullOrEmpty(directory))
+                    Directory.CreateDirectory(directory);
+
+                string temporaryPath = path + ".tmp";
+                string backupPath = path + ".bak";
+
+                try
+                {
+                    XmlSerializer xmlS = new XmlSerializer(typeof(Settings));
+                    using (TextWriter xmlW = new StreamWriter(temporaryPath, false))
+                    {
+                        xmlS.Serialize(xmlW, settings);
+                    }
+
+                    if (File.Exists(path))
+                    {
+                        try
+                        {
+                            File.Replace(temporaryPath, path, backupPath, true);
+                        }
+                        catch
+                        {
+                            //File.Replace may be unavailable on unusual file systems. Preserve a
+                            //known-good copy before using the compatible fallback.
+                            File.Copy(path, backupPath, true);
+                            File.Copy(temporaryPath, path, true);
+                            File.Delete(temporaryPath);
+                        }
+                    }
+                    else
+                    {
+                        File.Move(temporaryPath, path);
+                    }
+                }
+                finally
+                {
+                    if (File.Exists(temporaryPath))
+                        File.Delete(temporaryPath);
+                }
+            }
+        }
+
+        private static bool TryDeserialize(string path, out Settings settings)
+        {
+            settings = null;
+            if (String.IsNullOrEmpty(path) || !File.Exists(path))
+                return false;
+
+            try
+            {
+                XmlSerializer xmlS = new XmlSerializer(typeof(Settings));
+                using (XmlReader reader = new XmlTextReader(path))
+                {
+                    settings = (Settings)xmlS.Deserialize(reader);
+                    return settings != null;
+                }
+            }
+            catch
+            {
+                settings = null;
+                return false;
             }
         }
 
@@ -174,16 +262,13 @@ namespace TTG_Tools
         public static Settings LoadProfile(string name)
         {
             string path = GetProfilePath(name);
-            if (!File.Exists(path)) return null;
+            Settings loaded;
+            if (!TryDeserialize(path, out loaded) && !TryDeserialize(path + ".bak", out loaded))
+                return null;
 
-            XmlSerializer xmlS = new XmlSerializer(typeof(Settings));
-            using (XmlReader reader = new XmlTextReader(path))
-            {
-                Settings loaded = (Settings)xmlS.Deserialize(reader);
-                //Make sure the loaded settings know which profile they belong to.
-                loaded.activeProfile = SanitizeProfileName(name);
-                return loaded;
-            }
+            //Make sure the loaded settings know which profile they belong to.
+            loaded.activeProfile = SanitizeProfileName(name);
+            return loaded;
         }
 
         public static void DeleteProfile(string name)

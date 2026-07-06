@@ -67,6 +67,9 @@ namespace TTG_Tools
             if (earlyConfig != null)
             {
                 MainMenu.settings = earlyConfig;
+                //A recoverable backup/profile is still an existing configuration even when the
+                //primary config.xml was missing or damaged.
+                FirstTime = false;
             }
             Localization.Init(earlyConfig != null ? earlyConfig.interfaceLanguage : null);
 

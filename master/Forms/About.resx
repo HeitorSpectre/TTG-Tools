@@ -219,6 +219,9 @@ Input and Output folders are now created automatically next to the program on fi
 Renamed the main menu buttons and windows to "Archive Unpacker" and "Archive Packer".
 Rebuilt the About window as a read-only panel with clickable links.
 Added multilingual interface support for English, German, Spanish, French, Italian, Brazilian and European Portuguese, Russian, Turkish, Simplified Chinese, Traditional Chinese and Japanese.
+Added a green Settings save indicator that clears after further edits and made interface-language changes apply reliably from both Save and OK.
+Protected settings and profiles with atomic backups and recovery so updates or interrupted writes do not reset user options.
+Removed the obsolete code-page 1252 restriction from the "NOT normal unicode" option.
 Improved localization-aware alignment throughout the main menu, settings, Mod Creator, Archive Packer, Archive Unpacker, Auto(De)Packer and Lua Editor.
 Reorganized the source code.
 

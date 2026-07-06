@@ -3,8 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Windows.Forms;
 using System.Runtime.InteropServices;
-using System.Xml.Serialization;
-using System.Xml;
 
 namespace TTG_Tools
 {
@@ -328,11 +326,13 @@ namespace TTG_Tools
 
             #endregion
 
-            string xmlPath = Settings.EnsureConfigAvailable();
-            XmlReader reader = new XmlTextReader(xmlPath);
-            XmlSerializer settingsDeserializer = new System.Xml.Serialization.XmlSerializer(typeof(Settings));
-            settings = (Settings)settingsDeserializer.Deserialize(reader);
-            reader.Close();
+            //Program.Main already loads the settings before constructing any form so the
+            //interface language is available in time. Use the same resilient loader here instead
+            //of directly deserializing config.xml a second time; the old duplicate read bypassed
+            //backup/profile recovery and could replace a valid in-memory configuration.
+            Settings loadedSettings = Settings.LoadConfigOrNull();
+            if (loadedSettings != null)
+                settings = loadedSettings;
 
             //Make sure the existing configuration is available as a profile (Issue #84).
             //Note: Input/Output folders are only auto-created on the very first run (handled in
