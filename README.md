@@ -3,7 +3,7 @@
 [![Discord](https://img.shields.io/badge/Discord-5865F2?style=flat&logo=discord&logoColor=white)](https://discord.com/invite/HqpnTenqwp)
 ![Downloads](https://img.shields.io/github/downloads/HeitorSpectre/TTG-Tools/total?style=flat&label=downloads&labelColor=555&color=4c1)
 
-TTG Tools is a powerful utility for modifying files from Telltale Games and Skunkape Games, including texts (.landb, .langdb, and .dlog for *Sam & Max*, and .prop containing texts in *The Walking Dead: Season One and Poker Night at the Inventory - Remastered*), textures (.d3dtx) for PC, Xbox 360, PS4, PS3, PS2, PS Vita, Nintendo Switch, Nintendo Wii, IOS and Android, fonts (.font), as well as extracting and creating archive files (.ttarch, .ttarch2 and .obb). It also allows extract, edit and decryption of .lua and .lenc files used by Telltale Games and Skunkape Games.
+TTG Tools is a powerful utility for modifying files from Telltale Games and Skunkape Games, including texts (.landb, .langdb, and .dlog for *Sam & Max*, and .prop containing texts in *The Walking Dead: Season One and Poker Night at the Inventory - Remastered*), textures (.d3dtx) for PC, Xbox 360, PS4, PS3, PS2, PS Vita, Nintendo Switch, Nintendo Wii, Nintendo Wii U, IOS and Android, fonts (.font), as well as extracting and creating archive files (.ttarch, .ttarch2 and .obb). It also allows extract, edit and decryption of .lua and .lenc files used by Telltale Games and Skunkape Games.
 
 This version of TTG Tools includes some modifications and has been uploaded with the permission of Den Em and Pashok6798 agreement.
 
