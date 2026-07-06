@@ -197,6 +197,7 @@ Added an option to extract textures as PNG and convert them back on import (supp
 Added CJK text normalization on import (removes spacing between CJK characters, converts ASCII dots near CJK to a full-width Chinese period, and fixes punctuation before line breaks).
 Fixed a crash when opening Poker Night at the Inventory - Remastered .font files.
 Fixed an error when extracting files with search or format filters enabled.
+Improved the localized options layout and kept the settings area separated from the operation log.
 + Font Editor:
 Added PS2 font editing support.
 Added Nintendo Wii U (GX2) font editing support.
@@ -206,13 +207,19 @@ Fixed the font texture preview showing all gray (added BC4 / DX10 decoding).
 + Lua Editor:
 Added a new Lua Editor to extract, reinsert, create and edit custom Lua scripts for the games.
 The Lua Editor now warns when JDK 21 (required by the decompiler) is not installed.
+Localized the workflow and encryption-method choices and fixed controls overflowing in translated layouts.
 + Archive Unpacker:
 Added automatic game detection: when an archive is opened, the tool finds the game whose key decrypts it and selects it automatically (encrypted .ttarch/.ttarch2/.obb; skipped when a custom key is used).
+Fixed the localized "All files" filter incorrectly returning no results.
+Localized dynamic archive information and empty-result messages.
+Made the file list read-only and improved its column sizing, header layout and use of available space.
 + TTG Tools:
 Added settings profiles (a separate configuration per game) and unified the settings into a single tabbed window.
 Input and Output folders are now created automatically next to the program on first launch.
 Renamed the main menu buttons and windows to "Archive Unpacker" and "Archive Packer".
 Rebuilt the About window as a read-only panel with clickable links.
+Added multilingual interface support for English, German, Spanish, French, Italian, Brazilian and European Portuguese, Russian and Turkish.
+Improved localization-aware alignment throughout the main menu, settings, Mod Creator, Archive Packer, Archive Unpacker, Auto(De)Packer and Lua Editor.
 Reorganized the source code.
 
 v.1.16.0 (09.05.2026)

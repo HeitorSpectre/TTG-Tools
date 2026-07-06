@@ -16,7 +16,11 @@ namespace TTG_Tools
         public ArchiveUnpacker()
         {
             InitializeComponent();
+            Localizer.Localize(this);
             filesDataGridView.AllowUserToAddRows = false;
+            filesDataGridView.AllowUserToDeleteRows = false;
+            filesDataGridView.ReadOnly = true;
+            filesDataGridView.EditMode = DataGridViewEditMode.EditProgrammatically;
         }
 
         private static ClassesStructs.TtarchClass ttarch;
@@ -346,7 +350,7 @@ namespace TTG_Tools
                 if(fi.Attributes.HasFlag(FileAttributes.ReadOnly) || !fi.Attributes.HasFlag(FileAttributes.Normal)) fi.Attributes = FileAttributes.Normal;
 
                 //Immediate feedback so the title reflects the drop right away, even while it loads.
-                Text = "Archive Unpacker. Loading: " + fi.Name;
+                Text = Loc.T("ArchiveUnpacker.titleLoading", "Archive Unpacker. Loading:") + " " + fi.Name;
 
                 ttarch = null;
                 ttarch2 = null;
@@ -400,17 +404,17 @@ namespace TTG_Tools
                         break;
 
                     default:
-                        MessageBox.Show("Unsupported file format. Please choose a .ttarch, .ttarch2 or .obb file.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                        Text = "Archive Unpacker";
+                        MessageBox.Show(Loc.T("ArchiveUnpacker.msgUnsupportedFormat", "Unsupported file format. Please choose a .ttarch, .ttarch2 or .obb file."), Loc.T("Common.error", "Error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        Text = Loc.T("ArchiveUnpacker.$this", "Archive Unpacker");
                         return;
                 }
 
-                Text = "Archive Unpacker. Opened file: " + fi.Name;
+                Text = Loc.T("ArchiveUnpacker.titleOpened", "Archive Unpacker. Opened file:") + " " + fi.Name;
             }
             catch (Exception ex)
             {
-                Text = "Archive Unpacker";
-                MessageBox.Show("Failed to open archive. " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                Text = Loc.T("ArchiveUnpacker.$this", "Archive Unpacker");
+                MessageBox.Show(Loc.T("ArchiveUnpacker.msgFailedOpen", "Failed to open archive.") + " " + ex.Message, Loc.T("Common.error", "Error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
@@ -420,7 +424,7 @@ namespace TTG_Tools
 
             if (formats != null && formats.Count > 0)
             {
-                if (formats.Count > 1) fileFormatsCB.Items.Add("All files");
+                if (formats.Count > 1) fileFormatsCB.Items.Add(Loc.T("ArchiveUnpacker.allFiles", "All files"));
 
                 formats.Sort();
 
@@ -433,7 +437,7 @@ namespace TTG_Tools
             }
             else
             {
-                fileFormatsCB.Items.Add("All files");
+                fileFormatsCB.Items.Add(Loc.T("ArchiveUnpacker.allFiles", "All files"));
                 fileFormatsCB.SelectedIndex = 0;
             }
         }
@@ -442,6 +446,18 @@ namespace TTG_Tools
         {
             if (fileFormatsCB.Items.Count == 0) return "All files";
             return string.IsNullOrEmpty(fileFormatsCB.Text) ? "All files" : fileFormatsCB.Text;
+        }
+
+        // "All files" is a UI label and is therefore translated. Keep the filtering logic
+        // language-neutral: a localized label must never be mistaken for a file extension.
+        private static bool isAllFilesFormat(string format)
+        {
+            return string.IsNullOrEmpty(format)
+                || string.Equals(format, "All files", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(
+                    format,
+                    Loc.T("ArchiveUnpacker.allFiles", "All files"),
+                    StringComparison.CurrentCultureIgnoreCase);
         }
 
         private bool isSearchEnabled()
@@ -480,7 +496,7 @@ namespace TTG_Tools
             var files = ttarch.files.AsEnumerable();
             if (format == null) format = getSelectedFormat();
 
-            if (format != "All files")
+            if (!isAllFilesFormat(format))
             {
                 files = files.Where(x => Methods.GetExtension(x.fileName).ToLower() == format.ToLower());
             }
@@ -501,7 +517,7 @@ namespace TTG_Tools
             var files = ttarch2.files.AsEnumerable();
             if (format == null) format = getSelectedFormat();
 
-            if (format != "All files")
+            if (!isAllFilesFormat(format))
             {
                 files = files.Where(x => Methods.GetExtension(x.fileName).ToLower() == format.ToLower());
             }
@@ -859,7 +875,7 @@ namespace TTG_Tools
             }
             catch(Exception ex)
             {
-                MessageBox.Show("Unknown error. Please try another archive or change encryption key.\r\nGot exception:\r\n" + ex.Message, "Something goes wrong", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(Loc.T("ArchiveUnpacker.msgUnknownErrorEx", "Unknown error. Please try another archive or change encryption key.\r\nGot exception:") + "\r\n" + ex.Message, Loc.T("ArchiveUnpacker.titleSomethingWrong", "Something goes wrong"), MessageBoxButtons.OK, MessageBoxIcon.Error);
                 ttarch = null;
             }
         }
@@ -930,7 +946,7 @@ namespace TTG_Tools
                 }
                 catch { }
 
-                MessageBox.Show("Não foi possível extrair os seguintes arquivos:\n\n" + string.Join("\n", failedFiles), "Arquivos não extraídos", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show(Loc.T("ArchiveUnpacker.msgFailedExtractList", "The following files could not be extracted:") + "\n\n" + string.Join("\n", failedFiles), Loc.T("ArchiveUnpacker.titleFilesNotExtracted", "Files not extracted"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
         }
 
@@ -1185,7 +1201,7 @@ namespace TTG_Tools
             }
             catch
             {
-                MessageBox.Show("Unknown error. Please try another archive or change encryption key.", "Something goes wrong", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(Loc.T("ArchiveUnpacker.msgUnknownError", "Unknown error. Please try another archive or change encryption key."), Loc.T("ArchiveUnpacker.titleSomethingWrong", "Something goes wrong"), MessageBoxButtons.OK, MessageBoxIcon.Error);
                 ttarch2 = null;
             }
         }
@@ -1254,48 +1270,50 @@ namespace TTG_Tools
                 }
                 catch { }
 
-                MessageBox.Show("Não foi possível extrair os seguintes arquivos:\n\n" + string.Join("\n", failedFiles), "Arquivos não extraídos", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show(Loc.T("ArchiveUnpacker.msgFailedExtractList", "The following files could not be extracted:") + "\n\n" + string.Join("\n", failedFiles), Loc.T("ArchiveUnpacker.titleFilesNotExtracted", "Files not extracted"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
         }
 
         private void getArchiveInfo()
         {
-            string compressedStr = "Compressed: ";
-            string encryptedStr = "Encrypted: ";
-            string xmodeStr = "Has X mode: ";
-            string chunkSzStr = "Chunk size: ";
-            string encLua = "Lua scripts encrypted: ";
-            string arcVersion = "Version: ";
+            string compressedStr = Loc.T("ArchiveUnpacker.compressionLabel", "Compressed:") + " ";
+            string encryptedStr = Loc.T("ArchiveUnpacker.encryptionLabel", "Encrypted:") + " ";
+            string xmodeStr = Loc.T("ArchiveUnpacker.xmodeLabel", "Has X mode:") + " ";
+            string chunkSzStr = Loc.T("ArchiveUnpacker.chunkSizeLabel", "Chunk size:") + " ";
+            string encLua = Loc.T("ArchiveUnpacker.encrLuaLabel", "Lua scripts encrypted:") + " ";
+            string arcVersion = Loc.T("ArchiveUnpacker.versionLabel", "Version:") + " ";
+            string yes = Loc.T("Common.yes", "Yes");
+            string no = Loc.T("Common.no", "No");
 
             if (ttarch != null)
             {
-                compressedStr += ttarch.isCompressed ? "Yes" : "No";
+                compressedStr += ttarch.isCompressed ? yes : no;
                 if (ttarch.isCompressed)
                 {
                     compressedStr += " (";
                     compressedStr += ttarch.compressAlgorithm == 0 ? "zlib)" : "deflate)";
                 }
                 
-                encryptedStr += ttarch.isEncrypted ? "Yes" : "No";
-                xmodeStr += ttarch.isXmode ? "Yes" : "No";
+                encryptedStr += ttarch.isEncrypted ? yes : no;
+                xmodeStr += ttarch.isXmode ? yes : no;
                 chunkSzStr += Convert.ToString(ttarch.chunkSize) + "KB";
 
-                encLua += ttarch.isEncryptedLua ? "Yes" : "No";
+                encLua += ttarch.isEncryptedLua ? yes : no;
                 arcVersion += Convert.ToString(ttarch.version);
             }
             else if (ttarch2 != null)
             {
-                compressedStr += ttarch2.isCompressed ? "Yes" : "No";
+                compressedStr += ttarch2.isCompressed ? yes : no;
                 if (ttarch2.isCompressed)
                 {
                     compressedStr += " (";
                     compressedStr += ttarch2.compressAlgorithm == 1 ? "deflate)" : "oodle LZ)";
                 }
 
-                encryptedStr += ttarch2.isEncrypted ? "Yes" : "No";
-                xmodeStr = "Has X mode: No";
+                encryptedStr += ttarch2.isEncrypted ? yes : no;
+                xmodeStr = Loc.T("ArchiveUnpacker.xmodeLabel", "Has X mode:") + " " + no;
                 chunkSzStr += Convert.ToString(ttarch2.chunkSize / 1024) + "KB";
-                encLua += ttarch2.isEncryptedLua ? "Yes" : "No";
+                encLua += ttarch2.isEncryptedLua ? yes : no;
                 arcVersion += Convert.ToString(ttarch2.version);
             }
 
@@ -1311,27 +1329,65 @@ namespace TTG_Tools
         {
             filesDataGridView.RowCount = 1;
             filesDataGridView[0, 0].Value = "-";
-            filesDataGridView[1, 0].Value = "No results found.";
+            filesDataGridView[1, 0].Value = Loc.T("ArchiveUnpacker.noResultsFound", "No results found.");
             filesDataGridView[2, 0].Value = "-";
             filesDataGridView[3, 0].Value = "-";
 
-            filesDataGridView.Columns[0].Width = 60;
-            filesDataGridView.Columns[1].Width = 520;
-            filesDataGridView.Columns[2].Width = 150;
-            filesDataGridView.Columns[3].Width = 150;
+            configureFileGridColumns();
             filesDataGridView.ClearSelection();
+        }
+
+        private void configureFileGridColumns()
+        {
+            if (filesDataGridView.Columns.Count < 4) return;
+
+            filesDataGridView.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None;
+            filesDataGridView.ColumnHeadersDefaultCellStyle.WrapMode = DataGridViewTriState.False;
+            filesDataGridView.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
+            filesDataGridView.ColumnHeadersHeight = 24;
+            filesDataGridView.DefaultCellStyle.WrapMode = DataGridViewTriState.False;
+            filesDataGridView.RowHeadersWidth = 40;
+
+            DataGridViewColumn number = filesDataGridView.Columns[0];
+            DataGridViewColumn name = filesDataGridView.Columns[1];
+            DataGridViewColumn offset = filesDataGridView.Columns[2];
+            DataGridViewColumn size = filesDataGridView.Columns[3];
+
+            number.ReadOnly = true;
+            name.ReadOnly = true;
+            offset.ReadOnly = true;
+            size.ReadOnly = true;
+
+            number.AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
+            number.MinimumWidth = 55;
+            number.Width = 55;
+            number.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+
+            offset.AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
+            offset.MinimumWidth = 140;
+            offset.Width = 140;
+            offset.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
+
+            size.AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
+            size.MinimumWidth = 140;
+            size.Width = 140;
+            size.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
+
+            name.MinimumWidth = 280;
+            name.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
+            name.FillWeight = 100;
         }
 
         private void loadTtarchData(string format)
         {
             filesDataGridView.ColumnCount = 4;
 
-            var files = format == "All files" ? ttarch.files : ttarch.files.Where(x => Methods.GetExtension(x.fileName).ToLower() == format.ToLower()).ToArray();
+            var files = isAllFilesFormat(format) ? ttarch.files : ttarch.files.Where(x => Methods.GetExtension(x.fileName).ToLower() == format.ToLower()).ToArray();
 
-            filesDataGridView.Columns[0].HeaderText = "No.";
-            filesDataGridView.Columns[1].HeaderText = "File name";
-            filesDataGridView.Columns[2].HeaderText = "File offset";
-            filesDataGridView.Columns[3].HeaderText = "File size";
+            filesDataGridView.Columns[0].HeaderText = Loc.T("ArchiveUnpacker.colNo", "No.");
+            filesDataGridView.Columns[1].HeaderText = Loc.T("ArchiveUnpacker.colFileName", "File name");
+            filesDataGridView.Columns[2].HeaderText = Loc.T("ArchiveUnpacker.colFileOffset", "File offset");
+            filesDataGridView.Columns[3].HeaderText = Loc.T("ArchiveUnpacker.colFileSize", "File size");
 
             filesDataGridView.RowCount = Math.Max(1, files.Length);
 
@@ -1341,11 +1397,6 @@ namespace TTG_Tools
                 return;
             }
 
-            int maxnameLen = 0;
-            int maxOffLen = 0;
-            int maxSizeLen = 0;
-            int maxNoLen = 0;
-
             for (int i = 0; i < files.Length; i++)
             {
                 filesDataGridView[0, i].Value = Convert.ToString(i + 1);
@@ -1353,17 +1404,9 @@ namespace TTG_Tools
                 filesDataGridView[2, i].Value = Convert.ToString(files[i].fileOffset);
                 filesDataGridView[3, i].Value = Convert.ToString(files[i].fileSize);
 
-                maxNoLen = Convert.ToString(i + 1).Length > maxNoLen ? Convert.ToString(i + 1).Length : maxNoLen;
-                maxnameLen = files[i].fileName.Length > maxnameLen ? files[i].fileName.Length : maxnameLen;
-                maxSizeLen = Convert.ToString(files[i].fileSize).Length > maxSizeLen ? Convert.ToString(files[i].fileSize).Length : maxSizeLen;
-                maxOffLen = Convert.ToString(files[i].fileOffset).Length > maxOffLen ? Convert.ToString(files[i].fileOffset).Length : maxOffLen;
             }
 
-            filesDataGridView.Columns[0].Width = maxNoLen * 10;
-            filesDataGridView.Columns[1].Width = maxnameLen * 8;
-            filesDataGridView.Columns[2].Width = maxOffLen * 10;
-            filesDataGridView.Columns[3].Width = maxSizeLen * 10;
-
+            configureFileGridColumns();
             filesDataGridView.ClearSelection();
         }
 
@@ -1371,10 +1414,10 @@ namespace TTG_Tools
         {
             filesDataGridView.ColumnCount = 4;
 
-            filesDataGridView.Columns[0].HeaderText = "No.";
-            filesDataGridView.Columns[1].HeaderText = "File name";
-            filesDataGridView.Columns[2].HeaderText = "File offset";
-            filesDataGridView.Columns[3].HeaderText = "File size";
+            filesDataGridView.Columns[0].HeaderText = Loc.T("ArchiveUnpacker.colNo", "No.");
+            filesDataGridView.Columns[1].HeaderText = Loc.T("ArchiveUnpacker.colFileName", "File name");
+            filesDataGridView.Columns[2].HeaderText = Loc.T("ArchiveUnpacker.colFileOffset", "File offset");
+            filesDataGridView.Columns[3].HeaderText = Loc.T("ArchiveUnpacker.colFileSize", "File size");
 
             filesDataGridView.RowCount = Math.Max(1, files.Length);
 
@@ -1384,11 +1427,6 @@ namespace TTG_Tools
                 return;
             }
 
-            int maxnameLen = 0;
-            int maxOffLen = 0;
-            int maxSizeLen = 0;
-            int maxNoLen = 0;
-
             for (int i = 0; i < files.Length; i++)
             {
                 filesDataGridView[0, i].Value = Convert.ToString(i + 1);
@@ -1396,17 +1434,9 @@ namespace TTG_Tools
                 filesDataGridView[2, i].Value = Convert.ToString(files[i].fileOffset);
                 filesDataGridView[3, i].Value = Convert.ToString(files[i].fileSize);
 
-                maxNoLen = Convert.ToString(i + 1).Length > maxNoLen ? Convert.ToString(i + 1).Length : maxNoLen;
-                maxnameLen = files[i].fileName.Length > maxnameLen ? files[i].fileName.Length : maxnameLen;
-                maxSizeLen = Convert.ToString(files[i].fileSize).Length > maxSizeLen ? Convert.ToString(files[i].fileSize).Length : maxSizeLen;
-                maxOffLen = Convert.ToString(files[i].fileOffset).Length > maxOffLen ? Convert.ToString(files[i].fileOffset).Length : maxOffLen;
             }
 
-            filesDataGridView.Columns[0].Width = maxNoLen * 10;
-            filesDataGridView.Columns[1].Width = maxnameLen * 8;
-            filesDataGridView.Columns[2].Width = maxOffLen * 10;
-            filesDataGridView.Columns[3].Width = maxSizeLen * 10;
-
+            configureFileGridColumns();
             filesDataGridView.ClearSelection();
         }
 
@@ -1515,14 +1545,14 @@ namespace TTG_Tools
 
                 if (index > ttarch2.compressedBlocks.Length)
                 {
-                    MessageBox.Show("Something wrong with offset in compressed archive", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    MessageBox.Show(Loc.T("ArchiveUnpacker.msgOffsetWrong", "Something wrong with offset in compressed archive"), Loc.T("Common.error", "Error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
 
                     return null;
                 }
 
                 if (index2 > ttarch2.compressedBlocks.Length)
                 {
-                    MessageBox.Show("Something wrong with offset in compressed archive", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    MessageBox.Show(Loc.T("ArchiveUnpacker.msgOffsetWrong", "Something wrong with offset in compressed archive"), Loc.T("Common.error", "Error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
 
                     return null;
                 }
@@ -1585,12 +1615,12 @@ namespace TTG_Tools
         private void loadTtarch2Data(string format)
         {
             filesDataGridView.ColumnCount = 4;
-            var files = format == "All files" ? ttarch2.files : ttarch2.files.Where(x => Methods.GetExtension(x.fileName).ToLower() == format.ToLower()).ToArray();
+            var files = isAllFilesFormat(format) ? ttarch2.files : ttarch2.files.Where(x => Methods.GetExtension(x.fileName).ToLower() == format.ToLower()).ToArray();
 
-            filesDataGridView.Columns[0].HeaderText = "No.";
-            filesDataGridView.Columns[1].HeaderText = "File name";
-            filesDataGridView.Columns[2].HeaderText = "File offset";
-            filesDataGridView.Columns[3].HeaderText = "File size";
+            filesDataGridView.Columns[0].HeaderText = Loc.T("ArchiveUnpacker.colNo", "No.");
+            filesDataGridView.Columns[1].HeaderText = Loc.T("ArchiveUnpacker.colFileName", "File name");
+            filesDataGridView.Columns[2].HeaderText = Loc.T("ArchiveUnpacker.colFileOffset", "File offset");
+            filesDataGridView.Columns[3].HeaderText = Loc.T("ArchiveUnpacker.colFileSize", "File size");
 
             filesDataGridView.RowCount = Math.Max(1, files.Length);
 
@@ -1600,11 +1630,6 @@ namespace TTG_Tools
                 return;
             }
 
-            int maxnameLen = 0;
-            int maxOffLen = 0;
-            int maxSizeLen = 0;
-            int maxNoLen = 0;
-
             for (int i = 0; i < files.Length; i++)
             {
                 filesDataGridView[0, i].Value = Convert.ToString(i + 1);
@@ -1612,17 +1637,9 @@ namespace TTG_Tools
                 filesDataGridView[2, i].Value = Convert.ToString(files[i].fileOffset);
                 filesDataGridView[3, i].Value = Convert.ToString(files[i].fileSize);
 
-                maxNoLen = Convert.ToString(i + 1).Length > maxNoLen ? Convert.ToString(i + 1).Length : maxNoLen;
-                maxnameLen = files[i].fileName.Length > maxnameLen ? files[i].fileName.Length : maxnameLen;
-                maxSizeLen = Convert.ToString(files[i].fileSize).Length > maxSizeLen ? Convert.ToString(files[i].fileSize).Length : maxSizeLen;
-                maxOffLen = Convert.ToString(files[i].fileOffset).Length > maxOffLen ? Convert.ToString(files[i].fileOffset).Length : maxOffLen;
             }
 
-            filesDataGridView.Columns[0].Width = maxNoLen * 10;
-            filesDataGridView.Columns[1].Width = maxnameLen * 8;
-            filesDataGridView.Columns[2].Width = maxOffLen * 10;
-            filesDataGridView.Columns[3].Width = maxSizeLen * 10;
-
+            configureFileGridColumns();
             filesDataGridView.ClearSelection();
         }
 
@@ -1630,10 +1647,10 @@ namespace TTG_Tools
         {
             filesDataGridView.ColumnCount = 4;
 
-            filesDataGridView.Columns[0].HeaderText = "No.";
-            filesDataGridView.Columns[1].HeaderText = "File name";
-            filesDataGridView.Columns[2].HeaderText = "File offset";
-            filesDataGridView.Columns[3].HeaderText = "File size";
+            filesDataGridView.Columns[0].HeaderText = Loc.T("ArchiveUnpacker.colNo", "No.");
+            filesDataGridView.Columns[1].HeaderText = Loc.T("ArchiveUnpacker.colFileName", "File name");
+            filesDataGridView.Columns[2].HeaderText = Loc.T("ArchiveUnpacker.colFileOffset", "File offset");
+            filesDataGridView.Columns[3].HeaderText = Loc.T("ArchiveUnpacker.colFileSize", "File size");
 
             filesDataGridView.RowCount = Math.Max(1, files.Length);
 
@@ -1643,11 +1660,6 @@ namespace TTG_Tools
                 return;
             }
 
-            int maxnameLen = 0;
-            int maxOffLen = 0;
-            int maxSizeLen = 0;
-            int maxNoLen = 0;
-
             for (int i = 0; i < files.Length; i++)
             {
                 filesDataGridView[0, i].Value = Convert.ToString(i + 1);
@@ -1655,24 +1667,18 @@ namespace TTG_Tools
                 filesDataGridView[2, i].Value = Convert.ToString(files[i].fileOffset);
                 filesDataGridView[3, i].Value = Convert.ToString(files[i].fileSize);
 
-                maxNoLen = Convert.ToString(i + 1).Length > maxNoLen ? Convert.ToString(i + 1).Length : maxNoLen;
-                maxnameLen = files[i].fileName.Length > maxnameLen ? files[i].fileName.Length : maxnameLen;
-                maxSizeLen = Convert.ToString(files[i].fileSize).Length > maxSizeLen ? Convert.ToString(files[i].fileSize).Length : maxSizeLen;
-                maxOffLen = Convert.ToString(files[i].fileOffset).Length > maxOffLen ? Convert.ToString(files[i].fileOffset).Length : maxOffLen;
             }
 
-            filesDataGridView.Columns[0].Width = maxNoLen * 10;
-            filesDataGridView.Columns[1].Width = maxnameLen * 8;
-            filesDataGridView.Columns[2].Width = maxOffLen * 10;
-            filesDataGridView.Columns[3].Width = maxSizeLen * 10;
-
+            configureFileGridColumns();
             filesDataGridView.ClearSelection();
         }
 
         private async void openToolStripMenuItem_Click(object sender, EventArgs e)
         {
             OpenFileDialog ofd = new OpenFileDialog();
-            ofd.Filter = "All supported files (*.ttarch, *.ttarch2, *.obb) | *.ttarch;*.ttarch2;*.obb| TTARCH archives (*.ttarch) | *.ttarch| TTARCH2/OBB archives (*.ttarch2;*.obb) | *.ttarch2;*.obb";
+                ofd.Filter = Loc.T(
+                    "ArchiveUnpacker.openFilter",
+                    "All supported files (*.ttarch, *.ttarch2, *.obb) | *.ttarch;*.ttarch2;*.obb| TTARCH archives (*.ttarch) | *.ttarch| TTARCH2/OBB archives (*.ttarch2;*.obb) | *.ttarch2;*.obb");
 
             if (ofd.ShowDialog() == DialogResult.OK)
             {
@@ -1707,7 +1713,7 @@ namespace TTG_Tools
 
             if (!hasFilteredResults())
             {
-                MessageBox.Show("No files found to extract.", "No results", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show(Loc.T("ArchiveUnpacker.msgNoFilesToExtract", "No files found to extract."), Loc.T("ArchiveUnpacker.titleNoResults", "No results"), MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 
@@ -1731,7 +1737,7 @@ namespace TTG_Tools
             }
             else
             {
-                MessageBox.Show("Nothing to extract. Please open ttarch/ttarch2/obb file and then extract.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(Loc.T("ArchiveUnpacker.msgNothingToExtract", "Nothing to extract. Please open ttarch/ttarch2/obb file and then extract."), Loc.T("Common.error", "Error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
@@ -1760,7 +1766,7 @@ namespace TTG_Tools
         {
             if (!hasFilteredResults())
             {
-                MessageBox.Show("No files found to extract.", "No results", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show(Loc.T("ArchiveUnpacker.msgNoFilesToExtract", "No files found to extract."), Loc.T("ArchiveUnpacker.titleNoResults", "No results"), MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 
@@ -1787,7 +1793,7 @@ namespace TTG_Tools
 
                 if (indexesList.Count == 0)
                 {
-                    MessageBox.Show("Please select valid files from list first.", "No selected files from list", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    MessageBox.Show(Loc.T("ArchiveUnpacker.msgSelectValidFiles", "Please select valid files from list first."), Loc.T("ArchiveUnpacker.titleNoSelection", "No selected files from list"), MessageBoxButtons.OK, MessageBoxIcon.Information);
                     return;
                 }
 
@@ -1814,7 +1820,7 @@ namespace TTG_Tools
             }
             else
             {
-                MessageBox.Show("Please select files from list first.", "No selected files from list", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show(Loc.T("ArchiveUnpacker.msgSelectFiles", "Please select files from list first."), Loc.T("ArchiveUnpacker.titleNoSelection", "No selected files from list"), MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
         }
 
@@ -1829,7 +1835,7 @@ namespace TTG_Tools
         {
             if((ttarch == null) && (ttarch2 == null))
             {
-                MessageBox.Show("Nothing to search.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(Loc.T("ArchiveUnpacker.msgNothingToSearch", "Nothing to search."), Loc.T("Common.error", "Error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             else
             {

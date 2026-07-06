@@ -8,9 +8,44 @@ namespace TTG_Tools
 {
     public partial class AutoPacker : Form
     {
+        private readonly int _logBottomMargin;
+
         public AutoPacker()
         {
             InitializeComponent();
+            Localizer.Localize(this);
+            LocalizeEncryptionVersions();
+            //This warning is assigned during Load, after the localization reflow has already run.
+            //Let it wrap inside the free space to the left of the options groups instead of drawing
+            //under them and appearing cut off.
+            sortLabel.MaximumSize = new System.Drawing.Size(
+                Math.Max(100, groupBox1.Left - sortLabel.Left - 12),
+                0);
+            _logBottomMargin = Math.Max(12, ClientSize.Height - listBox1.Bottom);
+            AlignTopAreaAndLog();
+        }
+
+        private void LocalizeEncryptionVersions()
+        {
+            int selected = comboBox2.SelectedIndex;
+            comboBox2.Items.Clear();
+            comboBox2.Items.Add(Loc.T("AutoPacker.encVersionsOld", "Versions 2-6"));
+            comboBox2.Items.Add(Loc.T("AutoPacker.encVersionsNew", "Versions 7-9"));
+            comboBox2.SelectedIndex = selected >= 0 && selected < comboBox2.Items.Count ? selected : 0;
+        }
+
+        private void AlignTopAreaAndLog()
+        {
+            const int gapBeforeLog = 14;
+            int topAreaBottom = Math.Max(groupBox1.Bottom, sortLabel.Bottom);
+            int logTop = topAreaBottom + gapBeforeLog;
+            int logBottom = ClientSize.Height - _logBottomMargin;
+
+            listBox1.SetBounds(
+                listBox1.Left,
+                logTop,
+                listBox1.Width,
+                Math.Max(80, logBottom - logTop));
         }
 
         public static FileInfo[] fi;
@@ -56,10 +91,10 @@ namespace TTG_Tools
                 if (report.StartsWith("##POPUP##"))
                 {
                     string realMessage = report.Substring(9); // Remove o prefixo
-                    MessageBox.Show(realMessage, "Error Report", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    MessageBox.Show(realMessage, Loc.T("AutoPacker.titleErrorReport", "Error Report"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
 
                     // Adiciona um aviso no log apenas para constar
-                    listBox1.Items.Add(">>> Error report displayed on screen. <<<");
+                    listBox1.Items.Add(Loc.T("AutoPacker.reportShownOnScreen", ">>> Error report displayed on screen. <<<"));
 
                     // Rola para o final
                     listBox1.SelectedIndex = listBox1.Items.Count - 1;
@@ -85,7 +120,7 @@ namespace TTG_Tools
             }
             catch
             {
-                MessageBox.Show("Open and close program or fix path in config.xml!", "Error!");
+                MessageBox.Show(Loc.T("AutoPacker.msgFixConfigPath", "Open and close program or fix path in config.xml!"), Loc.T("Common.errorExcl", "Error!"));
                 return;
             }
 
@@ -145,7 +180,7 @@ namespace TTG_Tools
             }
             catch
             {
-                MessageBox.Show("Open and close program or fix path in config.xml!", "Error!");
+                MessageBox.Show(Loc.T("AutoPacker.msgFixConfigPath", "Open and close program or fix path in config.xml!"), Loc.T("Common.errorExcl", "Error!"));
                 return;
             }
 
@@ -167,7 +202,7 @@ namespace TTG_Tools
                 StreamWriter sw = new StreamWriter(MainMenu.settings.pathForOutputFolder + "\\bugs.txt");
                 sw.Write(debug);
                 sw.Close();
-                listBox1.Items.Add("Bugs have been written in file " + MainMenu.settings.pathForOutputFolder + "\\bugs.txt");
+                listBox1.Items.Add(Loc.T("AutoPacker.reportBugsWritten", "Bugs have been written in file") + " " + MainMenu.settings.pathForOutputFolder + "\\bugs.txt");
             }
         }
 
@@ -202,9 +237,11 @@ namespace TTG_Tools
 
             comboBox1.SelectedIndex = MainMenu.settings.encKeyIndex;
             comboBox2.SelectedIndex = MainMenu.settings.versionEnc;
-            labelUnicode.Text = "Unicode is ";
-            labelUnicode.Text += MainMenu.settings.unicodeSettings == 0 ? "set." : "not set.";
-            sortLabel.Text = MainMenu.settings.sortSameString ? "Warning! Some files may be slowly extract due enabled sort strings." : "";
+            labelUnicode.Text = MainMenu.settings.unicodeSettings == 0
+                ? Loc.T("AutoPacker.unicodeSet", "Unicode is set.")
+                : Loc.T("AutoPacker.unicodeNotSet", "Unicode is not set.");
+            sortLabel.Text = MainMenu.settings.sortSameString ? Loc.T("AutoPacker.sortWarning", "Warning! Some files may be slowly extract due enabled sort strings.") : "";
+            AlignTopAreaAndLog();
             checkEncDDS.Checked = MainMenu.settings.encDDSonly;
             checkIOS.Checked = MainMenu.settings.iOSsupport;
             checkEncLangdb.Checked = MainMenu.settings.encLangdb;
@@ -325,10 +362,11 @@ namespace TTG_Tools
 
         private void Form_Closed(object sender, FormClosedEventArgs e)
         {
-            labelUnicode.Text = "Unicode is ";
-            labelUnicode.Text += MainMenu.settings.unicodeSettings == 0 ? "set." : "not set.";
+            labelUnicode.Text = MainMenu.settings.unicodeSettings == 0
+                ? Loc.T("AutoPacker.unicodeSet", "Unicode is set.")
+                : Loc.T("AutoPacker.unicodeNotSet", "Unicode is not set.");
 
-            sortLabel.Text = MainMenu.settings.sortSameString ? "Warning! Some files may be slowly extract due enabled sort strings." : "";
+            sortLabel.Text = MainMenu.settings.sortSameString ? Loc.T("AutoPacker.sortWarning", "Warning! Some files may be slowly extract due enabled sort strings.") : "";
         }
 
         private void SettingsForm_FormClosed(object sender, FormClosedEventArgs e)

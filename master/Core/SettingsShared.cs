@@ -108,8 +108,8 @@ namespace TTG_Tools
 
                 Label l = new Label { Left = 12, Top = 14, Width = 300, Text = label };
                 TextBox tb = new TextBox { Left = 12, Top = 36, Width = 300, Text = defaultValue ?? "" };
-                Button ok = new Button { Text = "OK", DialogResult = DialogResult.OK, Left = 156, Top = 72, Width = 72 };
-                Button cancel = new Button { Text = "Cancel", DialogResult = DialogResult.Cancel, Left = 240, Top = 72, Width = 72 };
+                Button ok = new Button { Text = Loc.T("Common.ok", "OK"), DialogResult = DialogResult.OK, Left = 156, Top = 72, Width = 72 };
+                Button cancel = new Button { Text = Loc.T("Common.cancel", "Cancel"), DialogResult = DialogResult.Cancel, Left = 240, Top = 72, Width = 72 };
 
                 f.Controls.Add(l);
                 f.Controls.Add(tb);

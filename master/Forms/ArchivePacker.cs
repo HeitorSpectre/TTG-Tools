@@ -23,8 +23,111 @@ namespace TTG_Tools
         public ArchivePacker()
         {
             InitializeComponent();
+            Localizer.Localize(this);
+            AlignLocalizedLayout();
             fbd.IsFolderPicker = true;
             fbd.EnsurePathExists = true;
+        }
+
+        private void AlignLocalizedLayout()
+        {
+            SuspendLayout();
+            groupBox1.SuspendLayout();
+            groupBox2.SuspendLayout();
+            try
+            {
+                const int margin = 14;
+                const int labelGap = 8;
+                const int browseGap = 7;
+                const int browseWidth = 32;
+                const int leftBlockRight = 460;
+                const int encryptionLeft = 484;
+
+                int modeWidth = Math.Max(
+                    169,
+                    Math.Max(ttarchRB.PreferredSize.Width, ttarch2RB.PreferredSize.Width) + 12);
+                groupBox1.SetBounds(margin, 10, modeWidth, groupBox1.Height);
+                ttarchRB.Left = 4;
+                ttarch2RB.Left = 4;
+
+                int commonLeft = groupBox1.Right + 16;
+                label7.Location = new System.Drawing.Point(commonLeft, 24);
+
+                label3.Location = new System.Drawing.Point(commonLeft, 53);
+                versionSelection.Left = label3.Right + labelGap;
+                versionSelection.Top = 50;
+
+                checkXmode.Left = versionSelection.Right + 24;
+                checkXmode.Top = 53;
+                checkCompress.Left = checkXmode.Right + 20;
+                checkCompress.Top = 53;
+
+                compressionLabel.Left = commonLeft + 225;
+                compressionLabel.Top = 28;
+                compressionCB.Left = compressionLabel.Right + labelGap;
+                compressionCB.Top = 24;
+
+                int pathLabelWidth = Math.Max(label1.PreferredWidth, label2.PreferredWidth) + 4;
+                int inputLeft = margin + pathLabelWidth + labelGap;
+                int browseLeft = leftBlockRight - browseWidth;
+                int inputWidth = browseLeft - browseGap - inputLeft;
+
+                Label[] pathLabels = { label1, label2 };
+                foreach (Label label in pathLabels)
+                {
+                    label.AutoSize = false;
+                    label.Left = margin;
+                    label.Width = pathLabelWidth;
+                    label.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+                }
+
+                textBox1.SetBounds(inputLeft, textBox1.Top, inputWidth, textBox1.Height);
+                textBox2.SetBounds(inputLeft, textBox2.Top, inputWidth, textBox2.Height);
+                button1.SetBounds(browseLeft, button1.Top, browseWidth, button1.Height);
+                button2.SetBounds(browseLeft, button2.Top, browseWidth, button2.Height);
+                buildButton.Left = browseLeft + browseWidth - buildButton.Width;
+
+                int encryptionWidth = Math.Max(472, ClientSize.Width - encryptionLeft - 12);
+                int encryptionLabelWidth = Math.Max(label5.PreferredWidth + 4, CheckCustomKey.PreferredSize.Width);
+                int encryptionFieldLeft = 14 + encryptionLabelWidth + labelGap;
+                encryptionWidth = Math.Max(encryptionWidth, encryptionFieldLeft + 260);
+                int requiredWidth = encryptionLeft + encryptionWidth + 12;
+                if (ClientSize.Width < requiredWidth)
+                    ClientSize = new System.Drawing.Size(requiredWidth, ClientSize.Height);
+
+                groupBox2.SetBounds(encryptionLeft, 75, encryptionWidth, 116);
+                EncryptIt.Location = new System.Drawing.Point(14, 18);
+                DontEncLuaCheck.Location = new System.Drawing.Point(14, 39);
+                newEngineLua.Location = new System.Drawing.Point(
+                    Math.Max(153, EncryptIt.Right + 20),
+                    18);
+
+                label5.AutoSize = false;
+                label5.SetBounds(14, 62, encryptionLabelWidth, label5.Height);
+                label5.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+                comboGameList.SetBounds(
+                    encryptionFieldLeft,
+                    60,
+                    encryptionWidth - encryptionFieldLeft - 10,
+                    comboGameList.Height);
+
+                CheckCustomKey.Location = new System.Drawing.Point(14, 91);
+                textBox3.SetBounds(
+                    encryptionFieldLeft,
+                    88,
+                    encryptionWidth - encryptionFieldLeft - 10,
+                    textBox3.Height);
+
+                int fullWidth = ClientSize.Width - (margin * 2);
+                progressBar1.SetBounds(margin, progressBar1.Top, fullWidth, progressBar1.Height);
+                messageListBox.SetBounds(margin, messageListBox.Top, fullWidth, messageListBox.Height);
+            }
+            finally
+            {
+                groupBox2.ResumeLayout(false);
+                groupBox1.ResumeLayout(false);
+                ResumeLayout(false);
+            }
         }
 
         public void AddNewReport(string report)
@@ -339,7 +442,7 @@ namespace TTG_Tools
             if (fi.GroupBy(f => f.Name).Where(group => group.Count() > 1).Select(group => group.Key).Count() > 0)
             {
                 fi = fi.Distinct(new FileNameComparer()).ToArray();
-                AddNewReport("Found duplicated files in directories. Successfully removed duplicated files.");
+                AddNewReport(Loc.T("ArchivePacker.reportDupRemoved", "Found duplicated files in directories. Successfully removed duplicated files."));
             }
 
             ulong[] nameCRC = new ulong[fi.Length];
@@ -383,7 +486,7 @@ namespace TTG_Tools
             if (Methods.GetExtension(outputPath).ToLower() == ".obb" && compression)
             {
                 compression = false;
-                AddNewReport("Unset compression for OBB file");
+                AddNewReport(Loc.T("ArchivePacker.reportUnsetCompressionObb", "Unset compression for OBB file"));
             }
             byte[] header = Encoding.ASCII.GetBytes("NCTT"); //Prepare non-compressed header (NCTT)
 
@@ -621,7 +724,7 @@ namespace TTG_Tools
                     }
                 }
 
-                AddNewReport("File " + fi[a].Name + " packed");
+                AddNewReport(string.Format(Loc.T("ArchivePacker.reportFilePacked", "File {0} packed"), fi[a].Name));
                 Progress(a + 1);
                 a++;
             }
@@ -639,7 +742,7 @@ namespace TTG_Tools
             bw.Close();
             fs.Close();
 
-            AddNewReport("Packing archive complete");
+            AddNewReport(Loc.T("ArchivePacker.reportPackComplete", "Packing archive complete"));
         }
 
         async Task ttarchBuilder(string inputFolder, string outputPath, byte[] key, bool compression, int versionArchive, bool encryptCheck, bool DontEncLua, int compressAlgorithm) //Функция сборки
@@ -654,7 +757,7 @@ namespace TTG_Tools
             if(fi.GroupBy(f => f.Name).Where(group => group.Count() > 1).Select(group => group.Key).Count() > 0)
             {
                 fi = fi.Distinct(new FileNameComparer()).ToArray();
-                AddNewReport("Found duplicated files in directories. Successfully removed duplicated files.");
+                AddNewReport(Loc.T("ArchivePacker.reportDupRemoved", "Found duplicated files in directories. Successfully removed duplicated files."));
             }
 
             uint fileOffset = 0;
@@ -689,7 +792,7 @@ namespace TTG_Tools
                 if (Methods.meta_check(fi[i]) && compression)
                 {
                     compression = false;
-                    AddNewReport("Found file with meta encryption. Compression is unset.");
+                    AddNewReport(Loc.T("ArchivePacker.reportMetaEncryption", "Found file with meta encryption. Compression is unset."));
                 }
 
                 byte[] binFileName = Encoding.ASCII.GetBytes(name);
@@ -901,7 +1004,7 @@ namespace TTG_Tools
                     }
                 }
 
-                AddNewReport("File " + fi[a].Name + " packed");
+                AddNewReport(string.Format(Loc.T("ArchivePacker.reportFilePacked", "File {0} packed"), fi[a].Name));
                 Progress(a + 1);
                 a++;
             }
@@ -922,7 +1025,7 @@ namespace TTG_Tools
             bw.Close();
             fs.Close();
 
-            AddNewReport("Packing archive complete");
+            AddNewReport(Loc.T("ArchivePacker.reportPackComplete", "Packing archive complete"));
         }
     
 
@@ -1145,7 +1248,7 @@ namespace TTG_Tools
                         }
                         else
                         {
-                            MessageBox.Show("Check string for correctly. Here's example of encryption key:\r\n" + example, "Error");
+                            MessageBox.Show(Loc.T("ArchivePacker.msgCheckKeyString", "Check string for correctly. Here's example of encryption key:") + "\r\n" + example, Loc.T("Common.error", "Error"));
                             return;
                         }
                     }
@@ -1181,10 +1284,10 @@ namespace TTG_Tools
                     /*if (ttarchRB.Checked == true) ttarchBuilder(MainMenu.settings.inputDirPath, MainMenu.settings.archivePath, keyEnc, MainMenu.settings.compressArchive, archiveVersion, MainMenu.settings.encArchive, MainMenu.settings.encryptLuaInArchive, algorithmCompress);
                     else builder_ttarch2(MainMenu.settings.inputDirPath, MainMenu.settings.archivePath, MainMenu.settings.compressArchive, MainMenu.settings.encArchive, !MainMenu.settings.encryptLuaInArchive, keyEnc, archiveVersion, MainMenu.settings.encNewLua, algorithmCompress);*/
                 }
-                else MessageBox.Show("This folder doesn't exist!", "Error");
-                
+                else MessageBox.Show(Loc.T("ArchivePacker.msgFolderNotExist", "This folder doesn't exist!"), Loc.T("Common.error", "Error"));
+
             }
-            else MessageBox.Show("Check paths!", "Error");
+            else MessageBox.Show(Loc.T("ArchivePacker.msgCheckPaths", "Check paths!"), Loc.T("Common.error", "Error"));
         }
 
         private void ArchivePacker_FormClosing(object sender, FormClosingEventArgs e)

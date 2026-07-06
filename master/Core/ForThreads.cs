@@ -276,7 +276,7 @@ namespace TTG_Tools
                                                 show[6] = true;
                                                 break;
                                             default:
-                                                MessageBox.Show("Error in Switch!");
+                                                MessageBox.Show(Loc.T("Common.msgErrorInSwitch", "Error in Switch!"));
                                                 break;
                                         }
 
@@ -800,7 +800,7 @@ namespace TTG_Tools
                                         break;
 
                                     default:
-                                        MessageBox.Show("Error in Switch!");
+                                        MessageBox.Show(Loc.T("Common.msgErrorInSwitch", "Error in Switch!"));
                                         break;
 
                                 }

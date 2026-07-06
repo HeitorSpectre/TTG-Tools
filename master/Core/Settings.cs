@@ -62,6 +62,33 @@ namespace TTG_Tools
             return xmlPath;
         }
 
+        /// <summary>
+        /// Deserializes the active config.xml into a <see cref="Settings"/>, or returns null when
+        /// there is no config yet or it can't be read. Used at startup (Program.Main) to read the
+        /// interface language before any form is built. Never throws.
+        /// </summary>
+        public static Settings LoadConfigOrNull()
+        {
+            try
+            {
+                string xmlPath = ConfigPath;
+                if (!File.Exists(xmlPath))
+                {
+                    return null;
+                }
+
+                XmlSerializer xmlS = new XmlSerializer(typeof(Settings));
+                using (XmlReader reader = new XmlTextReader(xmlPath))
+                {
+                    return (Settings)xmlS.Deserialize(reader);
+                }
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
         public static void SaveConfig(Settings settings)
         {
             string xmlPath = ConfigPath;
@@ -277,6 +304,11 @@ namespace TTG_Tools
         private bool _normalizePunctuationBeforeNewlineInImport = true;
 
         private int _languageIndex;
+
+        //UI language of the tool itself (the LanguageCode of a Languages/*.lang file, e.g. "pt-BR").
+        //Empty means English (the in-source baseline). Separate from languageIndex, which is the
+        //ASCII/codepage of the game text being translated.
+        private string _interfaceLanguage = "";
 
         private int _luaVersionIndex = 1;
         private int _workflowMode = 0;
@@ -891,6 +923,19 @@ namespace TTG_Tools
             set
             {
                 _supportTwdNintendoSwitch = value;
+            }
+        }
+
+        [XmlAttribute("interfaceLanguage")]
+        public string interfaceLanguage
+        {
+            get
+            {
+                return _interfaceLanguage;
+            }
+            set
+            {
+                _interfaceLanguage = value;
             }
         }
 

@@ -18,6 +18,7 @@ namespace TTG_Tools
         public TextEditor()
         {
             InitializeComponent();
+            Localizer.Localize(this);
         }
 
         private string SelectFolder(string description = "")
@@ -281,12 +282,12 @@ namespace TTG_Tools
                         if (txtNewMethodRB.Checked && !MainMenu.settings.tsvFormat) Texts.SaveText.NewMethod(checkTxts, false, readyFilePath);
                         else Texts.SaveText.OldMethod(checkTxts, true, false, readyFilePath);
 
-                        MessageBox.Show("File successfully saved!", "Information", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        MessageBox.Show(Loc.T("TextEditor.msgFileSaved", "File successfully saved!"), Loc.T("Common.information", "Information"), MessageBoxButtons.OK, MessageBoxIcon.Information);
                     }
                 }
                 else
                 {
-                    MessageBox.Show("Please check paths.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    MessageBox.Show(Loc.T("TextEditor.msgCheckPaths", "Please check paths."), Loc.T("Common.error", "Error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
             }
             else if(severalFilesRB.Checked)
@@ -314,7 +315,7 @@ namespace TTG_Tools
                 }
                 else
                 {
-                    MessageBox.Show("Please check paths.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    MessageBox.Show(Loc.T("TextEditor.msgCheckPaths", "Please check paths."), Loc.T("Common.error", "Error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
             }
 
@@ -497,12 +498,12 @@ namespace TTG_Tools
 
                         MainMenu.settings.tsvFormat = tmpTSV;
 
-                        MessageBox.Show("File successfully saved!", "Information", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        MessageBox.Show(Loc.T("TextEditor.msgFileSaved", "File successfully saved!"), Loc.T("Common.information", "Information"), MessageBoxButtons.OK, MessageBoxIcon.Information);
                     }
                 }
                 else
                 {
-                    MessageBox.Show("Please check paths.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    MessageBox.Show(Loc.T("TextEditor.msgCheckPaths", "Please check paths."), Loc.T("Common.error", "Error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
             }
             else
@@ -540,7 +541,7 @@ namespace TTG_Tools
                 }
                 else
                 {
-                    MessageBox.Show("Please check paths.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    MessageBox.Show(Loc.T("TextEditor.msgCheckPaths", "Please check paths."), Loc.T("Common.error", "Error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
             }
         }
@@ -691,15 +692,15 @@ namespace TTG_Tools
             switch(tabPagesControl.SelectedIndex)
             {
                 case 0:
-                    groupBox1.Text = "Merge";
+                    groupBox1.Text = Loc.T("TextEditor.grpMerge", "Merge");
                     break;
 
                 case 1:
-                    groupBox1.Text = "Replace";
+                    groupBox1.Text = Loc.T("TextEditor.grpReplace", "Replace");
                     break;
 
                 case 2:
-                    groupBox1.Text = "Work with";
+                    groupBox1.Text = Loc.T("TextEditor.grpWorkWith", "Work with");
                     break;
             }
         }
@@ -826,12 +827,12 @@ namespace TTG_Tools
 
                         MainMenu.settings.tsvFormat = tmpTSV;
 
-                        MessageBox.Show("File successfully saved.", "Information", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        MessageBox.Show(Loc.T("TextEditor.msgFileSavedDot", "File successfully saved."), Loc.T("Common.information", "Information"), MessageBoxButtons.OK, MessageBoxIcon.Information);
                     }
                 }
                 else
                 {
-                    MessageBox.Show("No difference in files", "Information", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    MessageBox.Show(Loc.T("TextEditor.msgNoDifference", "No difference in files"), Loc.T("Common.information", "Information"), MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
             }
         }

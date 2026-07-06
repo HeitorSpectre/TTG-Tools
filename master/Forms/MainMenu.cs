@@ -22,6 +22,47 @@ namespace TTG_Tools
         public MainMenu()
         {
             InitializeComponent();
+            Localizer.Localize(this);
+            AlignLocalizedButtonGrid();
+        }
+
+        private void AlignLocalizedButtonGrid()
+        {
+            Button[] leftColumn =
+            {
+                autopackerBtn,
+                archivePackerBtn,
+                settingsBtn,
+                aboutBtn
+            };
+            Button[] rightColumn =
+            {
+                fontEditorBtn,
+                arcUnpackerBtn,
+                modCreatorBtn,
+                luaEditorBtn
+            };
+
+            int buttonWidth = 112;
+            foreach (Button button in leftColumn.Concat(rightColumn))
+                buttonWidth = Math.Max(buttonWidth, button.Width);
+
+            const int left = 34;
+            const int columnGap = 84;
+            const int rightMargin = 28;
+            int right = left + buttonWidth + columnGap;
+
+            for (int i = 0; i < leftColumn.Length; i++)
+            {
+                leftColumn[i].Left = left;
+                leftColumn[i].Width = buttonWidth;
+                rightColumn[i].Left = right;
+                rightColumn[i].Width = buttonWidth;
+            }
+
+            ClientSize = new System.Drawing.Size(
+                right + buttonWidth + rightMargin,
+                ClientSize.Height);
         }
 
         private void OpenAutopacker_Form_Click(object sender, EventArgs e)

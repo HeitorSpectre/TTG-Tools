@@ -89,7 +89,7 @@ namespace TTG_Tools.Texts
             }
             catch
             {
-                MessageBox.Show("Something wrong with file\r\n" + fi.Name, "Error");
+                MessageBox.Show(Loc.T("Common.msgSomethingWrongFile", "Something wrong with file") + "\r\n" + fi.Name, "Error");
                 return null;
             }
         }
@@ -155,7 +155,7 @@ namespace TTG_Tools.Texts
                             }
                             catch
                             {
-                                MessageBox.Show("Error in file " + fi.Name + ". String \"" + tmpString + "\". Difference between end and start is " + Convert.ToString(diff), "Error");
+                                MessageBox.Show(Loc.T("Common.msgErrorInFile", "Error in file") + " " + fi.Name + ". String \"" + tmpString + "\". " + Loc.T("ReadText.msgDiffEndStart", "Difference between end and start is") + " " + Convert.ToString(diff), Loc.T("Common.error", "Error"));
                                 if (sr != null) sr.Close();
                                 if (fs != null) fs.Close();
 
@@ -266,7 +266,7 @@ namespace TTG_Tools.Texts
                         }
                         catch
                         {
-                            MessageBox.Show("Error in file " + fi.Name + ". String \"" + tmpString + "\".", "Error");
+                            MessageBox.Show(Loc.T("Common.msgErrorInFile", "Error in file") + " " + fi.Name + ". String \"" + tmpString + "\".", Loc.T("Common.error", "Error"));
 
                             if (sr != null) sr.Close();
                             if (fs != null) fs.Close();
@@ -276,7 +276,7 @@ namespace TTG_Tools.Texts
                     }
                     else
                     {
-                        MessageBox.Show("Error in file " + fi.Name + ". String \"" + tmpString + "\".", "Error");
+                        MessageBox.Show(Loc.T("Common.msgErrorInFile", "Error in file") + " " + fi.Name + ". String \"" + tmpString + "\".", Loc.T("Common.error", "Error"));
 
                         if (sr != null) sr.Close();
                         if (fs != null) fs.Close();
@@ -335,7 +335,7 @@ namespace TTG_Tools.Texts
                                 }
                                 catch
                                 {
-                                    MessageBox.Show("Something wrong with file\r\n" + FilePath);
+                                    MessageBox.Show(Loc.T("Common.msgSomethingWrongFile", "Something wrong with file") + "\r\n" + FilePath);
 
                                     if (sr != null) sr.Close();
                                     if (fs != null) fs.Close();
@@ -353,7 +353,7 @@ namespace TTG_Tools.Texts
                                 }
                                 catch
                                 {
-                                    MessageBox.Show("Something wrong with file\r\n" + fi.Name);
+                                    MessageBox.Show(Loc.T("Common.msgSomethingWrongFile", "Something wrong with file") + "\r\n" + fi.Name);
 
                                     if (sr != null) sr.Close();
                                     if (fs != null) fs.Close();
@@ -371,7 +371,7 @@ namespace TTG_Tools.Texts
                                 }
                                 catch
                                 {
-                                    MessageBox.Show("Something wrong with file\r\n" + FilePath);
+                                    MessageBox.Show(Loc.T("Common.msgSomethingWrongFile", "Something wrong with file") + "\r\n" + FilePath);
 
                                     if (sr != null) sr.Close();
                                     if (fs != null) fs.Close();
@@ -389,7 +389,7 @@ namespace TTG_Tools.Texts
                                 }
                                 catch
                                 {
-                                    MessageBox.Show("Something wrong with file\r\n" + FilePath);
+                                    MessageBox.Show(Loc.T("Common.msgSomethingWrongFile", "Something wrong with file") + "\r\n" + FilePath);
 
                                     if (sr != null) sr.Close();
                                     if (fs != null) fs.Close();
@@ -407,7 +407,7 @@ namespace TTG_Tools.Texts
                                 }
                                 catch
                                 {
-                                    MessageBox.Show("Something wrong with file\r\n" + FilePath);
+                                    MessageBox.Show(Loc.T("Common.msgSomethingWrongFile", "Something wrong with file") + "\r\n" + FilePath);
 
                                     if (sr != null) sr.Close();
                                     if (fs != null) fs.Close();

@@ -60,6 +60,16 @@ namespace TTG_Tools
                 FirstTime = false;
             }
 
+            // Load the saved config early so the interface language is known before any form is
+            // constructed. MainMenu_Load re-reads config.xml afterwards (harmless); we only need
+            // the language here. On first run there is no config, so the UI stays English.
+            Settings earlyConfig = Settings.LoadConfigOrNull();
+            if (earlyConfig != null)
+            {
+                MainMenu.settings = earlyConfig;
+            }
+            Localization.Init(earlyConfig != null ? earlyConfig.interfaceLanguage : null);
+
             // On the very first run (no config yet) create default Input/Output folders next
             // to the executable and pre-select them in the first-run settings screen. Users
             // who already have a saved config are never touched.

@@ -31,6 +31,14 @@ namespace TTG_Tools
         public LuaEditor()
         {
             InitializeComponent();
+            Localizer.Localize(this);
+
+            //The top row is docked, so WinForms restores its original width after generic reflow.
+            //Reserve the translated checkbox's full width explicitly (German and French are the
+            //longest current labels) and keep a small right margin.
+            int requiredWidth = chkNewEngine.Right + 12;
+            if (ClientSize.Width < requiredWidth)
+                ClientSize = new Size(requiredWidth, ClientSize.Height);
 
             //The Lua Editor decompiles scripts with unluac.jar, which needs Java (JDK 21).
             Shown += (s, e) => WarnIfJdkMissing();
@@ -227,10 +235,10 @@ namespace TTG_Tools
 
             comboWorkflowMode.Items.AddRange(new object[]
             {
-                "Encrypted .lenc  (Telltale classic)",
-                "Encrypted .lua",
-                "Compiled .lua  (no encryption)",
-                "Compiled .lenc  (no encryption)"
+                Loc.T("LuaEditor.workflowEncryptedLenc", "Encrypted .lenc  (Telltale classic)"),
+                Loc.T("LuaEditor.workflowEncryptedLua", "Encrypted .lua"),
+                Loc.T("LuaEditor.workflowCompiledLua", "Compiled .lua  (no encryption)"),
+                Loc.T("LuaEditor.workflowCompiledLenc", "Compiled .lenc  (no encryption)")
             });
             int savedMode = MainMenu.settings.workflowMode;
             if (savedMode < 0 || savedMode > 3) savedMode = 0;
@@ -238,8 +246,8 @@ namespace TTG_Tools
 
             comboEncMethod.Items.AddRange(new object[]
             {
-                "Versions 2-6  (old engine)",
-                "Versions 7-9  (new engine)"
+                Loc.T("LuaEditor.encVersionsOld", "Versions 2-6  (old engine)"),
+                Loc.T("LuaEditor.encVersionsNew", "Versions 7-9  (new engine)")
             });
             int savedEnc = MainMenu.settings.versionEnc;
             if (savedEnc < 0 || savedEnc > 1) savedEnc = 0;
@@ -555,16 +563,14 @@ namespace TTG_Tools
             if (major < 0)
             {
                 MessageBox.Show(
-                    "The Lua Editor needs the Java Development Kit (JDK 21) to decompile Lua scripts, but Java was not found on your PC.\r\n\r\n" +
-                    "Please install JDK 21 and make sure the \"java\" command is available in your PATH, otherwise decompiling won't work.",
-                    "JDK 21 required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    Loc.T("LuaEditor.msgJdkNotFound", "The Lua Editor needs the Java Development Kit (JDK 21) to decompile Lua scripts, but Java was not found on your PC.\r\n\r\nPlease install JDK 21 and make sure the \"java\" command is available in your PATH, otherwise decompiling won't work."),
+                    Loc.T("LuaEditor.msgJdkRequiredTitle", "JDK 21 required"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
             else if (major < 21)
             {
                 MessageBox.Show(
-                    "The Lua Editor was designed for JDK 21, but Java " + major + " was detected.\r\n\r\n" +
-                    "Some Lua scripts may not decompile correctly. Installing JDK 21 is recommended.",
-                    "JDK 21 recommended", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    string.Format(Loc.T("LuaEditor.msgJdkOld", "The Lua Editor was designed for JDK 21, but Java {0} was detected.\r\n\r\nSome Lua scripts may not decompile correctly. Installing JDK 21 is recommended."), major),
+                    Loc.T("LuaEditor.msgJdkRecommendedTitle", "JDK 21 recommended"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
         }
 
@@ -745,7 +751,7 @@ namespace TTG_Tools
 
         private void btnSaveRepack_Click(object sender, EventArgs e)
         {
-            if (string.IsNullOrEmpty(currentLoadedFile)) { MessageBox.Show("Load a file first."); return; }
+            if (string.IsNullOrEmpty(currentLoadedFile)) { MessageBox.Show(Loc.T("LuaEditor.msgLoadFileFirst", "Load a file first.")); return; }
 
             using (var sfd = new SaveFileDialog())
             {
@@ -942,7 +948,7 @@ namespace TTG_Tools
             bool skipText = false, bool skipBinary = false)
         {
             string dir = txtBatchPath.Text;
-            if (!Directory.Exists(dir)) { MessageBox.Show("Pick a valid folder."); return; }
+            if (!Directory.Exists(dir)) { MessageBox.Show(Loc.T("LuaEditor.msgPickValidFolder", "Pick a valid folder.")); return; }
             Task.Run(() =>
             {
                 try

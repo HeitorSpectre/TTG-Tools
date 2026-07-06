@@ -22,6 +22,8 @@ namespace TTG_Tools
         // General
         private TextBox txtInput, txtOutput;
         private CheckBox chkClearMessages;
+        private ComboBox cbInterfaceLanguage; // UI language of the tool itself
+        private string _initialInterfaceLanguage; // to detect a change and prompt for restart
 
         // Language
         private NumericUpDown numAscii;
@@ -53,7 +55,7 @@ namespace TTG_Tools
         #region UI construction
         private void BuildUi()
         {
-            Text = "Settings";
+            Text = Loc.T("Settings.title", "Settings");
             FormBorderStyle = FormBorderStyle.FixedDialog;
             StartPosition = FormStartPosition.CenterParent;
             MaximizeBox = false;
@@ -61,14 +63,14 @@ namespace TTG_Tools
             ClientSize = new Size(474, 358);
 
             // ---- Profile bar ----
-            Label lblProfile = new Label { Left = 12, Top = 16, Width = 48, Text = "Profile" };
+            Label lblProfile = new Label { Left = 12, Top = 16, Width = 48, Text = Loc.T("Settings.lblProfile", "Profile") };
             cbProfile = new ComboBox { Left = 62, Top = 12, Width = 176, DropDownStyle = ComboBoxStyle.DropDownList };
             cbProfile.SelectedIndexChanged += cbProfile_SelectedIndexChanged;
-            btnNewProfile = new Button { Left = 244, Top = 11, Width = 56, Text = "New" };
+            btnNewProfile = new Button { Left = 244, Top = 11, Width = 56, Text = Loc.T("Settings.btnNewProfile", "New") };
             btnNewProfile.Click += btnNewProfile_Click;
-            btnRenameProfile = new Button { Left = 304, Top = 11, Width = 72, Text = "Rename" };
+            btnRenameProfile = new Button { Left = 304, Top = 11, Width = 72, Text = Loc.T("Settings.btnRenameProfile", "Rename") };
             btnRenameProfile.Click += btnRenameProfile_Click;
-            btnDeleteProfile = new Button { Left = 380, Top = 11, Width = 68, Text = "Delete" };
+            btnDeleteProfile = new Button { Left = 380, Top = 11, Width = 68, Text = Loc.T("Settings.btnDeleteProfile", "Delete") };
             btnDeleteProfile.Click += btnDeleteProfile_Click;
             Controls.Add(lblProfile);
             Controls.Add(cbProfile);
@@ -78,11 +80,11 @@ namespace TTG_Tools
 
             // ---- Tabs ----
             TabControl tabs = new TabControl { Left = 12, Top = 44, Width = 450, Height = 268 };
-            TabPage tabGeneral = new TabPage("General / folders");
-            TabPage tabLanguage = new TabPage("Language");
-            TabPage tabText = new TabPage("Text");
-            TabPage tabImage = new TabPage("Image / textures");
-            TabPage tabNorm = new TabPage("Normalization");
+            TabPage tabGeneral = new TabPage(Loc.T("Settings.tabGeneral", "General / folders"));
+            TabPage tabLanguage = new TabPage(Loc.T("Settings.tabLanguage", "Language"));
+            TabPage tabText = new TabPage(Loc.T("Settings.tabText", "Text"));
+            TabPage tabImage = new TabPage(Loc.T("Settings.tabImage", "Image / textures"));
+            TabPage tabNorm = new TabPage(Loc.T("Settings.tabNorm", "Normalization"));
             tabs.TabPages.AddRange(new[] { tabGeneral, tabLanguage, tabText, tabImage, tabNorm });
             Controls.Add(tabs);
 
@@ -93,11 +95,11 @@ namespace TTG_Tools
             BuildNormalizationTab(tabNorm);
 
             // ---- Bottom buttons ----
-            btnSave = new Button { Left = 206, Top = 322, Width = 72, Text = "Save" };
+            btnSave = new Button { Left = 206, Top = 322, Width = 72, Text = Loc.T("Settings.btnSave", "Save") };
             btnSave.Click += btnSave_Click;
-            btnOk = new Button { Left = 300, Top = 322, Width = 72, Text = "OK" };
+            btnOk = new Button { Left = 300, Top = 322, Width = 72, Text = Loc.T("Settings.btnOk", "OK") };
             btnOk.Click += btnOk_Click;
-            btnCancel = new Button { Left = 390, Top = 322, Width = 72, Text = "Cancel" };
+            btnCancel = new Button { Left = 390, Top = 322, Width = 72, Text = Loc.T("Settings.btnCancel", "Cancel") };
             btnCancel.Click += (s, e) => Close();
             Controls.Add(btnSave);
             Controls.Add(btnOk);
@@ -107,23 +109,29 @@ namespace TTG_Tools
 
         private void BuildGeneralTab(TabPage tab)
         {
-            Label lblIn = new Label { Left = 12, Top = 14, AutoSize = true, Text = "Input folder" };
-            txtInput = new TextBox { Left = 12, Top = 32, Width = 330 };
-            Button btnIn = new Button { Left = 348, Top = 31, Width = 78, Text = "Browse…" };
+            // Interface language of the tool itself (different from the game-text "Language" tab).
+            Label lblUiLang = new Label { Left = 12, Top = 14, AutoSize = true, Text = Loc.T("Settings.lblInterfaceLanguage", "Interface language") };
+            cbInterfaceLanguage = new ComboBox { Left = 150, Top = 11, Width = 276, DropDownStyle = ComboBoxStyle.DropDownList };
+
+            Label lblIn = new Label { Left = 12, Top = 48, AutoSize = true, Text = Loc.T("Settings.lblInput", "Input folder") };
+            txtInput = new TextBox { Left = 12, Top = 66, Width = 330 };
+            Button btnIn = new Button { Left = 348, Top = 65, Width = 78, Text = Loc.T("Settings.btnBrowse", "Browse…") };
             btnIn.Click += (s, e) => txtInput.Text = SettingsShared.PickFolder(txtInput.Text);
 
-            Label lblOut = new Label { Left = 12, Top = 62, AutoSize = true, Text = "Output folder" };
-            txtOutput = new TextBox { Left = 12, Top = 80, Width = 330 };
-            Button btnOut = new Button { Left = 348, Top = 79, Width = 78, Text = "Browse…" };
+            Label lblOut = new Label { Left = 12, Top = 96, AutoSize = true, Text = Loc.T("Settings.lblOutput", "Output folder") };
+            txtOutput = new TextBox { Left = 12, Top = 114, Width = 330 };
+            Button btnOut = new Button { Left = 348, Top = 113, Width = 78, Text = Loc.T("Settings.btnBrowse", "Browse…") };
             btnOut.Click += (s, e) => txtOutput.Text = SettingsShared.PickFolder(txtOutput.Text);
 
-            chkClearMessages = new CheckBox { Left = 12, Top = 116, AutoSize = true, Text = "Clear messages after each operation" };
+            chkClearMessages = new CheckBox { Left = 12, Top = 148, AutoSize = true, Text = Loc.T("Settings.chkClearMessages", "Clear messages after each operation") };
 
-            Label lblCfg = new Label { Left = 12, Top = 150, AutoSize = true, Text = "Configuration folder (config file and profiles)" };
-            TextBox txtCfg = new TextBox { Left = 12, Top = 168, Width = 330, ReadOnly = true, Text = Settings.ConfigDirectory };
-            Button btnCfg = new Button { Left = 348, Top = 167, Width = 78, Text = "Open" };
+            Label lblCfg = new Label { Left = 12, Top = 178, AutoSize = true, Text = Loc.T("Settings.lblConfigFolder", "Configuration folder (config file and profiles)") };
+            TextBox txtCfg = new TextBox { Left = 12, Top = 196, Width = 330, ReadOnly = true, Text = Settings.ConfigDirectory };
+            Button btnCfg = new Button { Left = 348, Top = 195, Width = 78, Text = Loc.T("Settings.btnOpen", "Open") };
             btnCfg.Click += (s, e) => OpenConfigFolder();
 
+            tab.Controls.Add(lblUiLang);
+            tab.Controls.Add(cbInterfaceLanguage);
             tab.Controls.Add(lblIn);
             tab.Controls.Add(txtInput);
             tab.Controls.Add(btnIn);
@@ -148,25 +156,25 @@ namespace TTG_Tools
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Couldn't open the settings folder:\r\n" + ex.Message);
+                MessageBox.Show(Loc.T("Settings.msgOpenFolderFailed", "Couldn't open the settings folder:") + "\r\n" + ex.Message);
             }
         }
 
         private void BuildLanguageTab(TabPage tab)
         {
-            Label lblAscii = new Label { Left = 12, Top = 17, AutoSize = true, Text = "ASCII code page" };
-            numAscii = new NumericUpDown { Left = 120, Top = 14, Width = 70, Minimum = 0, Maximum = 1258, Value = 1251, ReadOnly = true };
+            Label lblAscii = new Label { Left = 12, Top = 17, AutoSize = true, Text = Loc.T("Settings.lblAscii", "ASCII code page") };
+            numAscii = new NumericUpDown { Left = 190, Top = 14, Width = 70, Minimum = 0, Maximum = 1258, Value = 1251, ReadOnly = true };
             numAscii.ValueChanged += numericUpDownASCII_ValueChanged;
 
-            chkLanguage = new CheckBox { Left = 12, Top = 46, AutoSize = true, Text = "Pick by language" };
+            chkLanguage = new CheckBox { Left = 12, Top = 46, AutoSize = true, Text = Loc.T("Settings.chkPickByLanguage", "Pick by language") };
             chkLanguage.CheckedChanged += checkLanguage_CheckedChanged;
-            cbLanguage = new ComboBox { Left = 130, Top = 44, Width = 288, DropDownStyle = ComboBoxStyle.DropDownList };
+            cbLanguage = new ComboBox { Left = 195, Top = 44, Width = 223, DropDownStyle = ComboBoxStyle.DropDownList };
 
-            GroupBox grp = new GroupBox { Left = 12, Top = 76, Width = 418, Height = 112, Text = "Unicode mode" };
-            rbNormalUnicode = new RadioButton { Left = 12, Top = 18, Width = 398, Text = "Normal Unicode" };
-            rbNonNormalUnicode2 = new RadioButton { Left = 12, Top = 40, Width = 398, Text = "NOT normal unicode (recommended for new Tales From the Borderlands)" };
-            rbNewBttF = new RadioButton { Left = 12, Top = 62, Width = 398, Text = "ASCII support for Back to the Future Xbox360 / PS4" };
-            rbTwdNintendoSwitch = new RadioButton { Left = 12, Top = 84, Width = 398, Text = "Support for The Walking Dead Nintendo Switch" };
+            GroupBox grp = new GroupBox { Left = 12, Top = 76, Width = 418, Height = 112, Text = Loc.T("Settings.grpUnicodeMode", "Unicode mode") };
+            rbNormalUnicode = new RadioButton { Left = 12, Top = 18, Width = 398, Text = Loc.T("Settings.rbNormalUnicode", "Normal Unicode") };
+            rbNonNormalUnicode2 = new RadioButton { Left = 12, Top = 40, Width = 398, Text = Loc.T("Settings.rbNonNormalUnicode", "NOT normal unicode (recommended for new Tales From the Borderlands)") };
+            rbNewBttF = new RadioButton { Left = 12, Top = 62, Width = 398, Text = Loc.T("Settings.rbNewBttF", "ASCII support for Back to the Future Xbox360 / PS4") };
+            rbTwdNintendoSwitch = new RadioButton { Left = 12, Top = 84, Width = 398, Text = Loc.T("Settings.rbTwdNintendoSwitch", "Support for The Walking Dead Nintendo Switch") };
             rbNormalUnicode.CheckedChanged += UnicodeMode_CheckedChanged;
             rbNonNormalUnicode2.CheckedChanged += UnicodeMode_CheckedChanged;
             rbNewBttF.CheckedChanged += UnicodeMode_CheckedChanged;
@@ -185,22 +193,22 @@ namespace TTG_Tools
 
         private void BuildTextTab(TabPage tab)
         {
-            GroupBox grp = new GroupBox { Left = 12, Top = 10, Width = 418, Height = 108, Text = "Text file format" };
-            rbTxt = new RadioButton { Left = 12, Top = 18, Width = 398, Text = "Plain text (.txt)" };
-            rbTsv = new RadioButton { Left = 12, Top = 40, Width = 398, Text = "TSV (.tsv)" };
-            rbNewTxt = new RadioButton { Left = 12, Top = 62, Width = 398, Text = "New txt format (langid / actor / speech)" };
-            rbTelltaleExplorer = new RadioButton { Left = 12, Top = 84, Width = 398, Text = "Telltale Explorer Style ([id] / Category / Speech)" };
+            GroupBox grp = new GroupBox { Left = 12, Top = 10, Width = 418, Height = 108, Text = Loc.T("Settings.grpTextFormat", "Text file format") };
+            rbTxt = new RadioButton { Left = 12, Top = 18, Width = 398, Text = Loc.T("Settings.rbTxt", "Plain text (.txt)") };
+            rbTsv = new RadioButton { Left = 12, Top = 40, Width = 398, Text = Loc.T("Settings.rbTsv", "TSV (.tsv)") };
+            rbNewTxt = new RadioButton { Left = 12, Top = 62, Width = 398, Text = Loc.T("Settings.rbNewTxt", "New txt format (langid / actor / speech)") };
+            rbTelltaleExplorer = new RadioButton { Left = 12, Top = 84, Width = 398, Text = Loc.T("Settings.rbTelltaleExplorer", "Telltale Explorer Style ([id] / Category / Speech)") };
             rbNewTxt.CheckedChanged += newTxtFormatRB_CheckedChanged;
             grp.Controls.Add(rbTxt);
             grp.Controls.Add(rbTsv);
             grp.Controls.Add(rbNewTxt);
             grp.Controls.Add(rbTelltaleExplorer);
 
-            chkChangeLangFlags = new CheckBox { Left = 26, Top = 124, AutoSize = true, Text = "Change language flags" };
-            chkImportNames = new CheckBox { Left = 12, Top = 146, AutoSize = true, Text = "Import actor names" };
-            chkSortStrings = new CheckBox { Left = 12, Top = 168, AutoSize = true, Text = "Sort identical strings" };
-            chkExportRealID = new CheckBox { Left = 12, Top = 190, AutoSize = true, Text = "Export real ID" };
-            chkIgnoreEmpty = new CheckBox { Left = 12, Top = 212, AutoSize = true, Text = "Ignore empty strings" };
+            chkChangeLangFlags = new CheckBox { Left = 26, Top = 124, AutoSize = true, Text = Loc.T("Settings.chkChangeLangFlags", "Change language flags") };
+            chkImportNames = new CheckBox { Left = 12, Top = 146, AutoSize = true, Text = Loc.T("Settings.chkImportNames", "Import actor names") };
+            chkSortStrings = new CheckBox { Left = 12, Top = 168, AutoSize = true, Text = Loc.T("Settings.chkSortStrings", "Sort identical strings") };
+            chkExportRealID = new CheckBox { Left = 12, Top = 190, AutoSize = true, Text = Loc.T("Settings.chkExportRealID", "Export real ID") };
+            chkIgnoreEmpty = new CheckBox { Left = 12, Top = 212, AutoSize = true, Text = Loc.T("Settings.chkIgnoreEmpty", "Ignore empty strings") };
 
             tab.Controls.Add(grp);
             tab.Controls.Add(chkChangeLangFlags);
@@ -212,10 +220,10 @@ namespace TTG_Tools
 
         private void BuildImageTab(TabPage tab)
         {
-            chkExtractPng = new CheckBox { Left = 12, Top = 16, AutoSize = true, Text = "Extract textures as PNG (convert back on import)" };
-            Label pngHint = new Label { Left = 28, Top = 38, AutoSize = true, MaximumSize = new Size(400, 0), ForeColor = SystemColors.GrayText, Text = "Beginner-friendly. Unsupported formats (BC6/BC7/PVRTC) fall back to DDS automatically." };
-            chkDeleteDDS = new CheckBox { Left = 12, Top = 72, AutoSize = true, Text = "Delete DDS files after import" };
-            chkDeleteD3DTX = new CheckBox { Left = 12, Top = 96, AutoSize = true, Text = "Delete D3DTX files after import" };
+            chkExtractPng = new CheckBox { Left = 12, Top = 16, AutoSize = true, Text = Loc.T("Settings.chkExtractPng", "Extract textures as PNG (convert back on import)") };
+            Label pngHint = new Label { Left = 28, Top = 38, AutoSize = true, MaximumSize = new Size(400, 0), ForeColor = SystemColors.GrayText, Text = Loc.T("Settings.pngHint", "Beginner-friendly. Unsupported formats (BC6/BC7/PVRTC) fall back to DDS automatically.") };
+            chkDeleteDDS = new CheckBox { Left = 12, Top = 72, AutoSize = true, Text = Loc.T("Settings.chkDeleteDDS", "Delete DDS files after import") };
+            chkDeleteD3DTX = new CheckBox { Left = 12, Top = 96, AutoSize = true, Text = Loc.T("Settings.chkDeleteD3DTX", "Delete D3DTX files after import") };
             tab.Controls.Add(chkExtractPng);
             tab.Controls.Add(pngHint);
             tab.Controls.Add(chkDeleteDDS);
@@ -224,10 +232,10 @@ namespace TTG_Tools
 
         private void BuildNormalizationTab(TabPage tab)
         {
-            Label hint = new Label { Left = 12, Top = 12, AutoSize = true, Text = "Applied to translated text during import (mainly useful for CJK localizations)." };
-            chkNormNewline = new CheckBox { Left = 12, Top = 40, AutoSize = true, Text = "Fix punctuation before line breaks (\\n。 -> 。\\n)" };
-            chkRemoveBlanksCjk = new CheckBox { Left = 12, Top = 64, AutoSize = true, Text = "Remove spaces between CJK characters" };
-            chkReplaceDot = new CheckBox { Left = 12, Top = 88, AutoSize = true, Text = "Convert dots near CJK to Chinese period (。)" };
+            Label hint = new Label { Left = 12, Top = 12, AutoSize = true, Text = Loc.T("Settings.normHint", "Applied to translated text during import (mainly useful for CJK localizations).") };
+            chkNormNewline = new CheckBox { Left = 12, Top = 40, AutoSize = true, Text = Loc.T("Settings.chkNormNewline", "Fix punctuation before line breaks (\\n。 -> 。\\n)") };
+            chkRemoveBlanksCjk = new CheckBox { Left = 12, Top = 64, AutoSize = true, Text = Loc.T("Settings.chkRemoveBlanksCjk", "Remove spaces between CJK characters") };
+            chkReplaceDot = new CheckBox { Left = 12, Top = 88, AutoSize = true, Text = Loc.T("Settings.chkReplaceDot", "Convert dots near CJK to Chinese period (。)") };
             tab.Controls.Add(hint);
             tab.Controls.Add(chkNormNewline);
             tab.Controls.Add(chkRemoveBlanksCjk);
@@ -240,10 +248,41 @@ namespace TTG_Tools
         {
             foreach (string lang in MainMenu.languagesASCII) cbLanguage.Items.Add(lang);
 
+            PopulateInterfaceLanguages();
+
             RefreshProfilesList(MainMenu.settings.activeProfile);
             LoadSettingsToUi();
 
             btnSave.Enabled = !Program.FirstTime;
+
+            //Let the shared reflow grow buttons/labels and the window so longer translations fit
+            //(no-op for English). Handles e.g. the profile bar buttons in German/Turkish/Russian.
+            Localizer.AutoFit(this);
+        }
+
+        //Fills the interface-language dropdown from the .lang files found in the Languages folder
+        //(plus the built-in English), and selects the currently active one.
+        private void PopulateInterfaceLanguages()
+        {
+            cbInterfaceLanguage.Items.Clear();
+            foreach (Localization.LanguageInfo li in Localization.AvailableLanguages)
+                cbInterfaceLanguage.Items.Add(li);
+            cbInterfaceLanguage.DisplayMember = "DisplayName";
+
+            _initialInterfaceLanguage = string.IsNullOrEmpty(MainMenu.settings.interfaceLanguage)
+                ? "en" : MainMenu.settings.interfaceLanguage;
+
+            int select = 0;
+            for (int i = 0; i < cbInterfaceLanguage.Items.Count; i++)
+            {
+                Localization.LanguageInfo li = (Localization.LanguageInfo)cbInterfaceLanguage.Items[i];
+                if (string.Equals(li.Code, _initialInterfaceLanguage, StringComparison.OrdinalIgnoreCase))
+                {
+                    select = i;
+                    break;
+                }
+            }
+            if (cbInterfaceLanguage.Items.Count > 0) cbInterfaceLanguage.SelectedIndex = select;
         }
 
         //Pushes the global settings into every control.
@@ -320,6 +359,14 @@ namespace TTG_Tools
             MainMenu.settings.telltaleExplorerFormat = rbTelltaleExplorer.Checked;
 
             MainMenu.settings.ASCII_N = (int)numAscii.Value;
+
+            Localization.LanguageInfo selLang = cbInterfaceLanguage.SelectedItem as Localization.LanguageInfo;
+            if (selLang != null)
+            {
+                //Store "" for English (the in-source baseline) so old configs stay clean.
+                MainMenu.settings.interfaceLanguage =
+                    string.Equals(selLang.Code, "en", StringComparison.OrdinalIgnoreCase) ? "" : selLang.Code;
+            }
 
             MainMenu.settings.languageIndex = -1;
             if (chkLanguage.Checked && cbLanguage.SelectedIndex >= 0)
@@ -497,17 +544,30 @@ namespace TTG_Tools
 
                 if (!pathsOk)
                 {
-                    MessageBox.Show("Please set correct paths for input and output folders!");
+                    MessageBox.Show(Loc.T("Settings.msgSetPaths", "Please set correct paths for input and output folders!"));
                     return;
                 }
 
                 Settings.SaveConfig(MainMenu.settings);
-                MessageBox.Show("Please restart application to confirm settings");
+                MessageBox.Show(Loc.T("Settings.msgRestart", "Please restart application to confirm settings"));
                 Close();
                 return;
             }
 
             Settings.SaveConfig(MainMenu.settings);
+
+            //The interface language only takes effect after a restart, so when it changed we
+            //restart the app automatically. The confirmation is shown in the just-selected
+            //language (we load it first) so the user immediately sees the change applied.
+            string newLang = string.IsNullOrEmpty(MainMenu.settings.interfaceLanguage) ? "en" : MainMenu.settings.interfaceLanguage;
+            if (!string.Equals(newLang, _initialInterfaceLanguage, StringComparison.OrdinalIgnoreCase))
+            {
+                Localization.LoadLanguage(newLang);
+                MessageBox.Show(Loc.T("Settings.msgRestartLanguage", "The interface language has been changed. The application will now restart to apply it."));
+                Application.Restart();
+                return;
+            }
+
             Close();
         }
         #endregion
@@ -553,13 +613,13 @@ namespace TTG_Tools
 
         private void btnNewProfile_Click(object sender, EventArgs e)
         {
-            string name = SettingsShared.PromptText(this, "New profile", "Profile name:", "");
+            string name = SettingsShared.PromptText(this, Loc.T("Settings.newProfileTitle", "New profile"), Loc.T("Settings.profileNameLabel", "Profile name:"), "");
             if (name == null) return;
 
             name = Settings.SanitizeProfileName(name);
             if (Settings.ProfileExists(name))
             {
-                MessageBox.Show("A profile with that name already exists.");
+                MessageBox.Show(Loc.T("Settings.msgProfileExists", "A profile with that name already exists."));
                 return;
             }
 
@@ -575,14 +635,14 @@ namespace TTG_Tools
         private void btnRenameProfile_Click(object sender, EventArgs e)
         {
             string current = Settings.SanitizeProfileName(MainMenu.settings.activeProfile);
-            string name = SettingsShared.PromptText(this, "Rename profile", "New name:", current);
+            string name = SettingsShared.PromptText(this, Loc.T("Settings.renameProfileTitle", "Rename profile"), Loc.T("Settings.newNameLabel", "New name:"), current);
             if (name == null) return;
 
             name = Settings.SanitizeProfileName(name);
             if (name == current) return;
             if (Settings.ProfileExists(name))
             {
-                MessageBox.Show("A profile with that name already exists.");
+                MessageBox.Show(Loc.T("Settings.msgProfileExists", "A profile with that name already exists."));
                 return;
             }
 
@@ -600,12 +660,12 @@ namespace TTG_Tools
             string[] profiles = Settings.ListProfiles();
             if (profiles.Length <= 1)
             {
-                MessageBox.Show("You can't delete the last profile.");
+                MessageBox.Show(Loc.T("Settings.msgCantDeleteLast", "You can't delete the last profile."));
                 return;
             }
 
             string current = Settings.SanitizeProfileName(MainMenu.settings.activeProfile);
-            if (MessageBox.Show("Delete profile \"" + current + "\"?", "Delete profile",
+            if (MessageBox.Show(Loc.T("Settings.msgDeleteProfileConfirm", "Delete profile") + " \"" + current + "\"?", Loc.T("Settings.deleteProfileTitle", "Delete profile"),
                 MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
 
             Settings.DeleteProfile(current);

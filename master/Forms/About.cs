@@ -18,6 +18,7 @@ namespace TTG_Tools
         public About()
         {
             InitializeComponent();
+            Localizer.Localize(this);
             BuildReadOnlyPanel();
         }
 

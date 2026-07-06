@@ -152,6 +152,8 @@
     <Compile Include="InEngineWords\VariableTypes.cs" />
     <Compile Include="Core\Settings.cs" />
     <Compile Include="Core\SettingsShared.cs" />
+    <Compile Include="Core\Localization.cs" />
+    <Compile Include="Core\Localizer.cs" />
     <Compile Include="Forms\SettingsForm.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -264,6 +266,9 @@
     <None Include="Resources\IconSave.ico" />
     <Content Include="Resources\ttgtool.ico" />
     <Content Include="LencTools\**\*.*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Languages\**\*.lang">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>

@@ -20,6 +20,7 @@ namespace TTG_Tools
         public FontEditor()
         {
             InitializeComponent();
+            Localizer.Localize(this);
             SetProcessWorkingSetSize(System.Diagnostics.Process.GetCurrentProcess().Handle, -1, -1);
 
             AllowDrop = true;
@@ -85,7 +86,7 @@ namespace TTG_Tools
             string firstFontFile = files.FirstOrDefault(file => Path.GetExtension(file).Equals(".font", StringComparison.OrdinalIgnoreCase));
             if (string.IsNullOrEmpty(firstFontFile))
             {
-                MessageBox.Show("Please drop a .font file.", "Unsupported file type");
+                MessageBox.Show(Loc.T("FontEditor.msgDropFont", "Please drop a .font file."), Loc.T("FontEditor.titleUnsupportedType", "Unsupported file type"));
                 return;
             }
 
@@ -1369,7 +1370,7 @@ namespace TTG_Tools
                         saveToolStripMenuItem.Enabled = false;
                         saveAsToolStripMenuItem.Enabled = false;
                         exportCoordinatesToolStripMenuItem1.Enabled = false;
-                        Form.ActiveForm.Text = "Font Editor";
+                        Form.ActiveForm.Text = Loc.T("FontEditor.$this", "Font Editor");
                     }
 
 
@@ -1445,7 +1446,7 @@ namespace TTG_Tools
                             rbNoKerning.Enabled = false;
                             edited = false;
                             FileInfo fiXbox = new FileInfo(FileName);
-                            if (Form.ActiveForm != null) Form.ActiveForm.Text = "Font Editor. Opened file " + fiXbox.Name + " (Xbox 360, " + xboxDoc.Pages.Count + " page" + (xboxDoc.Pages.Count != 1 ? "s" : "") + ")";
+                            if (Form.ActiveForm != null) Form.ActiveForm.Text = Loc.T("FontEditor.titleOpened", "Font Editor. Opened file") + " " +fiXbox.Name + " (Xbox 360, " + xboxDoc.Pages.Count + " page" + (xboxDoc.Pages.Count != 1 ? "s" : "") + ")";
                             return;
                         }
 
@@ -1513,7 +1514,7 @@ namespace TTG_Tools
                             rbNoKerning.Enabled = false;
                             edited = false;
                             FileInfo fiPs2 = new FileInfo(FileName);
-                            if (Form.ActiveForm != null) Form.ActiveForm.Text = "Font Editor. Opened file " + fiPs2.Name + " (PS2)";
+                            if (Form.ActiveForm != null) Form.ActiveForm.Text = Loc.T("FontEditor.titleOpened", "Font Editor. Opened file") + " " +fiPs2.Name + " (PS2)";
                             return;
                         }
 
@@ -1590,7 +1591,7 @@ namespace TTG_Tools
                             rbNoKerning.Enabled = false;
                             edited = false;
                             FileInfo fiWii = new FileInfo(FileName);
-                            if (Form.ActiveForm != null) Form.ActiveForm.Text = "Font Editor. Opened file " + fiWii.Name + " (Wii)";
+                            if (Form.ActiveForm != null) Form.ActiveForm.Text = Loc.T("FontEditor.titleOpened", "Font Editor. Opened file") + " " +fiWii.Name + " (Wii)";
                             return;
                         }
 
@@ -1631,13 +1632,13 @@ namespace TTG_Tools
                                 string info = Methods.FindingDecrytKey(binContent, "font", ref encKey, ref version);
                                 if (info != null)
                                 {
-                                    MessageBox.Show("Font was encrypted, but I decrypted.\r\n" + info);
+                                    MessageBox.Show(Loc.T("FontEditor.msgFontDecrypted", "Font was encrypted, but I decrypted.") + "\r\n" + info);
                                     encrypted = true;
                                 }
                             }
                             catch (Exception ex)
                             {
-                                MessageBox.Show("Maybe that font encrypted. Try to decrypt first.", "Error " + ex.Message);
+                                MessageBox.Show(Loc.T("FontEditor.msgMaybeEncrypted", "Maybe that font encrypted. Try to decrypt first."), Loc.T("Common.error", "Error") + " " + ex.Message);
                                 poz = -1;
                                 return;
                             }
@@ -1671,7 +1672,7 @@ namespace TTG_Tools
 
                         if ((BitConverter.ToString(tmp) == "81-53-37-63-9E-4A-3A-9A") && (countElements == 1) && (Encoding.ASCII.GetString(check_header) == "ERTM"))
                         {
-                            MessageBox.Show("This font is empty!", "Information", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                            MessageBox.Show(Loc.T("FontEditor.msgFontEmpty", "This font is empty!"), Loc.T("Common.information", "Information"), MessageBoxButtons.OK, MessageBoxIcon.Information);
 
                             font = null;
                             GC.Collect();
@@ -1683,7 +1684,7 @@ namespace TTG_Tools
                         {
                             if((countElements == 1) && (Encoding.ASCII.GetString(check_header) == "6VSM"))
                             {
-                                MessageBox.Show("This font is a vector font. Try use Auto (De)Packer.");
+                                MessageBox.Show(Loc.T("FontEditor.msgVectorFont", "This font is a vector font. Try use Auto (De)Packer."));
                                 font = null;
                                 GC.Collect();
                                 edited = false;
@@ -2018,7 +2019,7 @@ namespace TTG_Tools
                                 font.tex[i] = Graphics.TextureWorker.GetOldTextures(binContent, ref poz, fontFlags != null, someTexData);
                                 if (font.tex[i] == null)
                                 {
-                                    MessageBox.Show("Maybe unsupported font.", "Error");
+                                    MessageBox.Show(Loc.T("FontEditor.msgUnsupportedFont", "Maybe unsupported font."), Loc.T("Common.error", "Error"));
                                     return;
                                 }
                             }
@@ -2054,7 +2055,7 @@ namespace TTG_Tools
 
                                 if (font.NewTex[i] == null)
                                 {
-                                    MessageBox.Show("Maybe unsupported font.", "Error");
+                                    MessageBox.Show(Loc.T("FontEditor.msgUnsupportedFont", "Maybe unsupported font."), Loc.T("Common.error", "Error"));
                                     return;
                                 }
                             }
@@ -2092,14 +2093,14 @@ namespace TTG_Tools
                         rbNoKerning.Enabled = font.NewFormat;
                         edited = false;
                         FileInfo fi = new FileInfo(FileName);
-                        if(Form.ActiveForm != null) Form.ActiveForm.Text = "Font Editor. Opened file " + fi.Name;
+                        if(Form.ActiveForm != null) Form.ActiveForm.Text = Loc.T("FontEditor.titleOpened", "Font Editor. Opened file") + " " +fi.Name;
 
                     }
                     catch(Exception ex)
                     {
                         binContent = null;
                         GC.Collect();
-                        MessageBox.Show("Unknown error: " + ex.Message);
+                        MessageBox.Show(Loc.T("FontEditor.msgUnknownError", "Unknown error:") + " " + ex.Message);
                     }
                 }
         }
@@ -2129,7 +2130,7 @@ namespace TTG_Tools
         {
             if (encrypted == true) //Ask about a full enryption if you don't want build archive
             {
-                if (MessageBox.Show("Do you want to make a full encryption?", "About encrypted font...",
+                if (MessageBox.Show(Loc.T("FontEditor.msgFullEncryption", "Do you want to make a full encryption?"), Loc.T("FontEditor.titleAboutEncrypted", "About encrypted font..."),
                     MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
                 {
                     FileStream fs = new FileStream(path, FileMode.Open);
@@ -2186,7 +2187,7 @@ namespace TTG_Tools
                 string textureImportError;
                 if (!Graphics.WiiSupport.TryApplyWiiTextureImportsForEditor(outputPath, wiiImportedTexturePaths, out textureImportError))
                 {
-                    MessageBox.Show("The Wii font coordinates were saved, but the texture import failed: " + textureImportError, "Wii texture import");
+                    MessageBox.Show(Loc.T("FontEditor.msgWiiTextureFailed", "The Wii font coordinates were saved, but the texture import failed:") + " " + textureImportError, Loc.T("FontEditor.titleWiiTexture", "Wii texture import"));
                 }
                 return;
             }
@@ -2198,7 +2199,7 @@ namespace TTG_Tools
                 string error;
                 if (!Graphics.Swizzles.PS2.SaveFontForEditor(ps2FontDocument, font, outputPath, ps2ImportedTexturePaths, out error))
                 {
-                    MessageBox.Show("The PS2 font could not be saved: " + error, "PS2 font save");
+                    MessageBox.Show(Loc.T("FontEditor.msgPs2SaveFailed", "The PS2 font could not be saved:") + " " + error, Loc.T("FontEditor.titlePs2Save", "PS2 font save"));
                 }
                 return;
             }
@@ -2248,7 +2249,7 @@ namespace TTG_Tools
                 if (!Graphics.Xbox360.XboxFontSupport.TrySaveFontForEditor(
                         xboxFontData, outputPath, edited, importedPages, out xboxError))
                 {
-                    MessageBox.Show("The Xbox 360 font could not be saved: " + xboxError, "Xbox 360 font save");
+                    MessageBox.Show(Loc.T("FontEditor.msgXboxSaveFailed", "The Xbox 360 font could not be saved:") + " " + xboxError, Loc.T("FontEditor.titleXboxSave", "Xbox 360 font save"));
                 }
                 else
                 {
@@ -2742,9 +2743,8 @@ namespace TTG_Tools
                     int expectedH = file_n < xboxFontData.Pages.Count ? xboxFontData.Pages[file_n].Height : 0;
                     if (width != expectedW || height != expectedH)
                     {
-                        MessageBox.Show("Imported TGA must be " + expectedW + "x" + expectedH
-                            + " (was " + width + "x" + height + ").",
-                            "Wrong size", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        MessageBox.Show(string.Format(Loc.T("FontEditor.msgTgaSize", "Imported TGA must be {0}x{1} (was {2}x{3})."), expectedW, expectedH, width, height),
+                            Loc.T("FontEditor.titleWrongSize", "Wrong size"), MessageBoxButtons.OK, MessageBoxIcon.Error);
                         return;
                     }
                     font.tex[file_n].Content = argb;
@@ -2804,7 +2804,7 @@ namespace TTG_Tools
         {
             if (edited == true)
             {
-                DialogResult status = MessageBox.Show("Save font before closing Font Editor?", "Exit", MessageBoxButtons.YesNoCancel);
+                DialogResult status = MessageBox.Show(Loc.T("FontEditor.msgSaveBeforeClose", "Save font before closing Font Editor?"), Loc.T("FontEditor.titleExit", "Exit"), MessageBoxButtons.YesNoCancel);
                 if (status == DialogResult.Cancel)
                 // если (состояние == DialogResult.Отмена) 
                 {

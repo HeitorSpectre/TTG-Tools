@@ -18,6 +18,8 @@ namespace TTG_Tools
         public ModCreator()
         {
             InitializeComponent();
+            Localizer.Localize(this);
+            AlignLocalizedLayout();
             folderDialog.IsFolderPicker = true;
             folderDialog.EnsurePathExists = true;
 
@@ -27,6 +29,63 @@ namespace TTG_Tools
             inputFolderTextBox.AllowDrop = true;
             inputFolderTextBox.DragEnter += InputFolder_DragEnter;
             inputFolderTextBox.DragDrop += InputFolder_DragDrop;
+        }
+
+        private void AlignLocalizedLayout()
+        {
+            Label[] labels =
+            {
+                inputFolderLabel,
+                outputFolderLabel,
+                modNameLabel,
+                gameLabel,
+                modLayoutLabel
+            };
+
+            int labelWidth = 0;
+            foreach (Label label in labels)
+                labelWidth = Math.Max(labelWidth, label.PreferredWidth);
+            labelWidth += 4;
+
+            const int leftMargin = 12;
+            const int labelGap = 8;
+            const int rightMargin = 15;
+            const int buttonGap = 7;
+            int fieldLeft = leftMargin + labelWidth + labelGap;
+            int actionWidth = Math.Max(
+                Math.Max(browseInputButton.Width, browseOutputButton.Width),
+                createModButton.Width);
+            int actionLeft = Math.Max(fieldLeft + 260, ClientSize.Width - rightMargin - actionWidth);
+            int longFieldWidth = actionLeft - buttonGap - fieldLeft;
+
+            foreach (Label label in labels)
+            {
+                label.AutoSize = false;
+                label.Left = leftMargin;
+                label.Width = labelWidth;
+                label.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+            }
+
+            inputFolderTextBox.SetBounds(fieldLeft, inputFolderTextBox.Top, longFieldWidth, inputFolderTextBox.Height);
+            outputFolderTextBox.SetBounds(fieldLeft, outputFolderTextBox.Top, longFieldWidth, outputFolderTextBox.Height);
+            modNameTextBox.Left = fieldLeft;
+            gameComboBox.SetBounds(fieldLeft, gameComboBox.Top, longFieldWidth, gameComboBox.Height);
+            modLayoutComboBox.SetBounds(
+                fieldLeft,
+                modLayoutComboBox.Top,
+                actionLeft + actionWidth - fieldLeft,
+                modLayoutComboBox.Height);
+
+            browseInputButton.SetBounds(actionLeft, browseInputButton.Top, actionWidth, browseInputButton.Height);
+            browseOutputButton.SetBounds(actionLeft, browseOutputButton.Top, actionWidth, browseOutputButton.Height);
+            createModButton.SetBounds(actionLeft, createModButton.Top, actionWidth, createModButton.Height);
+
+            int contentWidth = actionLeft + actionWidth - leftMargin;
+            createProgressBar.SetBounds(leftMargin, createProgressBar.Top, contentWidth, createProgressBar.Height);
+            logListBox.SetBounds(leftMargin, logListBox.Top, contentWidth, logListBox.Height);
+            ClientSize = new System.Drawing.Size(
+                actionLeft + actionWidth + rightMargin,
+                ClientSize.Height);
         }
 
         private void ModCreator_Load(object sender, EventArgs e)
@@ -65,14 +124,14 @@ namespace TTG_Tools
             IModCreatorProfile selectedProfile = GetSelectedProfile();
             if (selectedProfile == null)
             {
-                MessageBox.Show("Please select a supported game.", "Error");
+                MessageBox.Show(Loc.T("ModCreator.msgSelectGame", "Please select a supported game."), Loc.T("Common.error", "Error"));
                 return;
             }
 
             ModLayoutOption selectedLayoutOption = GetSelectedLayoutOption(selectedProfile);
             if (selectedLayoutOption == null)
             {
-                MessageBox.Show("Please select a valid mod layout.", "Error");
+                MessageBox.Show(Loc.T("ModCreator.msgSelectLayout", "Please select a valid mod layout."), Loc.T("Common.error", "Error"));
                 return;
             }
 
@@ -84,7 +143,7 @@ namespace TTG_Tools
 
             if (!Directory.Exists(inputFolder))
             {
-                MessageBox.Show("Input folder doesn't exist.", "Error");
+                MessageBox.Show(Loc.T("ModCreator.msgInputNotExist", "Input folder doesn't exist."), Loc.T("Common.error", "Error"));
                 return;
             }
 
@@ -95,7 +154,7 @@ namespace TTG_Tools
 
             if (string.IsNullOrWhiteSpace(modName))
             {
-                MessageBox.Show("Please provide a valid mod name.", "Error");
+                MessageBox.Show(Loc.T("ModCreator.msgValidName", "Please provide a valid mod name."), Loc.T("Common.error", "Error"));
                 return;
             }
 
@@ -113,12 +172,12 @@ namespace TTG_Tools
                 await Task.Run(() => CreateModPackage(inputFolder, outputFolder, archivePath, luaPath, modName, archiveFileName, selectedProfile, selectedLayoutOption));
                 SetProgress(100);
                 AddLog("Mod created successfully.");
-                MessageBox.Show("Mod created successfully.", "Success");
+                MessageBox.Show(Loc.T("ModCreator.msgCreated", "Mod created successfully."), Loc.T("Common.success", "Success"));
             }
             catch (Exception ex)
             {
                 AddLog("Error: " + ex.Message);
-                MessageBox.Show("Failed to create mod. Check logs for details.", "Error");
+                MessageBox.Show(Loc.T("ModCreator.msgFailed", "Failed to create mod. Check logs for details."), Loc.T("Common.error", "Error"));
             }
             finally
             {
