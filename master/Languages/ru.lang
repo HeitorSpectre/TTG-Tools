@@ -318,6 +318,7 @@ TextEditor.tabPage1 = Проверить непереведённые строк
 TextEditor.checkNonTranslatedStrsBtn = Проверить непереведённые строки в файле
 TextEditor.label9 = Путь к файлу с непереведёнными строками:
 TextEditor.checkDuplicatedStrsBtn = Проверить повторяющиеся оригинальные строки в файле
+TextEditor.compareBtn = Сравнить 2 файла после проверки непереведённых строк
 TextEditor.label7 = Проверяемый файл:
 TextEditor.groupBox4 = Сохранить txt-файл с
 TextEditor.txtNewMethodRB = Новый метод

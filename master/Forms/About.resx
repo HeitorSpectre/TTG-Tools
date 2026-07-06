@@ -218,7 +218,7 @@ Added settings profiles (a separate configuration per game) and unified the sett
 Input and Output folders are now created automatically next to the program on first launch.
 Renamed the main menu buttons and windows to "Archive Unpacker" and "Archive Packer".
 Rebuilt the About window as a read-only panel with clickable links.
-Added multilingual interface support for English, German, Spanish, French, Italian, Brazilian and European Portuguese, Russian and Turkish.
+Added multilingual interface support for English, German, Spanish, French, Italian, Brazilian and European Portuguese, Russian, Turkish, Simplified Chinese, Traditional Chinese and Japanese.
 Improved localization-aware alignment throughout the main menu, settings, Mod Creator, Archive Packer, Archive Unpacker, Auto(De)Packer and Lua Editor.
 Reorganized the source code.
 

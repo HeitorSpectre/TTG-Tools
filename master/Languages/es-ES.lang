@@ -318,6 +318,7 @@ TextEditor.tabPage1 = Comprobar cadenas sin traducir
 TextEditor.checkNonTranslatedStrsBtn = Comprobar cadenas sin traducir en el archivo
 TextEditor.label9 = Ruta del archivo de cadenas sin traducir:
 TextEditor.checkDuplicatedStrsBtn = Comprobar cadenas originales duplicadas en el archivo
+TextEditor.compareBtn = Comparar 2 archivos después de «Comprobar cadenas sin traducir»
 TextEditor.label7 = Archivo a comprobar:
 TextEditor.groupBox4 = Guardar archivo txt con
 TextEditor.txtNewMethodRB = Método nuevo

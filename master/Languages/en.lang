@@ -324,6 +324,7 @@ TextEditor.tabPage1 = Check non-translated strings
 TextEditor.checkNonTranslatedStrsBtn = Check non-translated strings in file
 TextEditor.label9 = Non-translated strings file path:
 TextEditor.checkDuplicatedStrsBtn = Check on duplicated original strings in file
+TextEditor.compareBtn = Check 2 files after "check non-translated strings in file"
 TextEditor.label7 = Check file:
 TextEditor.groupBox4 = Save txt file with
 TextEditor.txtNewMethodRB = New method

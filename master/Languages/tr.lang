@@ -318,6 +318,7 @@ TextEditor.tabPage1 = Çevrilmemiş dizeleri kontrol et
 TextEditor.checkNonTranslatedStrsBtn = Dosyadaki çevrilmemiş dizeleri kontrol et
 TextEditor.label9 = Çevrilmemiş dizeler dosyasının yolu:
 TextEditor.checkDuplicatedStrsBtn = Dosyadaki yinelenen orijinal dizeleri kontrol et
+TextEditor.compareBtn = Çevrilmemiş dizeleri denetledikten sonra 2 dosyayı karşılaştır
 TextEditor.label7 = Kontrol edilecek dosya:
 TextEditor.groupBox4 = txt dosyasını şununla kaydet
 TextEditor.txtNewMethodRB = Yeni yöntem

@@ -318,6 +318,7 @@ TextEditor.tabPage1 = Verificar strings não traduzidas
 TextEditor.checkNonTranslatedStrsBtn = Verificar strings não traduzidas no arquivo
 TextEditor.label9 = Caminho do arquivo de strings não traduzidas:
 TextEditor.checkDuplicatedStrsBtn = Verificar strings originais duplicadas no arquivo
+TextEditor.compareBtn = Comparar 2 arquivos após "Verificar strings não traduzidas"
 TextEditor.label7 = Arquivo a verificar:
 TextEditor.groupBox4 = Salvar arquivo txt com
 TextEditor.txtNewMethodRB = Método novo

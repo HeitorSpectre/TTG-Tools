@@ -318,6 +318,7 @@ TextEditor.tabPage1 = Nicht übersetzte Zeichenketten prüfen
 TextEditor.checkNonTranslatedStrsBtn = Nicht übersetzte Zeichenketten in Datei prüfen
 TextEditor.label9 = Pfad der Datei mit nicht übersetzten Zeichenketten:
 TextEditor.checkDuplicatedStrsBtn = Doppelte Original-Zeichenketten in Datei prüfen
+TextEditor.compareBtn = 2 Dateien nach „Nicht übersetzte Zeichenfolgen prüfen“ vergleichen
 TextEditor.label7 = Zu prüfende Datei:
 TextEditor.groupBox4 = txt-Datei speichern mit
 TextEditor.txtNewMethodRB = Neue Methode

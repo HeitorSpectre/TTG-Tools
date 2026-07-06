@@ -318,6 +318,7 @@ TextEditor.tabPage1 = Vérifier les chaînes non traduites
 TextEditor.checkNonTranslatedStrsBtn = Vérifier les chaînes non traduites dans le fichier
 TextEditor.label9 = Chemin du fichier des chaînes non traduites :
 TextEditor.checkDuplicatedStrsBtn = Vérifier les chaînes originales en double dans le fichier
+TextEditor.compareBtn = Comparer 2 fichiers après « Vérifier les chaînes non traduites »
 TextEditor.label7 = Fichier à vérifier :
 TextEditor.groupBox4 = Enregistrer le fichier txt avec
 TextEditor.txtNewMethodRB = Nouvelle méthode
