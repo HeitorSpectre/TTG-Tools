@@ -96,6 +96,7 @@ namespace TTG_Tools.Graphics
                 case (uint)ClassesStructs.TextureClass.OldTexturePVRFormat.PVRTC4bppRGBA_3:
                 case (uint)ClassesStructs.TextureClass.OldTexturePVRFormat.PVRTC4bppRGBA_4:
                 case (uint)ClassesStructs.TextureClass.OldTexturePVRFormat.PVRTC4bppRGBA_5:
+                case (uint)ClassesStructs.TextureClass.OldTexturePVRFormat.PVRTC4bppRGBA_6:
                     opaque = false;
                     return true;
                 default:
@@ -126,7 +127,7 @@ namespace TTG_Tools.Graphics
                 return rgba;
             }
 
-            if (textureFormat == 0x10) // A8, alpha-only -> grayscale opaque so it is visible/editable
+            if (textureFormat == 0x10 || textureFormat == 0x11) // A8 / IL8, single 8-bit channel -> grayscale opaque so it is visible/editable
             {
                 if (block.Length < pixels) return null;
                 for (int i = 0; i < pixels; i++)
@@ -844,6 +845,7 @@ namespace TTG_Tools.Graphics
                         case (uint)ClassesStructs.TextureClass.OldTexturePVRFormat.PVRTC4bppRGBA_3:
                         case (uint)ClassesStructs.TextureClass.OldTexturePVRFormat.PVRTC4bppRGBA_4:
                         case (uint)ClassesStructs.TextureClass.OldTexturePVRFormat.PVRTC4bppRGBA_5:
+                        case (uint)ClassesStructs.TextureClass.OldTexturePVRFormat.PVRTC4bppRGBA_6:
                             head.PixelFormat = (ulong)pvr.HeaderFormat.PVRTC4bppRGBA;
                             break;
 
@@ -887,6 +889,14 @@ namespace TTG_Tools.Graphics
                         case 0x04:
                             head.PixelFormat = BitConverter.ToUInt64(Encoding.ASCII.GetBytes("rgba\x4\x4\x4\x4"), 0);
                             head.ChannelType = 4; //Unsigned short normalised
+                            break;
+
+                        case 0x10: //A8 (alpha only, 8 bits)
+                            head.PixelFormat = BitConverter.ToUInt64(new byte[] { (byte)'a', 0, 0, 0, 8, 0, 0, 0 }, 0);
+                            break;
+
+                        case 0x11: //IL8 (single 8-bit luminance channel)
+                            head.PixelFormat = BitConverter.ToUInt64(new byte[] { (byte)'l', 0, 0, 0, 8, 0, 0, 0 }, 0);
                             break;
 
                         case 0x50:
@@ -1406,7 +1416,7 @@ namespace TTG_Tools.Graphics
                     //PS Vita / iOS uncompressed formats (ARGB8 0x00, ARGB4444 0x04, A8 0x10): decode
                     //straight from the (already de-swizzled) mip data so nothing ever falls back to
                     //.dds/.pvr. 0x04 covers iOS textures already re-injected as ARGB4444.
-                    if (forcePng && (tex.TextureFormat == 0x00 || tex.TextureFormat == 0x04 || tex.TextureFormat == 0x10)
+                    if (forcePng && (tex.TextureFormat == 0x00 || tex.TextureFormat == 0x04 || tex.TextureFormat == 0x10 || tex.TextureFormat == 0x11)
                         && tex.Tex.Textures != null && tex.Tex.Textures.Length > 0
                         && tex.Tex.Textures[0].Block != null)
                     {
@@ -1469,8 +1479,18 @@ namespace TTG_Tools.Graphics
                     //Routed through the PVR import path below (ReadPvrHeader maps rgba4444 -> 0x04).
                     if (tex.platform.platform == 7 && File.Exists(pngImportPath))
                     {
-                        NewContent = DDS.DdsPngConverter.PngToPvrArgb4(File.ReadAllBytes(pngImportPath));
-                        if (NewContent != null) importedFromPvr = true;
+                        byte[] iosPng = File.ReadAllBytes(pngImportPath);
+                        if (tex.TextureFormat == 0x10 || tex.TextureFormat == 0x11)
+                        {
+                            // A8/IL8 stay single-channel (the value is read from the grayscale R
+                            // channel, matching extraction) via the DDS import path.
+                            NewContent = DDS.DdsPngConverter.PngToUncompressedDds(iosPng, 0x10, tex.Tex.MipCount);
+                        }
+                        else
+                        {
+                            NewContent = DDS.DdsPngConverter.PngToPvrArgb4(iosPng);
+                            if (NewContent != null) importedFromPvr = true;
+                        }
                     }
 
                     if (NewContent == null && MainMenu.settings.extractTexturesAsPng && !tex.isPVR
@@ -2494,6 +2514,12 @@ namespace TTG_Tools.Graphics
                     tex.BlockPos += 4;
                 }
                 
+                // Clamp to the bytes actually present. Some community iOS mods write a texture size
+                // that is 1 byte larger than the stored data (a spurious trailing byte), which would
+                // make the copy read past the end of the file and abort the whole extraction.
+                if (tex.TexSize < 0 || tex.TexSize > binContent.Length - poz)
+                    tex.TexSize = binContent.Length - poz;
+
                 tex.Content = new byte[tex.TexSize];
                 Array.Copy(binContent, poz, tex.Content, 0, tex.Content.Length);
                 poz += tex.isPS3 ? paddedSize : tex.Content.Length;

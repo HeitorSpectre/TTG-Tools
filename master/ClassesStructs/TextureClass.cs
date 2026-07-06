@@ -31,6 +31,7 @@
             PVRTC4bppRGBA_3 = 0x20d,
             PVRTC4bppRGBA_4 = 0x8a0d,
             PVRTC4bppRGBA_5 = 0x8b0d,
+            PVRTC4bppRGBA_6 = 0x800d,
             PVRTC4bppRGB_1 = 0xa0d,
             PVRTC4bppRGB_2 = 0x30d
         }
