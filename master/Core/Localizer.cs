@@ -154,11 +154,15 @@ namespace TTG_Tools
             //window itself so controls such as Lua Editor's "new engine" checkbox stay visible.
             foreach (Control child in root.Controls)
             {
+                if (!child.Visible) continue;
                 ScrollableControl scrollable = child as ScrollableControl;
                 if (child.Dock == DockStyle.None || (scrollable != null && scrollable.AutoScroll)) continue;
                 int contentRight = 0;
                 foreach (Control grandChild in child.Controls)
+                {
+                    if (!grandChild.Visible) continue;
                     if (grandChild.Visible && grandChild.Right > contentRight) contentRight = grandChild.Right;
+                }
                 int overflow = contentRight - child.ClientSize.Width;
                 if (overflow > 0 && origClientW + overflow > finalW)
                     finalW = origClientW + overflow;
@@ -201,6 +205,7 @@ namespace TTG_Tools
         {
             foreach (Control child in c.Controls)
             {
+                if (!child.Visible) continue;
                 orig[child] = child.Bounds;
                 if (child.Controls.Count > 0)
                     CaptureBounds(child, orig);
@@ -212,6 +217,7 @@ namespace TTG_Tools
             //1. Reflow nested containers first (bottom-up), then grow each to fit its content.
             foreach (Control c in container.Controls)
             {
+                if (!c.Visible) continue;
                 if (IsContainer(c))
                 {
                     ReflowContainer(c, orig);
@@ -222,6 +228,7 @@ namespace TTG_Tools
             //2. Widen text controls to fit their translated text (full font, grow only).
             foreach (Control c in container.Controls)
             {
+                if (!c.Visible) continue;
                 if (IsGrowText(c))
                 {
                     //Keep AutoSize controls dynamic. Several labels receive their final text only
@@ -250,6 +257,7 @@ namespace TTG_Tools
         {
             var kids = new List<Control>();
             foreach (Control c in container.Controls) kids.Add(c);
+            kids.RemoveAll(c => !c.Visible);
             if (kids.Count < 2) return;
 
             for (int pass = 0; pass < 4; pass++)
@@ -364,6 +372,7 @@ namespace TTG_Tools
             maxRight = 0; maxBottom = 0;
             foreach (Control c in container.Controls)
             {
+                if (!c.Visible) continue;
                 Rectangle b = english && orig.ContainsKey(c) ? orig[c] : c.Bounds;
                 if (b.Right > maxRight) maxRight = b.Right;
                 if (b.Bottom > maxBottom) maxBottom = b.Bottom;

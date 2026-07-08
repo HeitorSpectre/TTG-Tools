@@ -28,8 +28,12 @@ namespace TTG_Tools.Graphics.Xbox360
     ///
     /// Texture pixels are stored Xbox 360-style: byte-swapped 16-bit words +
     /// GPU tiled (32x32 macro-tiles aligned to 128px). After untiling + decoding
-    /// we get a 32-bit ARGB atlas. Width is 512 in every validation sample but
-    /// we derive it from the first non-empty glyph so other dimensions work too.
+    /// we get a 32-bit ARGB atlas. The atlas Width and (used) Height are read
+    /// directly from the texture sub-block header (the u32 pair right after the
+    /// mD3DFormat tag 0x1A200154); rows are padded so the stored payload covers
+    /// Width x StoredHeight (StoredHeight = dataSize / Width). Validation samples
+    /// are all 256 wide - deriving the width from glyph metrics used to guess
+    /// 512 and garbled every atlas.
     /// </summary>
     internal static class XboxFontSupport
     {
@@ -49,10 +53,11 @@ namespace TTG_Tools.Graphics.Xbox360
         internal sealed class XboxTexturePage
         {
             public int Width;
-            public int Height;
+            public int Height;         // used (visible) atlas height, from the sub-block header
+            public int StoredHeight;   // padded height actually stored (DataSize / Width)
             public int DataOffset;     // offset in the original file where DXT5 payload starts
             public int DataSize;       // size in bytes of the DXT5 payload
-            public byte[] Argb;         // decoded preview, A,R,G,B byte order
+            public byte[] Argb;         // decoded preview, A,R,G,B byte order (Width x Height)
         }
 
         internal sealed class XboxFontData
@@ -192,6 +197,18 @@ namespace TTG_Tools.Graphics.Xbox360
                 int fmtIdx = FindFormatMagic(d, searchFrom);
                 if (fmtIdx < 0) return false;
 
+                // The sub-block header stores the REAL atlas dimensions right
+                // after the mD3DFormat field: [numMips][mD3DFormat][width][height].
+                // FindFormatMagic points fmtIdx at the last byte of numMips
+                // (the 00 that precedes 54 01 20 in the 0x1A200154 format tag),
+                // so width/height are 5/9 bytes further on. Reading them here
+                // instead of guessing from glyph metrics is what fixes the
+                // garbled extraction (every atlas is 256 wide, not 512).
+                if (fmtIdx + 13 > d.Length) return false;
+                int width = (int)U32(d, fmtIdx + 5);
+                int height = (int)U32(d, fmtIdx + 9);
+                if (width < 4 || width > 4096 || height < 1 || height > 8192) return false;
+
                 int markerIdx = IndexOf(d, FloatPairMarker, fmtIdx + 4);
                 if (markerIdx < 0) return false;
 
@@ -201,35 +218,32 @@ namespace TTG_Tools.Graphics.Xbox360
                 int dataOff = sizeFieldOff + 4;
                 if (dataOff + dataSize > d.Length) return false;
 
-                // Derive width from the first non-degenerate glyph mapped to
-                // this page (TexNum == pageIdx). Falls back to 512 if no
-                // glyph references this page (shouldn't happen in practice).
-                int width = 512;
-                foreach (var g in glyphs)
-                {
-                    if (g.TexNum != pageIdx) continue;
-                    float dx = g.XEnd - g.XStart;
-                    if (dx > 0.0001f && g.CharWidth > 0)
-                    {
-                        int w = (int)Math.Round(g.CharWidth / dx);
-                        if (w >= 32 && w <= 4096)
-                        {
-                            width = ((w + 15) / 32) * 32;
-                            break;
-                        }
-                    }
-                }
-                if (width <= 0 || dataSize % width != 0) return false;
-                int height = dataSize / width;
+                // Rows are padded: the stored payload covers Width x StoredHeight,
+                // with StoredHeight >= the used Height. Decode the full padded
+                // atlas, then crop the padding rows away for display/editing.
+                if (dataSize % width != 0) return false;
+                int storedHeight = dataSize / width;
+                if (storedHeight < height) return false;
 
                 byte[] tiledDxt = new byte[dataSize];
                 Array.Copy(d, dataOff, tiledDxt, 0, dataSize);
                 byte[] argb;
                 try
                 {
-                    using (var bmp = XboxTexture.DecodeTiled(tiledDxt, width, height, "DXT5", 16))
+                    using (var bmp = XboxTexture.DecodeTiled(tiledDxt, width, storedHeight, "DXT5", 16))
                     {
-                        argb = BitmapToBgra(bmp);
+                        if (storedHeight == height)
+                        {
+                            argb = BitmapToBgra(bmp);
+                        }
+                        else
+                        {
+                            using (var cropped = bmp.Clone(
+                                new System.Drawing.Rectangle(0, 0, width, height), bmp.PixelFormat))
+                            {
+                                argb = BitmapToBgra(cropped);
+                            }
+                        }
                     }
                 }
                 catch
@@ -239,11 +253,12 @@ namespace TTG_Tools.Graphics.Xbox360
 
                 pages.Add(new XboxTexturePage
                 {
-                    Width      = width,
-                    Height     = height,
-                    DataOffset = dataOff,
-                    DataSize   = dataSize,
-                    Argb       = argb,
+                    Width        = width,
+                    Height       = height,
+                    StoredHeight = storedHeight,
+                    DataOffset   = dataOff,
+                    DataSize     = dataSize,
+                    Argb         = argb,
                 });
 
                 // Continue searching after the data we just consumed.
@@ -298,7 +313,18 @@ namespace TTG_Tools.Graphics.Xbox360
                 rgba[i * 4 + 3] = argb[i * 4];     // A
             }
 
-            byte[] newPayload = XboxTexture.BuildBlockBuffer(rgba, w, h, "DXT5", 16);
+            // The stored payload covers the padded StoredHeight; pad the used
+            // area back up with transparent rows so the encoded size matches
+            // DataSize exactly (the rest of the file is preserved byte-for-byte).
+            int encodeH = page.StoredHeight > 0 ? page.StoredHeight : h;
+            if (encodeH != h)
+            {
+                byte[] padded = new byte[w * encodeH * 4];
+                Array.Copy(rgba, padded, w * h * 4);
+                rgba = padded;
+            }
+
+            byte[] newPayload = XboxTexture.BuildBlockBuffer(rgba, w, encodeH, "DXT5", 16);
             // BuildBlockBuffer emits the full mip chain; Walking Dead font
             // atlases store only the top mip - trim to the original size.
             if (newPayload.Length > page.DataSize)

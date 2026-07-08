@@ -187,6 +187,12 @@ Maybe some games doesn't work.
 ===
 [Version history]
 
+v.1.16.2 (08.07.2026)
++ Archive Unpacker:
+Improved the Archive Unpacker interface with a cleaner Telltale Explorer-inspired layout, a better organized file list, integrated previews for supported images, textures, fonts, text, localization, Lua and script files, sortable file columns, and cleaner filters.
++ Font Editor:
+Added support for extracting and reinserting Xbox 360 fonts from older games.
+
 v.1.16.1 (06.07.2026)
 + Auto(De)Packer:
 Added PS2 texture and font extraction and reinsertion support.

@@ -49,6 +49,8 @@ namespace TTG_Tools
         private bool _updatingUnicodeMode;
         private bool _loadingUi;
         private bool _dirtyTrackingReady;
+        private bool _saveStatusLayoutExpanded = true;
+        private const int SaveStatusLayoutOffset = 28;
 
         public SettingsForm()
         {
@@ -64,7 +66,7 @@ namespace TTG_Tools
             StartPosition = FormStartPosition.CenterParent;
             MaximizeBox = false;
             MinimizeBox = false;
-            ClientSize = new Size(474, 382);
+            ClientSize = new Size(520, 382);
 
             //Native Windows title bars do not support coloring only part of their text, so the
             //save confirmation lives in a dedicated green status line at the top-left.
@@ -72,7 +74,7 @@ namespace TTG_Tools
             {
                 Left = 12,
                 Top = 10,
-                Width = 438,
+                Width = 484,
                 Height = 18,
                 ForeColor = Color.ForestGreen,
                 Visible = false
@@ -80,14 +82,14 @@ namespace TTG_Tools
             Controls.Add(lblSaveStatus);
 
             // ---- Profile bar ----
-            Label lblProfile = new Label { Left = 12, Top = 40, Width = 48, Text = Loc.T("Settings.lblProfile", "Profile") };
-            cbProfile = new ComboBox { Left = 62, Top = 36, Width = 176, DropDownStyle = ComboBoxStyle.DropDownList };
+            Label lblProfile = new Label { Left = 12, Top = 40, Width = 92, Text = Loc.T("Settings.lblProfile", "Profile") };
+            cbProfile = new ComboBox { Left = 108, Top = 36, Width = 176, DropDownStyle = ComboBoxStyle.DropDownList };
             cbProfile.SelectedIndexChanged += cbProfile_SelectedIndexChanged;
-            btnNewProfile = new Button { Left = 244, Top = 35, Width = 56, Text = Loc.T("Settings.btnNewProfile", "New") };
+            btnNewProfile = new Button { Left = 290, Top = 35, Width = 56, Text = Loc.T("Settings.btnNewProfile", "New") };
             btnNewProfile.Click += btnNewProfile_Click;
-            btnRenameProfile = new Button { Left = 304, Top = 35, Width = 72, Text = Loc.T("Settings.btnRenameProfile", "Rename") };
+            btnRenameProfile = new Button { Left = 350, Top = 35, Width = 72, Text = Loc.T("Settings.btnRenameProfile", "Rename") };
             btnRenameProfile.Click += btnRenameProfile_Click;
-            btnDeleteProfile = new Button { Left = 380, Top = 35, Width = 68, Text = Loc.T("Settings.btnDeleteProfile", "Delete") };
+            btnDeleteProfile = new Button { Left = 426, Top = 35, Width = 68, Text = Loc.T("Settings.btnDeleteProfile", "Delete") };
             btnDeleteProfile.Click += btnDeleteProfile_Click;
             Controls.Add(lblProfile);
             Controls.Add(cbProfile);
@@ -96,7 +98,7 @@ namespace TTG_Tools
             Controls.Add(btnDeleteProfile);
 
             // ---- Tabs ----
-            TabControl tabs = new TabControl { Left = 12, Top = 68, Width = 450, Height = 268 };
+            TabControl tabs = new TabControl { Left = 12, Top = 68, Width = 496, Height = 268 };
             TabPage tabGeneral = new TabPage(Loc.T("Settings.tabGeneral", "General / folders"));
             TabPage tabLanguage = new TabPage(Loc.T("Settings.tabLanguage", "Language"));
             TabPage tabText = new TabPage(Loc.T("Settings.tabText", "Text"));
@@ -112,16 +114,17 @@ namespace TTG_Tools
             BuildNormalizationTab(tabNorm);
 
             // ---- Bottom buttons ----
-            btnSave = new Button { Left = 206, Top = 346, Width = 72, Text = Loc.T("Settings.btnSave", "Save") };
+            btnSave = new Button { Left = 252, Top = 346, Width = 72, Text = Loc.T("Settings.btnSave", "Save") };
             btnSave.Click += btnSave_Click;
-            btnOk = new Button { Left = 300, Top = 346, Width = 72, Text = Loc.T("Settings.btnOk", "OK") };
+            btnOk = new Button { Left = 346, Top = 346, Width = 72, Text = Loc.T("Settings.btnOk", "OK") };
             btnOk.Click += btnOk_Click;
-            btnCancel = new Button { Left = 390, Top = 346, Width = 72, Text = Loc.T("Settings.btnCancel", "Cancel") };
+            btnCancel = new Button { Left = 436, Top = 346, Width = 72, Text = Loc.T("Settings.btnCancel", "Cancel") };
             btnCancel.Click += btnCancel_Click;
             Controls.Add(btnSave);
             Controls.Add(btnOk);
             Controls.Add(btnCancel);
             CancelButton = btnCancel;
+            SetSaveStatusLayoutVisible(false);
         }
 
         private void BuildGeneralTab(TabPage tab)
@@ -187,11 +190,11 @@ namespace TTG_Tools
             chkLanguage.CheckedChanged += checkLanguage_CheckedChanged;
             cbLanguage = new ComboBox { Left = 195, Top = 44, Width = 223, DropDownStyle = ComboBoxStyle.DropDownList };
 
-            GroupBox grp = new GroupBox { Left = 12, Top = 76, Width = 418, Height = 112, Text = Loc.T("Settings.grpUnicodeMode", "Unicode mode") };
-            rbNormalUnicode = new RadioButton { Left = 12, Top = 18, Width = 398, Text = Loc.T("Settings.rbNormalUnicode", "Normal Unicode") };
-            rbNonNormalUnicode2 = new RadioButton { Left = 12, Top = 40, Width = 398, Text = Loc.T("Settings.rbNonNormalUnicode", "NOT normal unicode (recommended for new Tales From the Borderlands)") };
-            rbNewBttF = new RadioButton { Left = 12, Top = 62, Width = 398, Text = Loc.T("Settings.rbNewBttF", "ASCII support for Back to the Future Xbox360 / PS4") };
-            rbTwdNintendoSwitch = new RadioButton { Left = 12, Top = 84, Width = 398, Text = Loc.T("Settings.rbTwdNintendoSwitch", "Support for The Walking Dead Nintendo Switch") };
+            GroupBox grp = new GroupBox { Left = 12, Top = 76, Width = 456, Height = 112, Text = Loc.T("Settings.grpUnicodeMode", "Unicode mode") };
+            rbNormalUnicode = new RadioButton { Left = 12, Top = 18, Width = 430, Text = Loc.T("Settings.rbNormalUnicode", "Normal Unicode") };
+            rbNonNormalUnicode2 = new RadioButton { Left = 12, Top = 40, Width = 430, Text = Loc.T("Settings.rbNonNormalUnicode", "NOT normal unicode (recommended for new Tales From the Borderlands)") };
+            rbNewBttF = new RadioButton { Left = 12, Top = 62, Width = 430, Text = Loc.T("Settings.rbNewBttF", "ASCII support for Back to the Future Xbox360 / PS4") };
+            rbTwdNintendoSwitch = new RadioButton { Left = 12, Top = 84, Width = 430, Text = Loc.T("Settings.rbTwdNintendoSwitch", "Support for The Walking Dead Nintendo Switch") };
             rbNormalUnicode.CheckedChanged += UnicodeMode_CheckedChanged;
             rbNonNormalUnicode2.CheckedChanged += UnicodeMode_CheckedChanged;
             rbNewBttF.CheckedChanged += UnicodeMode_CheckedChanged;
@@ -611,6 +614,7 @@ namespace TTG_Tools
         {
             Text = Loc.T("Settings.title", "Settings");
             lblSaveStatus.Text = Loc.T("Settings.savedTitle", "Your settings have been saved.");
+            SetSaveStatusLayoutVisible(true);
             lblSaveStatus.Visible = true;
         }
 
@@ -621,6 +625,23 @@ namespace TTG_Tools
 
             lblSaveStatus.Text = "";
             lblSaveStatus.Visible = false;
+            SetSaveStatusLayoutVisible(false);
+        }
+
+        private void SetSaveStatusLayoutVisible(bool visible)
+        {
+            if (_saveStatusLayoutExpanded == visible) return;
+
+            int delta = visible ? SaveStatusLayoutOffset : -SaveStatusLayoutOffset;
+
+            foreach (Control control in Controls)
+            {
+                if (control == lblSaveStatus) continue;
+                control.Top += delta;
+            }
+
+            ClientSize = new Size(ClientSize.Width, ClientSize.Height + delta);
+            _saveStatusLayoutExpanded = visible;
         }
 
         private void WireDirtyTracking(Control parent)

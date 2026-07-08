@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -17,16 +17,96 @@ namespace TTG_Tools
         {
             InitializeComponent();
             Localizer.Localize(this);
+            ArrangeTopPanel();
+            topPanel.Resize += (s, e) => ArrangeTopPanel();
             filesDataGridView.AllowUserToAddRows = false;
             filesDataGridView.AllowUserToDeleteRows = false;
             filesDataGridView.ReadOnly = true;
             filesDataGridView.EditMode = DataGridViewEditMode.EditProgrammatically;
+            filesDataGridView.ColumnHeaderMouseClick += filesDataGridView_ColumnHeaderMouseClick;
+            previewTextBox.MaxLength = 1000000;
+
+            previewPictureBox.Resize += (s, e) => AdjustPreviewSizeMode();
+            ShowPreviewMessage("");
         }
 
         private static ClassesStructs.TtarchClass ttarch;
         private static ClassesStructs.Ttarch2Class ttarch2;
         private bool decrypt = false;
         private byte[] key = null;
+
+        //Files currently shown in the grid (after format filter/search), in row order. Row N of the
+        //grid is always element N here, which is what the preview panel uses to find the file.
+        private ClassesStructs.TtarchClass.ttarchFiles[] shownTtarchFiles;
+        private ClassesStructs.Ttarch2Class.Ttarch2files[] shownTtarch2Files;
+        private int fileGridSortColumn = -1;
+        private bool fileGridSortAscending = true;
+        private bool arrangingTopPanel;
+        private int archiveInfoBaseWidth;
+
+        private void ArrangeTopPanel()
+        {
+            if (arrangingTopPanel) return;
+            arrangingTopPanel = true;
+
+            if (archiveInfoBaseWidth == 0)
+            {
+                archiveInfoBaseWidth = groupBox1.Width;
+                groupBox1.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+                label2.Anchor = AnchorStyles.Top | AnchorStyles.Left;
+                gameListCB.Anchor = AnchorStyles.Top | AnchorStyles.Left;
+                label1.Anchor = AnchorStyles.Top | AnchorStyles.Left;
+                fileFormatsCB.Anchor = AnchorStyles.Top | AnchorStyles.Left;
+                useCustomKeyCB.Anchor = AnchorStyles.Top | AnchorStyles.Left;
+                customKeyTB.Anchor = AnchorStyles.Top | AnchorStyles.Left;
+                searchFilesByNameCB.Anchor = AnchorStyles.Top | AnchorStyles.Left;
+                searchTB.Anchor = AnchorStyles.Top | AnchorStyles.Left;
+                searchBtn.Anchor = AnchorStyles.Top | AnchorStyles.Left;
+                decryptLuaCB.Anchor = AnchorStyles.Top | AnchorStyles.Left;
+            }
+
+            int rightMargin = 6;
+            int archiveInfoWidth = Math.Max(archiveInfoBaseWidth, Math.Max(xmodeLabel.Right, encrLuaLabel.Right) + 24);
+            groupBox1.Width = archiveInfoWidth;
+            groupBox1.Left = Math.Max(590, topPanel.ClientSize.Width - groupBox1.Width - rightMargin);
+            groupBox1.Top = 3;
+
+            int left = 10;
+            int labelGap = 8;
+            int controlGap = 12;
+            int maxRight = Math.Max(520, groupBox1.Left - 14);
+            int labelWidth = Math.Max(Math.Max(label2.PreferredWidth, label1.PreferredWidth), searchFilesByNameCB.PreferredSize.Width);
+            int controlLeft = left + labelWidth + labelGap;
+
+            label2.SetBounds(left, 12, label2.PreferredWidth, label2.Height);
+            gameListCB.SetBounds(controlLeft, 9, Math.Max(220, Math.Min(300, maxRight - controlLeft)), gameListCB.Height);
+
+            label1.SetBounds(left, 43, label1.PreferredWidth, label1.Height);
+            fileFormatsCB.SetBounds(controlLeft, 40, 160, fileFormatsCB.Height);
+
+            int customLeft = fileFormatsCB.Right + controlGap;
+            useCustomKeyCB.SetBounds(customLeft, 42, useCustomKeyCB.PreferredSize.Width, useCustomKeyCB.Height);
+            int customKeyWidth = Math.Max(120, Math.Min(420, maxRight - useCustomKeyCB.Right - labelGap));
+            customKeyTB.SetBounds(useCustomKeyCB.Right + labelGap, 40, customKeyWidth, customKeyTB.Height);
+
+            searchFilesByNameCB.SetBounds(left, 74, searchFilesByNameCB.PreferredSize.Width, searchFilesByNameCB.Height);
+            searchTB.SetBounds(controlLeft, 72, 300, searchTB.Height);
+            int searchButtonWidth = Math.Max(75, searchBtn.PreferredSize.Width + 12);
+            searchBtn.SetBounds(searchTB.Right + controlGap, 70, searchButtonWidth, searchBtn.Height);
+            decryptLuaCB.SetBounds(searchBtn.Right + controlGap, 74, decryptLuaCB.PreferredSize.Width, decryptLuaCB.Height);
+
+            if (decryptLuaCB.Right > groupBox1.Left - 8)
+            {
+                topPanel.Height = 132;
+                decryptLuaCB.SetBounds(left, 101, decryptLuaCB.PreferredSize.Width, decryptLuaCB.Height);
+            }
+            else
+            {
+                topPanel.Height = 108;
+            }
+
+            arrangingTopPanel = false;
+        }
 
         // Prefixa com \\?\ para permitir caminhos maiores que MAX_PATH (260) no Win32.
         private static string ToLongPath(string path)
@@ -509,7 +589,7 @@ namespace TTG_Tools
                 files = files.Where(x => x.fileName.ToLower().Contains(searchPattern));
             }
 
-            return files.ToArray();
+            return sortTtarchFiles(files).ToArray();
         }
 
         private ClassesStructs.Ttarch2Class.Ttarch2files[] getFilteredTtarch2Files(string format = null, string searchPattern = null)
@@ -530,7 +610,41 @@ namespace TTG_Tools
                 files = files.Where(x => x.fileName.ToLower().Contains(searchPattern));
             }
 
-            return files.ToArray();
+            return sortTtarch2Files(files).ToArray();
+        }
+
+        private IEnumerable<ClassesStructs.TtarchClass.ttarchFiles> sortTtarchFiles(IEnumerable<ClassesStructs.TtarchClass.ttarchFiles> files)
+        {
+            switch (fileGridSortColumn)
+            {
+                case 1:
+                    return fileGridSortAscending ? files.OrderBy(x => x.fileName, StringComparer.CurrentCultureIgnoreCase) : files.OrderByDescending(x => x.fileName, StringComparer.CurrentCultureIgnoreCase);
+                case 2:
+                    return fileGridSortAscending ? files.OrderBy(x => Methods.GetExtension(x.fileName).ToLower(), StringComparer.CurrentCultureIgnoreCase).ThenBy(x => x.fileName, StringComparer.CurrentCultureIgnoreCase) : files.OrderByDescending(x => Methods.GetExtension(x.fileName).ToLower(), StringComparer.CurrentCultureIgnoreCase).ThenBy(x => x.fileName, StringComparer.CurrentCultureIgnoreCase);
+                case 3:
+                    return fileGridSortAscending ? files.OrderBy(x => x.fileSize).ThenBy(x => x.fileName, StringComparer.CurrentCultureIgnoreCase) : files.OrderByDescending(x => x.fileSize).ThenBy(x => x.fileName, StringComparer.CurrentCultureIgnoreCase);
+                case 4:
+                    return fileGridSortAscending ? files.OrderBy(x => x.fileOffset).ThenBy(x => x.fileName, StringComparer.CurrentCultureIgnoreCase) : files.OrderByDescending(x => x.fileOffset).ThenBy(x => x.fileName, StringComparer.CurrentCultureIgnoreCase);
+                default:
+                    return files;
+            }
+        }
+
+        private IEnumerable<ClassesStructs.Ttarch2Class.Ttarch2files> sortTtarch2Files(IEnumerable<ClassesStructs.Ttarch2Class.Ttarch2files> files)
+        {
+            switch (fileGridSortColumn)
+            {
+                case 1:
+                    return fileGridSortAscending ? files.OrderBy(x => x.fileName, StringComparer.CurrentCultureIgnoreCase) : files.OrderByDescending(x => x.fileName, StringComparer.CurrentCultureIgnoreCase);
+                case 2:
+                    return fileGridSortAscending ? files.OrderBy(x => Methods.GetExtension(x.fileName).ToLower(), StringComparer.CurrentCultureIgnoreCase).ThenBy(x => x.fileName, StringComparer.CurrentCultureIgnoreCase) : files.OrderByDescending(x => Methods.GetExtension(x.fileName).ToLower(), StringComparer.CurrentCultureIgnoreCase).ThenBy(x => x.fileName, StringComparer.CurrentCultureIgnoreCase);
+                case 3:
+                    return fileGridSortAscending ? files.OrderBy(x => x.fileSize).ThenBy(x => x.fileName, StringComparer.CurrentCultureIgnoreCase) : files.OrderByDescending(x => x.fileSize).ThenBy(x => x.fileName, StringComparer.CurrentCultureIgnoreCase);
+                case 4:
+                    return fileGridSortAscending ? files.OrderBy(x => x.fileOffset).ThenBy(x => x.fileName, StringComparer.CurrentCultureIgnoreCase) : files.OrderByDescending(x => x.fileOffset).ThenBy(x => x.fileName, StringComparer.CurrentCultureIgnoreCase);
+                default:
+                    return files;
+            }
         }
 
         private void applyFilters()
@@ -618,7 +732,7 @@ namespace TTG_Tools
                     case 2:
                         retBuf = OodleDecompressor(bytes);
                         break;
-                        
+
                 }
 
                 return retBuf;
@@ -814,7 +928,7 @@ namespace TTG_Tools
                     using (BinaryReader mbr = new BinaryReader(ms))
                     {
                         int dirsCount = mbr.ReadInt32();
-                        
+
                         for(int d = 0; d < dirsCount; d++)
                         {
                             int nameLen = mbr.ReadInt32();
@@ -1212,7 +1326,7 @@ namespace TTG_Tools
             List<string> failedFiles = new List<string>();
 
             int count = indexes != null ? indexes.Length : files.Length;
-            
+
             SetMinimum(0);
             SetMaximum(count);
 
@@ -1293,7 +1407,7 @@ namespace TTG_Tools
                     compressedStr += " (";
                     compressedStr += ttarch.compressAlgorithm == 0 ? "zlib)" : "deflate)";
                 }
-                
+
                 encryptedStr += ttarch.isEncrypted ? yes : no;
                 xmodeStr += ttarch.isXmode ? yes : no;
                 chunkSzStr += Convert.ToString(ttarch.chunkSize) + "KB";
@@ -1332,14 +1446,35 @@ namespace TTG_Tools
             filesDataGridView[1, 0].Value = Loc.T("ArchiveUnpacker.noResultsFound", "No results found.");
             filesDataGridView[2, 0].Value = "-";
             filesDataGridView[3, 0].Value = "-";
+            filesDataGridView[4, 0].Value = "-";
 
             configureFileGridColumns();
             filesDataGridView.ClearSelection();
         }
 
+        private void setupFileGridColumns()
+        {
+            filesDataGridView.ColumnCount = 5;
+
+            filesDataGridView.Columns[0].HeaderText = Loc.T("ArchiveUnpacker.colNo", "No.");
+            filesDataGridView.Columns[1].HeaderText = Loc.T("ArchiveUnpacker.colFileName", "File name");
+            filesDataGridView.Columns[2].HeaderText = Loc.T("ArchiveUnpacker.colFileType", "Type");
+            filesDataGridView.Columns[3].HeaderText = Loc.T("ArchiveUnpacker.colFileSize", "File size");
+            filesDataGridView.Columns[4].HeaderText = Loc.T("ArchiveUnpacker.colFileOffset", "File offset");
+        }
+
+        private void fillFileGridRow(int row, string fileName, long fileSize, ulong fileOffset)
+        {
+            filesDataGridView[0, row].Value = Convert.ToString(row + 1);
+            filesDataGridView[1, row].Value = fileName;
+            filesDataGridView[2, row].Value = Methods.GetExtension(fileName).ToLower();
+            filesDataGridView[3, row].Value = Convert.ToString(fileSize);
+            filesDataGridView[4, row].Value = Convert.ToString(fileOffset);
+        }
+
         private void configureFileGridColumns()
         {
-            if (filesDataGridView.Columns.Count < 4) return;
+            if (filesDataGridView.Columns.Count < 5) return;
 
             filesDataGridView.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None;
             filesDataGridView.ColumnHeadersDefaultCellStyle.WrapMode = DataGridViewTriState.False;
@@ -1350,74 +1485,84 @@ namespace TTG_Tools
 
             DataGridViewColumn number = filesDataGridView.Columns[0];
             DataGridViewColumn name = filesDataGridView.Columns[1];
-            DataGridViewColumn offset = filesDataGridView.Columns[2];
+            DataGridViewColumn type = filesDataGridView.Columns[2];
             DataGridViewColumn size = filesDataGridView.Columns[3];
+            DataGridViewColumn offset = filesDataGridView.Columns[4];
 
-            number.ReadOnly = true;
-            name.ReadOnly = true;
-            offset.ReadOnly = true;
-            size.ReadOnly = true;
+            foreach (DataGridViewColumn col in filesDataGridView.Columns)
+            {
+                col.ReadOnly = true;
+                col.SortMode = col.Index == 0 ? DataGridViewColumnSortMode.NotSortable : DataGridViewColumnSortMode.Programmatic;
+                col.HeaderCell.SortGlyphDirection = SortOrder.None;
+            }
 
             number.AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
             number.MinimumWidth = 55;
             number.Width = 55;
             number.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
 
-            offset.AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
-            offset.MinimumWidth = 140;
-            offset.Width = 140;
-            offset.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
+            type.AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
+            type.MinimumWidth = 70;
+            type.AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells;
+            type.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
 
             size.AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
-            size.MinimumWidth = 140;
-            size.Width = 140;
+            size.MinimumWidth = 100;
+            size.Width = 100;
             size.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
+            size.Visible = false;
 
-            name.MinimumWidth = 280;
+            offset.AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
+            offset.MinimumWidth = 110;
+            offset.Width = 110;
+            offset.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
+            offset.Visible = false;
+
+            name.MinimumWidth = 200;
             name.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
             name.FillWeight = 100;
+
+            updateFileGridSortGlyph();
         }
 
-        private void loadTtarchData(string format)
+        private void updateFileGridSortGlyph()
         {
-            filesDataGridView.ColumnCount = 4;
+            if (filesDataGridView.Columns.Count < 5) return;
 
-            var files = isAllFilesFormat(format) ? ttarch.files : ttarch.files.Where(x => Methods.GetExtension(x.fileName).ToLower() == format.ToLower()).ToArray();
-
-            filesDataGridView.Columns[0].HeaderText = Loc.T("ArchiveUnpacker.colNo", "No.");
-            filesDataGridView.Columns[1].HeaderText = Loc.T("ArchiveUnpacker.colFileName", "File name");
-            filesDataGridView.Columns[2].HeaderText = Loc.T("ArchiveUnpacker.colFileOffset", "File offset");
-            filesDataGridView.Columns[3].HeaderText = Loc.T("ArchiveUnpacker.colFileSize", "File size");
-
-            filesDataGridView.RowCount = Math.Max(1, files.Length);
-
-            if (files.Length == 0)
+            foreach (DataGridViewColumn col in filesDataGridView.Columns)
             {
-                showNoResultsMessage();
-                return;
+                col.HeaderCell.SortGlyphDirection = SortOrder.None;
             }
 
-            for (int i = 0; i < files.Length; i++)
+            if (fileGridSortColumn > 0 && fileGridSortColumn < filesDataGridView.Columns.Count)
             {
-                filesDataGridView[0, i].Value = Convert.ToString(i + 1);
-                filesDataGridView[1, i].Value = files[i].fileName;
-                filesDataGridView[2, i].Value = Convert.ToString(files[i].fileOffset);
-                filesDataGridView[3, i].Value = Convert.ToString(files[i].fileSize);
+                filesDataGridView.Columns[fileGridSortColumn].HeaderCell.SortGlyphDirection = fileGridSortAscending ? SortOrder.Ascending : SortOrder.Descending;
+            }
+        }
 
+        private void filesDataGridView_ColumnHeaderMouseClick(object sender, DataGridViewCellMouseEventArgs e)
+        {
+            if (e.ColumnIndex <= 0 || e.ColumnIndex > 4) return;
+
+            if (fileGridSortColumn == e.ColumnIndex)
+            {
+                fileGridSortAscending = !fileGridSortAscending;
+            }
+            else
+            {
+                fileGridSortColumn = e.ColumnIndex;
+                fileGridSortAscending = true;
             }
 
-            configureFileGridColumns();
-            filesDataGridView.ClearSelection();
+            applyFilters();
         }
 
         private void loadTtarchData(ClassesStructs.TtarchClass.ttarchFiles[] files)
         {
-            filesDataGridView.ColumnCount = 4;
+            shownTtarchFiles = files;
+            shownTtarch2Files = null;
 
-            filesDataGridView.Columns[0].HeaderText = Loc.T("ArchiveUnpacker.colNo", "No.");
-            filesDataGridView.Columns[1].HeaderText = Loc.T("ArchiveUnpacker.colFileName", "File name");
-            filesDataGridView.Columns[2].HeaderText = Loc.T("ArchiveUnpacker.colFileOffset", "File offset");
-            filesDataGridView.Columns[3].HeaderText = Loc.T("ArchiveUnpacker.colFileSize", "File size");
+            setupFileGridColumns();
 
             filesDataGridView.RowCount = Math.Max(1, files.Length);
 
@@ -1429,11 +1574,7 @@ namespace TTG_Tools
 
             for (int i = 0; i < files.Length; i++)
             {
-                filesDataGridView[0, i].Value = Convert.ToString(i + 1);
-                filesDataGridView[1, i].Value = files[i].fileName;
-                filesDataGridView[2, i].Value = Convert.ToString(files[i].fileOffset);
-                filesDataGridView[3, i].Value = Convert.ToString(files[i].fileSize);
-
+                fillFileGridRow(i, files[i].fileName, files[i].fileSize, files[i].fileOffset);
             }
 
             configureFileGridColumns();
@@ -1612,45 +1753,12 @@ namespace TTG_Tools
             return result;
         }
 
-        private void loadTtarch2Data(string format)
-        {
-            filesDataGridView.ColumnCount = 4;
-            var files = isAllFilesFormat(format) ? ttarch2.files : ttarch2.files.Where(x => Methods.GetExtension(x.fileName).ToLower() == format.ToLower()).ToArray();
-
-            filesDataGridView.Columns[0].HeaderText = Loc.T("ArchiveUnpacker.colNo", "No.");
-            filesDataGridView.Columns[1].HeaderText = Loc.T("ArchiveUnpacker.colFileName", "File name");
-            filesDataGridView.Columns[2].HeaderText = Loc.T("ArchiveUnpacker.colFileOffset", "File offset");
-            filesDataGridView.Columns[3].HeaderText = Loc.T("ArchiveUnpacker.colFileSize", "File size");
-
-            filesDataGridView.RowCount = Math.Max(1, files.Length);
-
-            if (files.Length == 0)
-            {
-                showNoResultsMessage();
-                return;
-            }
-
-            for (int i = 0; i < files.Length; i++)
-            {
-                filesDataGridView[0, i].Value = Convert.ToString(i + 1);
-                filesDataGridView[1, i].Value = files[i].fileName;
-                filesDataGridView[2, i].Value = Convert.ToString(files[i].fileOffset);
-                filesDataGridView[3, i].Value = Convert.ToString(files[i].fileSize);
-
-            }
-
-            configureFileGridColumns();
-            filesDataGridView.ClearSelection();
-        }
-
         private void loadTtarch2Data(ClassesStructs.Ttarch2Class.Ttarch2files[] files)
         {
-            filesDataGridView.ColumnCount = 4;
+            shownTtarch2Files = files;
+            shownTtarchFiles = null;
 
-            filesDataGridView.Columns[0].HeaderText = Loc.T("ArchiveUnpacker.colNo", "No.");
-            filesDataGridView.Columns[1].HeaderText = Loc.T("ArchiveUnpacker.colFileName", "File name");
-            filesDataGridView.Columns[2].HeaderText = Loc.T("ArchiveUnpacker.colFileOffset", "File offset");
-            filesDataGridView.Columns[3].HeaderText = Loc.T("ArchiveUnpacker.colFileSize", "File size");
+            setupFileGridColumns();
 
             filesDataGridView.RowCount = Math.Max(1, files.Length);
 
@@ -1662,11 +1770,7 @@ namespace TTG_Tools
 
             for (int i = 0; i < files.Length; i++)
             {
-                filesDataGridView[0, i].Value = Convert.ToString(i + 1);
-                filesDataGridView[1, i].Value = files[i].fileName;
-                filesDataGridView[2, i].Value = Convert.ToString(files[i].fileOffset);
-                filesDataGridView[3, i].Value = Convert.ToString(files[i].fileSize);
-
+                fillFileGridRow(i, files[i].fileName, files[i].fileSize, files[i].fileOffset);
             }
 
             configureFileGridColumns();
@@ -1693,7 +1797,7 @@ namespace TTG_Tools
                 gameListCB.Items.Add(i + ". " + MainMenu.gamelist[i].gamename);
             }
 
-            gameListCB.SelectedIndex = MainMenu.settings.encKeyIndex;
+            gameListCB.SelectedIndex = MainMenu.settings.encKeyIndex >= 0 && MainMenu.settings.encKeyIndex < gameListCB.Items.Count ? MainMenu.settings.encKeyIndex : (gameListCB.Items.Count > 0 ? 0 : -1);
             customKeyTB.Text = MainMenu.settings.encCustomKey;
             useCustomKeyCB.Checked = MainMenu.settings.customKey;
 
@@ -1876,5 +1980,186 @@ namespace TTG_Tools
 
             await OpenArchiveFile(files[0]);
         }
+
+        #region Preview panel
+
+        //Bumped on every preview request; a finished background build only gets displayed when its
+        //sequence still matches, so rapid selection changes never show a stale preview.
+        private int previewSeq;
+
+        private const long MaxPreviewFileSize = 64L * 1024 * 1024;
+
+        private void filesDataGridView_SelectionChanged(object sender, EventArgs e)
+        {
+            UpdatePreview();
+        }
+
+        private async void UpdatePreview()
+        {
+            int seq = ++previewSeq;
+
+            if ((ttarch == null && ttarch2 == null) || filesDataGridView.SelectedRows.Count == 0)
+            {
+                ShowPreviewMessage((ttarch != null || ttarch2 != null) ? Loc.T("ArchiveUnpacker.previewSelectFile", "Select a file to preview it.") : "");
+                return;
+            }
+
+            object cellValue = filesDataGridView.SelectedRows[0].Cells[0].Value;
+            int number;
+
+            if (cellValue == null || !int.TryParse(cellValue.ToString(), out number) || number <= 0)
+            {
+                ShowPreviewMessage(Loc.T("ArchiveUnpacker.previewSelectFile", "Select a file to preview it."));
+                return;
+            }
+
+            int index = number - 1;
+
+            string fileName;
+            long fileSize;
+            byte[] archKey = MainMenu.gamelist[gameListCB.SelectedIndex].key;
+            int luaVersion;
+
+            //Capture everything the background build needs on the UI thread, so a new "open"
+            //replacing the shared state mid-build can't be observed halfway through.
+            var arc1 = ttarch;
+            var arc2 = ttarch2;
+
+            if (arc1 != null)
+            {
+                if (shownTtarchFiles == null || index >= shownTtarchFiles.Length) return;
+                fileName = shownTtarchFiles[index].fileName;
+                fileSize = shownTtarchFiles[index].fileSize;
+                luaVersion = arc1.version;
+            }
+            else
+            {
+                if (shownTtarch2Files == null || index >= shownTtarch2Files.Length) return;
+                fileName = shownTtarch2Files[index].fileName;
+                fileSize = shownTtarch2Files[index].fileSize;
+                luaVersion = 7;
+            }
+
+            if (fileSize > MaxPreviewFileSize)
+            {
+                ShowPreviewMessage(Loc.T("ArchiveUnpacker.previewTooBig", "File is too large to preview."));
+                return;
+            }
+
+            ShowPreviewMessage(Loc.T("ArchiveUnpacker.previewLoading", "Loading preview..."));
+
+            var file1 = arc1 != null ? shownTtarchFiles[index] : default(ClassesStructs.TtarchClass.ttarchFiles);
+            var file2 = arc2 != null ? shownTtarch2Files[index] : default(ClassesStructs.Ttarch2Class.Ttarch2files);
+
+            PreviewBuilder.PreviewResult result = null;
+
+            try
+            {
+                result = await Task.Run(() =>
+                {
+                    byte[] bytes = null;
+
+                    if (arc1 != null)
+                    {
+                        using (FileStream fs = new FileStream(arc1.filePath, FileMode.Open, FileAccess.Read))
+                        using (BinaryReader br = new BinaryReader(fs))
+                        {
+                            bytes = getTtarchFile(arc1, file1, archKey, arc1.chunkSize * 1024, br);
+                        }
+                    }
+                    else
+                    {
+                        using (FileStream fs = new FileStream(arc2.fileName, FileMode.Open, FileAccess.Read))
+                        using (BinaryReader br = new BinaryReader(fs))
+                        {
+                            bytes = getTtarch2File(arc2, file2, archKey, br);
+                        }
+                    }
+
+                    if (bytes == null) return null;
+
+                    return PreviewBuilder.Build(fileName, bytes, archKey, luaVersion);
+                });
+            }
+            catch
+            {
+                result = null;
+            }
+
+            if (seq != previewSeq)
+            {
+                if (result != null && result.Image != null) result.Image.Dispose();
+                return;
+            }
+
+            ShowPreviewResult(result, fileName, fileSize);
+        }
+
+        private void ShowPreviewMessage(string message)
+        {
+            SwapPreviewImage(null);
+            previewPictureBox.Visible = true;
+            previewTextBox.Visible = false;
+            previewTextBox.Text = "";
+            previewInfoLabel.Text = message;
+        }
+
+        private void ShowPreviewResult(PreviewBuilder.PreviewResult result, string fileName, long fileSize)
+        {
+            string baseInfo = fileName + "  |  " + fileSize.ToString("N0") + " " + Loc.T("ArchiveUnpacker.previewBytes", "bytes");
+
+            if (result == null || result.Kind == PreviewBuilder.PreviewKind.None)
+            {
+                ShowPreviewMessage("");
+                return;
+            }
+
+            if (result.Kind == PreviewBuilder.PreviewKind.Image)
+            {
+                SwapPreviewImage(result.Image);
+                previewTextBox.Visible = false;
+                previewTextBox.Text = "";
+                previewPictureBox.Visible = true;
+                previewPictureBox.BringToFront();
+                previewInfoLabel.BringToFront();
+                AdjustPreviewSizeMode();
+            }
+            else
+            {
+                SwapPreviewImage(null);
+                previewTextBox.Visible = true;
+                previewPictureBox.Visible = false;
+                previewTextBox.BringToFront();
+                previewInfoLabel.BringToFront();
+                previewTextBox.Clear();
+                previewTextBox.AppendText(result.Text ?? "");
+                previewTextBox.SelectionStart = 0;
+                previewTextBox.SelectionLength = 0;
+                previewTextBox.ScrollToCaret();
+                previewTextBox.Refresh();
+            }
+
+            previewInfoLabel.Text = string.IsNullOrEmpty(result.Info) ? baseInfo : baseInfo + "  |  " + result.Info;
+        }
+
+        private void SwapPreviewImage(System.Drawing.Image image)
+        {
+            var old = previewPictureBox.Image;
+            previewPictureBox.Image = image;
+            if (old != null) old.Dispose();
+        }
+
+        //Small images (font atlases, icons) look blurry when Zoom scales them up, so only zoom
+        //when the image is actually bigger than the panel.
+        private void AdjustPreviewSizeMode()
+        {
+            var img = previewPictureBox.Image;
+            if (img == null) return;
+
+            bool fits = img.Width <= previewPictureBox.ClientSize.Width && img.Height <= previewPictureBox.ClientSize.Height;
+            previewPictureBox.SizeMode = fits ? PictureBoxSizeMode.CenterImage : PictureBoxSizeMode.Zoom;
+        }
+
+        #endregion
     }
 }

@@ -31,12 +31,42 @@ namespace TTG_Tools
             comboBox2.Items.Clear();
             comboBox2.Items.Add(Loc.T("AutoPacker.encVersionsOld", "Versions 2-6"));
             comboBox2.Items.Add(Loc.T("AutoPacker.encVersionsNew", "Versions 7-9"));
-            comboBox2.SelectedIndex = selected >= 0 && selected < comboBox2.Items.Count ? selected : 0;
+            comboBox2.SelectedIndex = GetSafeSelectedIndex(selected, comboBox2.Items.Count);
+        }
+
+        private static int GetSafeSelectedIndex(int index, int itemCount)
+        {
+            if (itemCount <= 0) return -1;
+            return index >= 0 && index < itemCount ? index : 0;
         }
 
         private void AlignTopAreaAndLog()
         {
             const int gapBeforeLog = 14;
+            int importWidth = Math.Max(124, button1.PreferredSize.Width + 12);
+            int exportWidth = Math.Max(124, buttonDecrypt.PreferredSize.Width + 12);
+            button1.Width = importWidth;
+            buttonDecrypt.SetBounds(button1.Right + 16, buttonDecrypt.Top, exportWidth, buttonDecrypt.Height);
+
+            int swizzleContentRight = 0;
+            foreach (Control control in groupBox2.Controls)
+            {
+                if (control.Right > swizzleContentRight) swizzleContentRight = control.Right;
+            }
+
+            groupBox2.Width = Math.Max(groupBox2.Width, swizzleContentRight + 12);
+            groupBox1.Width = Math.Max(groupBox1.Width, groupBox2.Right + 16);
+            groupBox1.Left = Math.Max(groupBox1.Left, buttonDecrypt.Right + 24);
+
+            if (groupBox1.Right + 12 > ClientSize.Width)
+            {
+                ClientSize = new System.Drawing.Size(groupBox1.Right + 12, ClientSize.Height);
+            }
+
+            sortLabel.MaximumSize = new System.Drawing.Size(
+                Math.Max(100, groupBox1.Left - sortLabel.Left - 12),
+                0);
+
             int topAreaBottom = Math.Max(groupBox1.Bottom, sortLabel.Bottom);
             int logTop = topAreaBottom + gapBeforeLog;
             int logBottom = ClientSize.Height - _logBottomMargin;
@@ -235,8 +265,11 @@ namespace TTG_Tools
 
             #endregion
 
-            comboBox1.SelectedIndex = MainMenu.settings.encKeyIndex;
-            comboBox2.SelectedIndex = MainMenu.settings.versionEnc;
+            comboBox1.SelectedIndex = GetSafeSelectedIndex(MainMenu.settings.encKeyIndex, comboBox1.Items.Count);
+            comboBox2.SelectedIndex = GetSafeSelectedIndex(MainMenu.settings.versionEnc, comboBox2.Items.Count);
+            bool hasGameKeys = comboBox1.SelectedIndex >= 0;
+            button1.Enabled = hasGameKeys;
+            buttonDecrypt.Enabled = hasGameKeys;
             labelUnicode.Text = MainMenu.settings.unicodeSettings == 0
                 ? Loc.T("AutoPacker.unicodeSet", "Unicode is set.")
                 : Loc.T("AutoPacker.unicodeNotSet", "Unicode is not set.");

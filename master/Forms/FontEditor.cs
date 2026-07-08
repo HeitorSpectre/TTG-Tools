@@ -1429,13 +1429,19 @@ namespace TTG_Tools
                             for (int i = 0; i < xboxDoc.CharCount; i++)
                             {
                                 var g = xboxDoc.Glyphs[i];
+                                // Normalise against the glyph's OWN page - not
+                                // page 0 - so multi-page fonts (pages with
+                                // different heights) map their glyphs correctly.
+                                bool hasPage = g.TexNum >= 0 && g.TexNum < xboxDoc.Pages.Count;
+                                int pw = hasPage ? xboxDoc.Pages[g.TexNum].Width  : xboxDoc.TextureWidth;
+                                int ph = hasPage ? xboxDoc.Pages[g.TexNum].Height : xboxDoc.TextureHeight;
                                 font.glyph.chars[i] = new FontClass.ClassFont.TRect
                                 {
                                     TexNum     = g.TexNum,
-                                    XStart     = (float)Math.Round(g.XStart * xboxDoc.TextureWidth),
-                                    XEnd       = (float)Math.Round(g.XEnd   * xboxDoc.TextureWidth),
-                                    YStart     = (float)Math.Round(g.YStart * xboxDoc.TextureHeight),
-                                    YEnd       = (float)Math.Round(g.YEnd   * xboxDoc.TextureHeight),
+                                    XStart     = (float)Math.Round(g.XStart * pw),
+                                    XEnd       = (float)Math.Round(g.XEnd   * pw),
+                                    YStart     = (float)Math.Round(g.YStart * ph),
+                                    YEnd       = (float)Math.Round(g.YEnd   * ph),
                                     CharWidth  = g.CharWidth,
                                     CharHeight = g.CharHeight,
                                 };
@@ -2241,13 +2247,14 @@ namespace TTG_Tools
                     int tex = src.TexNum;
                     int pageW = (tex >= 0 && tex < xboxFontData.Pages.Count) ? xboxFontData.Pages[tex].Width : 0;
                     int pageH = (tex >= 0 && tex < xboxFontData.Pages.Count) ? xboxFontData.Pages[tex].Height : 0;
+                    var orig = i < xboxFontData.Glyphs.Count ? xboxFontData.Glyphs[i] : null;
                     edited.Add(new Graphics.Xbox360.XboxFontSupport.XboxGlyph
                     {
                         TexNum     = src.TexNum,
-                        XStart     = pageW > 0 ? src.XStart / pageW : 0f,
-                        XEnd       = pageW > 0 ? src.XEnd   / pageW : 0f,
-                        YStart     = pageH > 0 ? src.YStart / pageH : 0f,
-                        YEnd       = pageH > 0 ? src.YEnd   / pageH : 0f,
+                        XStart     = DenormalizeGlyph(src.XStart, pageW, orig != null ? orig.XStart : (float?)null),
+                        XEnd       = DenormalizeGlyph(src.XEnd,   pageW, orig != null ? orig.XEnd   : (float?)null),
+                        YStart     = DenormalizeGlyph(src.YStart, pageH, orig != null ? orig.YStart : (float?)null),
+                        YEnd       = DenormalizeGlyph(src.YEnd,   pageH, orig != null ? orig.YEnd   : (float?)null),
                         CharWidth  = src.CharWidth,
                         CharHeight = src.CharHeight,
                     });
@@ -3663,6 +3670,23 @@ namespace TTG_Tools
             MainMenu.settings.swizzleNintendoWiiU = false;
             MainMenu.settings.swizzlePS3 = false;
             Settings.SaveConfig(MainMenu.settings);
+        }
+
+        /// <summary>
+        /// Converts an edited glyph edge (integer pixel coordinate) back to the
+        /// normalised 0..1 value stored in the Xbox 360 .font. When the edge was
+        /// not moved by the user (its pixel value still matches the original
+        /// coordinate rounded to a pixel), the ORIGINAL full-precision normalised
+        /// value is returned so an unedited save round-trips byte-for-byte;
+        /// otherwise the new pixel value is normalised.
+        /// </summary>
+        private static float DenormalizeGlyph(float pixel, int dim, float? originalNorm)
+        {
+            if (dim <= 0) return 0f;
+            if (originalNorm.HasValue &&
+                (float)Math.Round(originalNorm.Value * dim) == pixel)
+                return originalNorm.Value;
+            return pixel / dim;
         }
 
         private void rbXbox360Swizzle_CheckedChanged(object sender, EventArgs e)

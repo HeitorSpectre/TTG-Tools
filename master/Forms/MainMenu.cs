@@ -43,7 +43,7 @@ namespace TTG_Tools
 
             int buttonWidth = 112;
             foreach (Button button in leftColumn.Concat(rightColumn))
-                buttonWidth = Math.Max(buttonWidth, button.Width);
+                buttonWidth = Math.Max(buttonWidth, button.PreferredSize.Width + 16);
 
             const int left = 34;
             const int columnGap = 84;
