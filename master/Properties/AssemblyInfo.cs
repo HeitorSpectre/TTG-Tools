@@ -6,12 +6,12 @@ using System.Runtime.InteropServices;
 // General Information about an assembly is controlled through the following 
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("TTG Autopacker")]
+[assembly: AssemblyTitle("TTG Tools")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("WolfishLair")]
-[assembly: AssemblyProduct("TTG Autopacker")]
-[assembly: AssemblyCopyright("Copyright © WolfishLair 2010-2020")]
+[assembly: AssemblyCompany("HeitorSpectre")]
+[assembly: AssemblyProduct("TTG Tools")]
+[assembly: AssemblyCopyright("Copyright © HeitorSpectre")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 

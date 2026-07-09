@@ -20,13 +20,65 @@ namespace TTG_Tools
         public FontEditor()
         {
             InitializeComponent();
+            AppIcon.Apply(this);
             Localizer.Localize(this);
+            ArrangeLocalizedTopLayout();
             SetProcessWorkingSetSize(System.Diagnostics.Process.GetCurrentProcess().Handle, -1, -1);
 
             AllowDrop = true;
             DragEnter += FontEditor_DragEnter;
             DragDrop += FontEditor_DragDrop;
             EnableDragDropForControls(this);
+        }
+
+        private void ArrangeLocalizedTopLayout()
+        {
+            const int gap = 10;
+            const int rightMargin = 12;
+            int x = dataGridViewWithTextures.Right + gap;
+
+            ResizeGroupToContent(groupBox1);
+            ResizeGroupToContent(groupBox3);
+            ResizeGroupToContent(groupBox2);
+            ResizeGroupToContent(groupBox4);
+
+            groupBox1.Left = x;
+            x = groupBox1.Right + gap;
+            groupBox3.Left = x;
+            x = groupBox3.Right + gap;
+            groupBox2.Left = x;
+            x = groupBox2.Right + gap;
+            groupBox4.Left = x;
+            x = groupBox4.Right + gap;
+
+            int previewWidth = Math.Max(248, labelTexturePreview.PreferredWidth + 8);
+            int requiredWidth = x + previewWidth + rightMargin;
+            if (ClientSize.Width < requiredWidth)
+                ClientSize = new Size(requiredWidth, ClientSize.Height);
+
+            pictureBoxTexturePreview.SetBounds(
+                ClientSize.Width - previewWidth,
+                pictureBoxTexturePreview.Top,
+                previewWidth,
+                pictureBoxTexturePreview.Height);
+            labelTexturePreview.SetBounds(
+                pictureBoxTexturePreview.Left,
+                labelTexturePreview.Top,
+                previewWidth,
+                labelTexturePreview.Height);
+
+            dataGridViewWithCoord.Width = Math.Max(300, pictureBoxTexturePreview.Left - dataGridViewWithCoord.Left);
+        }
+
+        private static void ResizeGroupToContent(GroupBox group)
+        {
+            int right = TextRenderer.MeasureText(group.Text, group.Font).Width + 24;
+            foreach (Control control in group.Controls)
+            {
+                if (control.Right > right) right = control.Right;
+            }
+
+            group.Width = Math.Max(group.Width, right + 10);
         }
 
         OpenFileDialog ofd = new OpenFileDialog();
@@ -39,6 +91,7 @@ namespace TTG_Tools
         bool someTexData;
         bool AddInfo;
         string droppedFontPath;
+        private bool loadingSettings;
         private Bitmap basePreviewBitmap;
         private Graphics.WiiSupport.WiiFontData wiiFontData;
         private readonly Dictionary<int, string> wiiImportedTexturePaths = new Dictionary<int, string>();
@@ -100,6 +153,9 @@ namespace TTG_Tools
         }
         private void FontEditor_Load(object sender, EventArgs e)
         {
+            loadingSettings = true;
+            try
+            {
             edited = false; //Tell a program about first launch window form so font is not modified.
             
             if(MainMenu.settings.swizzlePS4 || MainMenu.settings.swizzleNintendoSwitch || MainMenu.settings.swizzleXbox360 || MainMenu.settings.swizzlePSVita || MainMenu.settings.swizzleNintendoWii || MainMenu.settings.swizzlePS2 || MainMenu.settings.swizzleNintendoWiiU || MainMenu.settings.swizzlePS3)
@@ -116,6 +172,11 @@ namespace TTG_Tools
             else
             {
                 rbNoSwizzle.Checked = true;
+            }
+            }
+            finally
+            {
+                loadingSettings = false;
             }
         }
 
@@ -3620,6 +3681,7 @@ namespace TTG_Tools
 
         private void rbNoSwizzle_CheckedChanged(object sender, EventArgs e)
         {
+            if (loadingSettings) return;
             if (!rbNoSwizzle.Checked)
             {
                 return;
@@ -3638,6 +3700,7 @@ namespace TTG_Tools
 
         private void rbPS4Swizzle_CheckedChanged(object sender, EventArgs e)
         {
+            if (loadingSettings) return;
             if (!rbPS4Swizzle.Checked)
             {
                 return;
@@ -3656,6 +3719,7 @@ namespace TTG_Tools
 
         private void rbSwitchSwizzle_CheckedChanged(object sender, EventArgs e)
         {
+            if (loadingSettings) return;
             if (!rbSwitchSwizzle.Checked)
             {
                 return;
@@ -3691,6 +3755,7 @@ namespace TTG_Tools
 
         private void rbXbox360Swizzle_CheckedChanged(object sender, EventArgs e)
         {
+            if (loadingSettings) return;
             if (rbXbox360Swizzle.Checked)
             {
                 MainMenu.settings.swizzleXbox360 = true;
@@ -3707,6 +3772,7 @@ namespace TTG_Tools
 
         private void rbPSVitaSwizzle_CheckedChanged(object sender, EventArgs e)
         {
+            if (loadingSettings) return;
             if (rbPSVitaSwizzle.Checked)
             {
                 MainMenu.settings.swizzlePSVita = true;
@@ -3724,6 +3790,7 @@ namespace TTG_Tools
 
         private void rbWiiSwizzle_CheckedChanged(object sender, EventArgs e)
         {
+            if (loadingSettings) return;
             if (rbWiiSwizzle.Checked)
             {
                 MainMenu.settings.swizzlePSVita = false;
@@ -3740,6 +3807,7 @@ namespace TTG_Tools
 
         private void rbPS2Swizzle_CheckedChanged(object sender, EventArgs e)
         {
+            if (loadingSettings) return;
             if (rbPS2Swizzle.Checked)
             {
                 MainMenu.settings.swizzlePSVita = false;
@@ -3756,6 +3824,7 @@ namespace TTG_Tools
 
         private void rbWiiUSwizzle_CheckedChanged(object sender, EventArgs e)
         {
+            if (loadingSettings) return;
             if (rbWiiUSwizzle.Checked)
             {
                 MainMenu.settings.swizzlePSVita = false;
@@ -3772,6 +3841,7 @@ namespace TTG_Tools
 
         private void rbPS3Swizzle_CheckedChanged(object sender, EventArgs e)
         {
+            if (loadingSettings) return;
             if (rbPS3Swizzle.Checked)
             {
                 MainMenu.settings.swizzlePSVita = false;

@@ -55,6 +55,7 @@ namespace TTG_Tools
         public SettingsForm()
         {
             BuildUi();
+            AppIcon.Apply(this);
             Load += SettingsForm_Load;
         }
 
@@ -82,8 +83,8 @@ namespace TTG_Tools
             Controls.Add(lblSaveStatus);
 
             // ---- Profile bar ----
-            Label lblProfile = new Label { Left = 12, Top = 40, Width = 92, Text = Loc.T("Settings.lblProfile", "Profile") };
-            cbProfile = new ComboBox { Left = 108, Top = 36, Width = 176, DropDownStyle = ComboBoxStyle.DropDownList };
+            Label lblProfile = new Label { Left = 12, Top = 36, Width = 64, Height = 23, TextAlign = ContentAlignment.MiddleLeft, Text = Loc.T("Settings.lblProfile", "Profile") };
+            cbProfile = new ComboBox { Left = 80, Top = 36, Width = 204, DropDownStyle = ComboBoxStyle.DropDownList };
             cbProfile.SelectedIndexChanged += cbProfile_SelectedIndexChanged;
             btnNewProfile = new Button { Left = 290, Top = 35, Width = 56, Text = Loc.T("Settings.btnNewProfile", "New") };
             btnNewProfile.Click += btnNewProfile_Click;
@@ -134,20 +135,20 @@ namespace TTG_Tools
             cbInterfaceLanguage = new ComboBox { Left = 150, Top = 11, Width = 276, DropDownStyle = ComboBoxStyle.DropDownList };
 
             Label lblIn = new Label { Left = 12, Top = 48, AutoSize = true, Text = Loc.T("Settings.lblInput", "Input folder") };
-            txtInput = new TextBox { Left = 12, Top = 66, Width = 330 };
-            Button btnIn = new Button { Left = 348, Top = 65, Width = 78, Text = Loc.T("Settings.btnBrowse", "Browse…") };
+            txtInput = new TextBox { Left = 12, Top = 66, Width = 360 };
+            Button btnIn = new Button { Left = 378, Top = 65, Width = 78, Text = Loc.T("Settings.btnBrowse", "Browse…") };
             btnIn.Click += (s, e) => txtInput.Text = SettingsShared.PickFolder(txtInput.Text);
 
             Label lblOut = new Label { Left = 12, Top = 96, AutoSize = true, Text = Loc.T("Settings.lblOutput", "Output folder") };
-            txtOutput = new TextBox { Left = 12, Top = 114, Width = 330 };
-            Button btnOut = new Button { Left = 348, Top = 113, Width = 78, Text = Loc.T("Settings.btnBrowse", "Browse…") };
+            txtOutput = new TextBox { Left = 12, Top = 114, Width = 360 };
+            Button btnOut = new Button { Left = 378, Top = 113, Width = 78, Text = Loc.T("Settings.btnBrowse", "Browse…") };
             btnOut.Click += (s, e) => txtOutput.Text = SettingsShared.PickFolder(txtOutput.Text);
 
             chkClearMessages = new CheckBox { Left = 12, Top = 148, AutoSize = true, Text = Loc.T("Settings.chkClearMessages", "Clear messages after each operation") };
 
             Label lblCfg = new Label { Left = 12, Top = 178, AutoSize = true, Text = Loc.T("Settings.lblConfigFolder", "Configuration folder (config file and profiles)") };
-            TextBox txtCfg = new TextBox { Left = 12, Top = 196, Width = 330, ReadOnly = true, Text = Settings.ConfigDirectory };
-            Button btnCfg = new Button { Left = 348, Top = 195, Width = 78, Text = Loc.T("Settings.btnOpen", "Open") };
+            TextBox txtCfg = new TextBox { Left = 12, Top = 196, Width = 360, ReadOnly = true, Text = Settings.ConfigDirectory };
+            Button btnCfg = new Button { Left = 378, Top = 195, Width = 78, Text = Loc.T("Settings.btnOpen", "Open") };
             btnCfg.Click += (s, e) => OpenConfigFolder();
 
             tab.Controls.Add(lblUiLang);

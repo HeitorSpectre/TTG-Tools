@@ -190,6 +190,9 @@ Maybe some games doesn't work.
 v.1.16.2 (08.07.2026)
 + Archive Unpacker:
 Improved the Archive Unpacker interface with a cleaner Telltale Explorer-inspired layout, a better organized file list, integrated previews for supported images, textures, fonts, text, localization, Lua and script files, sortable file columns, and cleaner filters.
++ Mod Creator:
+Added Mod Creator support for The Walking Dead: Season Two, The Wolf Among Us, The Walking Dead: Michonne, Batman: The Telltale Series, Game of Thrones: A Telltale Games Series, Guardians of the Galaxy: A Telltale Games Series, Tales From the Borderlands (2014/2015), Minecraft: Story Mode - Season One, Minecraft: Story Mode - Season Two, Sam &amp; Max: Beyond Time and Space - Remastered and Sam &amp; Max: The Devil's Playhouse - Remastered.
+Improved the game list order and names to match the rest of the tool and made the selected Mod Creator game persist between sessions.
 + Font Editor:
 Added support for extracting and reinserting Xbox 360 fonts from older games.
 

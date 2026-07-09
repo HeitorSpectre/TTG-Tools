@@ -19,10 +19,13 @@ namespace TTG_Tools
 
         public static FileInfo[] fi; //Получение списка файлов
         int archiveVersion;
+        private bool suppressCustomKeyEvent;
+        private bool loadingSettings;
 
         public ArchivePacker()
         {
             InitializeComponent();
+            AppIcon.Apply(this);
             Localizer.Localize(this);
             AlignLocalizedLayout();
             fbd.IsFolderPicker = true;
@@ -88,14 +91,17 @@ namespace TTG_Tools
                 buildButton.Left = browseLeft + browseWidth - buildButton.Width;
 
                 int encryptionWidth = Math.Max(472, ClientSize.Width - encryptionLeft - 12);
-                int encryptionLabelWidth = Math.Max(label5.PreferredWidth + 4, CheckCustomKey.PreferredSize.Width);
+                CheckCustomKey.Visible = false;
+                textBox3.Visible = false;
+
+                int encryptionLabelWidth = label5.PreferredWidth + 4;
                 int encryptionFieldLeft = 14 + encryptionLabelWidth + labelGap;
                 encryptionWidth = Math.Max(encryptionWidth, encryptionFieldLeft + 260);
                 int requiredWidth = encryptionLeft + encryptionWidth + 12;
                 if (ClientSize.Width < requiredWidth)
                     ClientSize = new System.Drawing.Size(requiredWidth, ClientSize.Height);
 
-                groupBox2.SetBounds(encryptionLeft, 75, encryptionWidth, 116);
+                groupBox2.SetBounds(encryptionLeft, 75, encryptionWidth, 86);
                 EncryptIt.Location = new System.Drawing.Point(14, 18);
                 DontEncLuaCheck.Location = new System.Drawing.Point(14, 39);
                 newEngineLua.Location = new System.Drawing.Point(
@@ -110,13 +116,6 @@ namespace TTG_Tools
                     60,
                     encryptionWidth - encryptionFieldLeft - 10,
                     comboGameList.Height);
-
-                CheckCustomKey.Location = new System.Drawing.Point(14, 91);
-                textBox3.SetBounds(
-                    encryptionFieldLeft,
-                    88,
-                    encryptionWidth - encryptionFieldLeft - 10,
-                    textBox3.Height);
 
                 int fullWidth = ClientSize.Width - (margin * 2);
                 progressBar1.SetBounds(margin, progressBar1.Top, fullWidth, progressBar1.Height);
@@ -1031,6 +1030,9 @@ namespace TTG_Tools
 
         private void ArchivePacker_Load(object sender, EventArgs e)
         {
+            loadingSettings = true;
+            try
+            {
             AllowDrop = true;
             DragEnter += ArchivePacker_DragEnter;
             DragDrop += ArchivePacker_DragDrop;
@@ -1055,7 +1057,13 @@ namespace TTG_Tools
             if (MainMenu.settings.inputDirPath != "") textBox1.Text = MainMenu.settings.inputDirPath;
             if (MainMenu.settings.archivePath != "") textBox2.Text = MainMenu.settings.archivePath;
 
-            textBox3.Enabled = MainMenu.settings.customKey;
+            suppressCustomKeyEvent = true;
+            CheckCustomKey.Checked = false;
+            CheckCustomKey.Visible = false;
+            textBox3.Text = "";
+            textBox3.Enabled = false;
+            textBox3.Visible = false;
+            suppressCustomKeyEvent = false;
             int encKeyIndex = MainMenu.settings.versionArchiveIndex;
             if (MainMenu.settings.archiveFormat == 0) ttarchRB.Checked = true;
             else ttarch2RB.Checked = true;
@@ -1063,11 +1071,10 @@ namespace TTG_Tools
             comboGameList.SelectedIndex = MainMenu.settings.encKeyIndex;
             versionSelection.SelectedIndex = encKeyIndex;
 
-
-            if (MainMenu.settings.customKey && Methods.stringToKey(MainMenu.settings.encCustomKey) != null)
+            }
+            finally
             {
-                CheckCustomKey.Checked = MainMenu.settings.customKey;
-                textBox3.Text = MainMenu.settings.encCustomKey;
+                loadingSettings = false;
             }
         }
 
@@ -1087,9 +1094,12 @@ namespace TTG_Tools
             checkXmode.Visible = true;
             checkXmode.Checked = MainMenu.settings.oldXmode;
             
-            MainMenu.settings.archiveFormat = 0;
-            MainMenu.settings.versionArchiveIndex = versionSelection.SelectedIndex;
-            Settings.SaveConfig(MainMenu.settings);
+            if (!loadingSettings)
+            {
+                MainMenu.settings.archiveFormat = 0;
+                MainMenu.settings.versionArchiveIndex = versionSelection.SelectedIndex;
+                Settings.SaveConfig(MainMenu.settings);
+            }
         }
 
         private void ttarch2RB_CheckedChanged(object sender, EventArgs e)
@@ -1101,9 +1111,12 @@ namespace TTG_Tools
 
             checkXmode.Visible = false;
 
-            MainMenu.settings.archiveFormat = 1;
-            MainMenu.settings.versionArchiveIndex = versionSelection.SelectedIndex;
-            Settings.SaveConfig(MainMenu.settings);
+            if (!loadingSettings)
+            {
+                MainMenu.settings.archiveFormat = 1;
+                MainMenu.settings.versionArchiveIndex = versionSelection.SelectedIndex;
+                Settings.SaveConfig(MainMenu.settings);
+            }
         }
 
         private void button1_Click(object sender, EventArgs e)
@@ -1297,18 +1310,22 @@ namespace TTG_Tools
 
         private void comboGameList_SelectedIndexChanged(object sender, EventArgs e)
         {
+            if (loadingSettings) return;
             MainMenu.settings.encKeyIndex = comboGameList.SelectedIndex;
             Settings.SaveConfig(MainMenu.settings);
         }
 
         private void newEngineLua_CheckedChanged(object sender, EventArgs e)
         {
+            if (loadingSettings) return;
             MainMenu.settings.encNewLua = newEngineLua.Checked;
             Settings.SaveConfig(MainMenu.settings);
         }
 
         private void CheckCustomKey_CheckedChanged(object sender, EventArgs e)
         {
+            if (loadingSettings) return;
+            if (suppressCustomKeyEvent) return;
             MainMenu.settings.customKey = CheckCustomKey.Checked;
             textBox3.Enabled = MainMenu.settings.customKey;
             Settings.SaveConfig(MainMenu.settings);
@@ -1326,24 +1343,28 @@ namespace TTG_Tools
 
         private void DontEncLuaCheck_CheckedChanged(object sender, EventArgs e)
         {
+            if (loadingSettings) return;
             MainMenu.settings.encryptLuaInArchive = DontEncLuaCheck.Checked;
             Settings.SaveConfig(MainMenu.settings);
         }
 
         private void EncryptIt_CheckedChanged(object sender, EventArgs e)
         {
+            if (loadingSettings) return;
             MainMenu.settings.encArchive = EncryptIt.Checked;
             Settings.SaveConfig(MainMenu.settings);
         }
 
         private void checkCompress_CheckedChanged(object sender, EventArgs e)
         {
+            if (loadingSettings) return;
             MainMenu.settings.compressArchive = checkCompress.Checked;
             Settings.SaveConfig(MainMenu.settings);
         }
 
         private void checkXmode_CheckedChanged(object sender, EventArgs e)
         {
+            if (loadingSettings) return;
             MainMenu.settings.oldXmode = checkXmode.Checked;
             Settings.SaveConfig(MainMenu.settings);
         }
@@ -1378,8 +1399,11 @@ namespace TTG_Tools
                 checkXmode.Visible = false;
             }
 
-            MainMenu.settings.versionArchiveIndex = versionSelection.SelectedIndex;
-            Settings.SaveConfig(MainMenu.settings);
+            if (!loadingSettings)
+            {
+                MainMenu.settings.versionArchiveIndex = versionSelection.SelectedIndex;
+                Settings.SaveConfig(MainMenu.settings);
+            }
         }
     }
 }

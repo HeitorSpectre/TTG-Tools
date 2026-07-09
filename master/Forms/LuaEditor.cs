@@ -19,6 +19,8 @@ namespace TTG_Tools
         private bool currentLoadedWasEncrypted;
         private bool currentLoadedWasCompiled;
         private bool isReloading;
+        private bool loadingSettings;
+        private bool settingsDirty;
 
         private System.Windows.Forms.Timer highlightTimer;
         private bool suppressHighlight;
@@ -28,17 +30,25 @@ namespace TTG_Tools
         //Warn only once per app session, not every time the editor is opened.
         private static bool _javaChecked;
 
+        private class LuaAutoDetection
+        {
+            public int GameIndex { get; set; } = -1;
+            public int EncMethodIndex { get; set; } = -1;
+            public bool NewEngineLua { get; set; }
+            public int LuaVersionIndex { get; set; } = -1;
+            public int WorkflowModeIndex { get; set; } = -1;
+            public byte[] DecodedBytes { get; set; }
+            public bool WasEncrypted { get; set; }
+            public bool WasCompiled { get; set; }
+            public string Note { get; set; }
+        }
+
         public LuaEditor()
         {
             InitializeComponent();
+            AppIcon.Apply(this);
             Localizer.Localize(this);
-
-            //The top row is docked, so WinForms restores its original width after generic reflow.
-            //Reserve the translated checkbox's full width explicitly (German and French are the
-            //longest current labels) and keep a small right margin.
-            int requiredWidth = chkNewEngine.Right + 12;
-            if (ClientSize.Width < requiredWidth)
-                ClientSize = new Size(requiredWidth, ClientSize.Height);
+            ArrangeTopPanel();
 
             //The Lua Editor decompiles scripts with unluac.jar, which needs Java (JDK 21).
             Shown += (s, e) => WarnIfJdkMissing();
@@ -76,6 +86,49 @@ namespace TTG_Tools
             };
 
             WireDragDrop();
+        }
+
+        private void ArrangeTopPanel()
+        {
+            const int margin = 12;
+            const int labelGap = 8;
+            const int controlGap = 22;
+
+            lblGame.AutoSize = false;
+            lblVer.AutoSize = false;
+            lblWorkflowMode.AutoSize = false;
+            lblEncMethod.AutoSize = false;
+
+            int gameLabelWidth = lblGame.PreferredWidth;
+            int verLabelWidth = lblVer.PreferredWidth;
+            int workflowLabelWidth = lblWorkflowMode.PreferredWidth;
+            int encLabelWidth = lblEncMethod.PreferredWidth;
+
+            int x = margin;
+            lblGame.SetBounds(x, 13, gameLabelWidth, lblGame.Height);
+            x += gameLabelWidth + labelGap;
+            comboGame.SetBounds(x, 11, 320, comboGame.Height);
+            x = comboGame.Right + controlGap;
+            lblVer.SetBounds(x, 13, verLabelWidth, lblVer.Height);
+            x += verLabelWidth + labelGap;
+            comboLuaVersion.SetBounds(x, 11, 170, comboLuaVersion.Height);
+            x = comboLuaVersion.Right + controlGap;
+            chkNewEngine.SetBounds(x, 13, chkNewEngine.PreferredSize.Width, chkNewEngine.Height);
+
+            int requiredWidth = chkNewEngine.Right + margin;
+
+            x = margin;
+            lblWorkflowMode.SetBounds(x, 44, workflowLabelWidth, lblWorkflowMode.Height);
+            x += workflowLabelWidth + labelGap;
+            comboWorkflowMode.SetBounds(x, 42, 295, comboWorkflowMode.Height);
+            x = comboWorkflowMode.Right + controlGap;
+            lblEncMethod.SetBounds(x, 44, encLabelWidth, lblEncMethod.Height);
+            x += encLabelWidth + labelGap;
+            comboEncMethod.SetBounds(x, 42, 175, comboEncMethod.Height);
+
+            requiredWidth = Math.Max(requiredWidth, comboEncMethod.Right + margin);
+            if (ClientSize.Width < requiredWidth)
+                ClientSize = new Size(requiredWidth, ClientSize.Height);
         }
 
         private void WireDragDrop()
@@ -200,9 +253,31 @@ namespace TTG_Tools
 
         private static int? DetectLuaVersionFromBytes(byte[] compiledBytes)
         {
-            if (compiledBytes == null || compiledBytes.Length < 5) return null;
+            if (compiledBytes == null || compiledBytes.Length < 12) return null;
             if (!IsCompiledLua(compiledBytes)) return null;
-            switch (compiledBytes[4])
+
+            // A new-engine encrypted Lua file (LEn) always restores the first four bytes
+            // to "\x1bLua" before decrypting the rest. With a wrong key, byte 4 can still
+            // randomly look like LuaP/LuaQ/LuaR, so validate the rest of the binary chunk
+            // header before accepting a game/key candidate.
+            byte version = compiledBytes[4];
+            byte format = compiledBytes[5];
+            byte endianness = compiledBytes[6];
+            byte intSize = compiledBytes[7];
+            byte sizeTSize = compiledBytes[8];
+            byte instructionSize = compiledBytes[9];
+            byte numberSize = compiledBytes[10];
+            byte integralFlag = compiledBytes[11];
+
+            if (format != 0) return null;
+            if (endianness != 0 && endianness != 1) return null;
+            if (intSize != 4) return null;
+            if (sizeTSize != 4 && sizeTSize != 8) return null;
+            if (instructionSize != 4) return null;
+            if (numberSize != 4 && numberSize != 8) return null;
+            if (integralFlag != 0 && integralFlag != 1) return null;
+
+            switch (version)
             {
                 case 0x50: return 0;
                 case 0x51: return 1;
@@ -213,6 +288,9 @@ namespace TTG_Tools
 
         private void LuaEditor_Load(object sender, EventArgs e)
         {
+            loadingSettings = true;
+            try
+            {
             for (int i = 0; i < MainMenu.gamelist.Count; i++)
                 comboGame.Items.Add(i + ". " + MainMenu.gamelist[i].gamename);
 
@@ -255,14 +333,22 @@ namespace TTG_Tools
 
             comboLuaVersion.SelectedIndexChanged += comboLuaVersion_SelectedIndexChanged;
             chkNewEngine.CheckedChanged += chkNewEngine_CheckedChanged;
+            comboGame.SelectedIndexChanged += comboGame_SelectedIndexChanged;
             comboWorkflowMode.SelectedIndexChanged += comboWorkflowMode_SelectedIndexChanged;
             comboEncMethod.SelectedIndexChanged += comboEncMethod_SelectedIndexChanged;
+            }
+            finally
+            {
+                loadingSettings = false;
+            }
         }
 
         private void comboEncMethod_SelectedIndexChanged(object sender, EventArgs e)
         {
+            if (loadingSettings) return;
             if (comboEncMethod.SelectedIndex < 0) return;
             MainMenu.settings.versionEnc = comboEncMethod.SelectedIndex;
+            settingsDirty = true;
             PersistSettings();
             ReloadCurrentFile();
         }
@@ -270,36 +356,44 @@ namespace TTG_Tools
 
         private void comboGame_SelectedIndexChanged(object sender, EventArgs e)
         {
+            if (loadingSettings) return;
             if (comboGame.SelectedIndex < 0) return;
             MainMenu.settings.encKeyIndex = comboGame.SelectedIndex;
+            settingsDirty = true;
             PersistSettings();
             ReloadCurrentFile();
         }
 
         private void comboLuaVersion_SelectedIndexChanged(object sender, EventArgs e)
         {
+            if (loadingSettings) return;
             if (comboLuaVersion.SelectedIndex < 0) return;
             MainMenu.settings.luaVersionIndex = comboLuaVersion.SelectedIndex;
+            settingsDirty = true;
             PersistSettings();
             if (!isReloading) ReloadCurrentFile();
         }
 
         private void chkNewEngine_CheckedChanged(object sender, EventArgs e)
         {
+            if (loadingSettings) return;
             MainMenu.settings.encNewLua = chkNewEngine.Checked;
+            settingsDirty = true;
             PersistSettings();
             ReloadCurrentFile();
         }
 
         private void PersistSettings()
         {
+            if (loadingSettings || !settingsDirty) return;
             try { Settings.SaveConfig(MainMenu.settings); }
             catch (Exception ex) { Log("Failed to save config: " + ex.Message); }
+            settingsDirty = false;
         }
 
         private void LuaEditor_FormClosing(object sender, FormClosingEventArgs e)
         {
-            PersistSettings();
+            if (settingsDirty) PersistSettings();
         }
 
         private void ReloadCurrentFile()
@@ -329,6 +423,155 @@ namespace TTG_Tools
                     comboLuaVersion.SelectedIndex = detected;
                     Log("Auto-detected Lua version: " + comboLuaVersion.Items[detected]);
                 }));
+            }
+        }
+
+        private static bool HasNewEngineLuaHeader(byte[] data)
+        {
+            if (data == null || data.Length < 4) return false;
+            string header = Encoding.ASCII.GetString(data, 0, 4);
+            return header == "\x1bLEo" || header == "\x1bLEn";
+        }
+
+        private static bool LooksLikeDecodedLuaPayload(byte[] data)
+        {
+            if (data == null) return false;
+            if (LooksLikePlainText(data)) return true;
+            return DetectLuaVersionFromBytes(data).HasValue;
+        }
+
+        private LuaAutoDetection DetectLuaSettings(byte[] raw, string path)
+        {
+            LuaAutoDetection result = new LuaAutoDetection();
+            if (raw == null)
+            {
+                return result;
+            }
+
+            string ext = Path.GetExtension(path ?? string.Empty);
+            bool isText = LooksLikePlainText(raw);
+            bool looksEncrypted = !isText && Methods.isLuaEncrypted(raw);
+            bool newEngineHeader = HasNewEngineLuaHeader(raw);
+
+            if (!looksEncrypted)
+            {
+                result.DecodedBytes = (byte[])raw.Clone();
+                result.WasEncrypted = false;
+                result.WasCompiled = IsCompiledLua(result.DecodedBytes);
+                result.LuaVersionIndex = DetectLuaVersionFromBytes(result.DecodedBytes) ?? -1;
+                result.WorkflowModeIndex = result.WasCompiled
+                    ? (string.Equals(ext, ".lenc", StringComparison.OrdinalIgnoreCase) ? 3 : 2)
+                    : -1;
+                result.Note = result.WasCompiled ? "plain compiled Lua" : "plain Lua source";
+                return result;
+            }
+
+            int[] methodIndexes = newEngineHeader ? new[] { 1, 0 } : new[] { MainMenu.settings.versionEnc, 1, 0 };
+            methodIndexes = methodIndexes.Where(i => i == 0 || i == 1).Distinct().ToArray();
+
+            LuaAutoDetection best = null;
+            for (int methodIndexPos = 0; methodIndexPos < methodIndexes.Length; methodIndexPos++)
+            {
+                int methodIndex = methodIndexes[methodIndexPos];
+                int blowfishVersion = methodIndex == 1 ? 7 : 2;
+                for (int gameIndex = 0; gameIndex < MainMenu.gamelist.Count; gameIndex++)
+                {
+                    byte[] copy = (byte[])raw.Clone();
+                    byte[] decoded;
+                    try
+                    {
+                        decoded = Methods.decryptLua(copy, MainMenu.gamelist[gameIndex].key, blowfishVersion);
+                    }
+                    catch
+                    {
+                        continue;
+                    }
+
+                    if (!LooksLikeDecodedLuaPayload(decoded))
+                    {
+                        continue;
+                    }
+
+                    LuaAutoDetection candidate = new LuaAutoDetection
+                    {
+                        GameIndex = gameIndex,
+                        EncMethodIndex = methodIndex,
+                        NewEngineLua = methodIndex == 1 || newEngineHeader,
+                        LuaVersionIndex = DetectLuaVersionFromBytes(decoded) ?? -1,
+                        WorkflowModeIndex = string.Equals(ext, ".lenc", StringComparison.OrdinalIgnoreCase) ? 0 : 1,
+                        DecodedBytes = decoded,
+                        WasEncrypted = true,
+                        WasCompiled = IsCompiledLua(decoded),
+                        Note = "encrypted Lua"
+                    };
+
+                    if (newEngineHeader && methodIndex == 1)
+                    {
+                        best = candidate;
+                        break;
+                    }
+
+                    if (best == null)
+                    {
+                        best = candidate;
+                    }
+                }
+
+                if (best != null && newEngineHeader && methodIndex == 1)
+                {
+                    break;
+                }
+            }
+
+            return best ?? result;
+        }
+
+        private void ApplyAutoDetectedSettings(LuaAutoDetection detection)
+        {
+            if (detection == null) return;
+
+            if (InvokeRequired)
+            {
+                Invoke(new Action<LuaAutoDetection>(ApplyAutoDetectedSettings), detection);
+                return;
+            }
+
+            loadingSettings = true;
+            try
+            {
+                if (detection.GameIndex >= 0 && detection.GameIndex < comboGame.Items.Count && comboGame.SelectedIndex != detection.GameIndex)
+                {
+                    comboGame.SelectedIndex = detection.GameIndex;
+                    MainMenu.settings.encKeyIndex = detection.GameIndex;
+                }
+
+                if (detection.EncMethodIndex >= 0 && detection.EncMethodIndex < comboEncMethod.Items.Count && comboEncMethod.SelectedIndex != detection.EncMethodIndex)
+                {
+                    comboEncMethod.SelectedIndex = detection.EncMethodIndex;
+                    MainMenu.settings.versionEnc = detection.EncMethodIndex;
+                }
+
+                if (detection.WasEncrypted && chkNewEngine.Checked != detection.NewEngineLua)
+                {
+                    chkNewEngine.Checked = detection.NewEngineLua;
+                    MainMenu.settings.encNewLua = detection.NewEngineLua;
+                }
+
+                if (detection.LuaVersionIndex >= 0 && detection.LuaVersionIndex < comboLuaVersion.Items.Count && comboLuaVersion.SelectedIndex != detection.LuaVersionIndex)
+                {
+                    comboLuaVersion.SelectedIndex = detection.LuaVersionIndex;
+                    MainMenu.settings.luaVersionIndex = detection.LuaVersionIndex;
+                }
+
+                if (detection.WorkflowModeIndex >= 0 && detection.WorkflowModeIndex < comboWorkflowMode.Items.Count && comboWorkflowMode.SelectedIndex != detection.WorkflowModeIndex)
+                {
+                    comboWorkflowMode.SelectedIndex = detection.WorkflowModeIndex;
+                    MainMenu.settings.workflowMode = detection.WorkflowModeIndex;
+                }
+            }
+            finally
+            {
+                loadingSettings = false;
             }
         }
 
@@ -697,9 +940,23 @@ namespace TTG_Tools
                 byte[] working = (byte[])raw.Clone();
                 bool wasEncrypted = false;
                 bool wasCompiled = false;
+                LuaAutoDetection detection = autoDetect ? DetectLuaSettings(raw, path) : null;
+                if (detection != null && detection.DecodedBytes != null)
+                {
+                    ApplyAutoDetectedSettings(detection);
+                    working = (byte[])detection.DecodedBytes.Clone();
+                    wasEncrypted = detection.WasEncrypted;
+                    wasCompiled = detection.WasCompiled;
+                    if (detection.GameIndex >= 0 && detection.EncMethodIndex >= 0)
+                    {
+                        Log("Auto-detected game: " + MainMenu.gamelist[detection.GameIndex].gamename +
+                            " / " + (detection.EncMethodIndex == 1 ? "versions 7-9" : "versions 2-6") +
+                            (detection.NewEngineLua ? " / new-engine Lua" : string.Empty));
+                    }
+                }
                 bool isText = LooksLikePlainText(working);
 
-                if (!isText && Methods.isLuaEncrypted(working))
+                if (!wasEncrypted && !isText && Methods.isLuaEncrypted(working))
                 {
                     Log("Encrypted Lua detected. Decrypting...");
                     working = DecryptBytes(working);
@@ -1057,8 +1314,10 @@ namespace TTG_Tools
 
         private void comboWorkflowMode_SelectedIndexChanged(object sender, EventArgs e)
         {
+            if (loadingSettings) return;
             if (comboWorkflowMode.SelectedIndex < 0) return;
             MainMenu.settings.workflowMode = comboWorkflowMode.SelectedIndex;
+            settingsDirty = true;
             PersistSettings();
         }
 

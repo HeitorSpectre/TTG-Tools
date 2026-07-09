@@ -354,6 +354,7 @@ namespace TTG_Tools
         private bool _tsvFormat;
         private int _encKeyIndex;
         private int _versionEnc;
+        private int _modCreatorGameIndex;
         private string _encCustomKey;
 
         private string _inputDirPath; //For Archive Packer
@@ -669,6 +670,19 @@ namespace TTG_Tools
             set
             {
                 _versionEnc = value;
+            }
+        }
+
+        [XmlAttribute("modCreatorGameIndex")]
+        public int modCreatorGameIndex
+        {
+            get
+            {
+                return _modCreatorGameIndex;
+            }
+            set
+            {
+                _modCreatorGameIndex = value;
             }
         }
 

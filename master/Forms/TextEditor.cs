@@ -18,6 +18,7 @@ namespace TTG_Tools
         public TextEditor()
         {
             InitializeComponent();
+            AppIcon.Apply(this);
             Localizer.Localize(this);
         }
 

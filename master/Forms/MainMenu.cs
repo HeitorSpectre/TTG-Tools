@@ -20,6 +20,8 @@ namespace TTG_Tools
         public MainMenu()
         {
             InitializeComponent();
+            AppIcon.Apply(this);
+            AppIcon.Apply(notifyIcon1);
             Localizer.Localize(this);
             AlignLocalizedButtonGrid();
         }

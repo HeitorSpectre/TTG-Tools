@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -16,6 +16,7 @@ namespace TTG_Tools
         public ArchiveUnpacker()
         {
             InitializeComponent();
+            AppIcon.Apply(this);
             Localizer.Localize(this);
             ArrangeTopPanel();
             topPanel.Resize += (s, e) => ArrangeTopPanel();
@@ -42,6 +43,10 @@ namespace TTG_Tools
         private int fileGridSortColumn = -1;
         private bool fileGridSortAscending = true;
         private bool arrangingTopPanel;
+        private bool suppressFormatFilterEvent;
+        private bool fillingFileGrid;
+        private bool suppressCustomKeyEvent;
+        private bool loadingSettings;
         private int archiveInfoBaseWidth;
 
         private void ArrangeTopPanel()
@@ -59,6 +64,8 @@ namespace TTG_Tools
                 fileFormatsCB.Anchor = AnchorStyles.Top | AnchorStyles.Left;
                 useCustomKeyCB.Anchor = AnchorStyles.Top | AnchorStyles.Left;
                 customKeyTB.Anchor = AnchorStyles.Top | AnchorStyles.Left;
+                useCustomKeyCB.Visible = false;
+                customKeyTB.Visible = false;
                 searchFilesByNameCB.Anchor = AnchorStyles.Top | AnchorStyles.Left;
                 searchTB.Anchor = AnchorStyles.Top | AnchorStyles.Left;
                 searchBtn.Anchor = AnchorStyles.Top | AnchorStyles.Left;
@@ -82,12 +89,8 @@ namespace TTG_Tools
             gameListCB.SetBounds(controlLeft, 9, Math.Max(220, Math.Min(300, maxRight - controlLeft)), gameListCB.Height);
 
             label1.SetBounds(left, 43, label1.PreferredWidth, label1.Height);
-            fileFormatsCB.SetBounds(controlLeft, 40, 160, fileFormatsCB.Height);
-
-            int customLeft = fileFormatsCB.Right + controlGap;
-            useCustomKeyCB.SetBounds(customLeft, 42, useCustomKeyCB.PreferredSize.Width, useCustomKeyCB.Height);
-            int customKeyWidth = Math.Max(120, Math.Min(420, maxRight - useCustomKeyCB.Right - labelGap));
-            customKeyTB.SetBounds(useCustomKeyCB.Right + labelGap, 40, customKeyWidth, customKeyTB.Height);
+            int formatControlLeft = label1.Right + labelGap;
+            fileFormatsCB.SetBounds(formatControlLeft, 40, 160, fileFormatsCB.Height);
 
             searchFilesByNameCB.SetBounds(left, 74, searchFilesByNameCB.PreferredSize.Width, searchFilesByNameCB.Height);
             searchTB.SetBounds(controlLeft, 72, 300, searchTB.Height);
@@ -500,25 +503,33 @@ namespace TTG_Tools
 
         private void populateFileFormats(List<string> formats)
         {
-            fileFormatsCB.Items.Clear();
-
-            if (formats != null && formats.Count > 0)
+            suppressFormatFilterEvent = true;
+            try
             {
-                if (formats.Count > 1) fileFormatsCB.Items.Add(Loc.T("ArchiveUnpacker.allFiles", "All files"));
+                fileFormatsCB.Items.Clear();
 
-                formats.Sort();
-
-                for (int i = 0; i < formats.Count; i++)
+                if (formats != null && formats.Count > 0)
                 {
-                    fileFormatsCB.Items.Add(formats[i]);
-                }
+                    if (formats.Count > 1) fileFormatsCB.Items.Add(Loc.T("ArchiveUnpacker.allFiles", "All files"));
 
-                fileFormatsCB.SelectedIndex = 0;
+                    formats.Sort();
+
+                    for (int i = 0; i < formats.Count; i++)
+                    {
+                        fileFormatsCB.Items.Add(formats[i]);
+                    }
+
+                    fileFormatsCB.SelectedIndex = 0;
+                }
+                else
+                {
+                    fileFormatsCB.Items.Add(Loc.T("ArchiveUnpacker.allFiles", "All files"));
+                    fileFormatsCB.SelectedIndex = 0;
+                }
             }
-            else
+            finally
             {
-                fileFormatsCB.Items.Add(Loc.T("ArchiveUnpacker.allFiles", "All files"));
-                fileFormatsCB.SelectedIndex = 0;
+                suppressFormatFilterEvent = false;
             }
         }
 
@@ -732,7 +743,7 @@ namespace TTG_Tools
                     case 2:
                         retBuf = OodleDecompressor(bytes);
                         break;
-
+                        
                 }
 
                 return retBuf;
@@ -928,7 +939,7 @@ namespace TTG_Tools
                     using (BinaryReader mbr = new BinaryReader(ms))
                     {
                         int dirsCount = mbr.ReadInt32();
-
+                        
                         for(int d = 0; d < dirsCount; d++)
                         {
                             int nameLen = mbr.ReadInt32();
@@ -1326,7 +1337,7 @@ namespace TTG_Tools
             List<string> failedFiles = new List<string>();
 
             int count = indexes != null ? indexes.Length : files.Length;
-
+            
             SetMinimum(0);
             SetMaximum(count);
 
@@ -1407,7 +1418,7 @@ namespace TTG_Tools
                     compressedStr += " (";
                     compressedStr += ttarch.compressAlgorithm == 0 ? "zlib)" : "deflate)";
                 }
-
+                
                 encryptedStr += ttarch.isEncrypted ? yes : no;
                 xmodeStr += ttarch.isXmode ? yes : no;
                 chunkSzStr += Convert.ToString(ttarch.chunkSize) + "KB";
@@ -1503,7 +1514,7 @@ namespace TTG_Tools
 
             type.AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
             type.MinimumWidth = 70;
-            type.AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells;
+            type.Width = getTypeColumnWidth();
             type.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
 
             size.AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
@@ -1523,6 +1534,30 @@ namespace TTG_Tools
             name.FillWeight = 100;
 
             updateFileGridSortGlyph();
+        }
+
+        private int getTypeColumnWidth()
+        {
+            int width = TextRenderer.MeasureText(Loc.T("ArchiveUnpacker.colFileType", "Type"), filesDataGridView.Font).Width + 28;
+            HashSet<string> types = new HashSet<string>(StringComparer.CurrentCultureIgnoreCase);
+
+            if (shownTtarchFiles != null)
+            {
+                for (int i = 0; i < shownTtarchFiles.Length; i++)
+                    types.Add(Methods.GetExtension(shownTtarchFiles[i].fileName).ToLower());
+            }
+            else if (shownTtarch2Files != null)
+            {
+                for (int i = 0; i < shownTtarch2Files.Length; i++)
+                    types.Add(Methods.GetExtension(shownTtarch2Files[i].fileName).ToLower());
+            }
+
+            foreach (string type in types)
+            {
+                width = Math.Max(width, TextRenderer.MeasureText(type, filesDataGridView.Font).Width + 28);
+            }
+
+            return Math.Min(220, Math.Max(70, width));
         }
 
         private void updateFileGridSortGlyph()
@@ -1559,26 +1594,39 @@ namespace TTG_Tools
 
         private void loadTtarchData(ClassesStructs.TtarchClass.ttarchFiles[] files)
         {
-            shownTtarchFiles = files;
-            shownTtarch2Files = null;
+            fillingFileGrid = true;
+            previewSeq++;
+            filesDataGridView.SuspendLayout();
 
-            setupFileGridColumns();
-
-            filesDataGridView.RowCount = Math.Max(1, files.Length);
-
-            if (files.Length == 0)
+            try
             {
-                showNoResultsMessage();
-                return;
-            }
+                shownTtarchFiles = files;
+                shownTtarch2Files = null;
 
-            for (int i = 0; i < files.Length; i++)
+                setupFileGridColumns();
+
+                filesDataGridView.RowCount = Math.Max(1, files.Length);
+
+                if (files.Length == 0)
+                {
+                    showNoResultsMessage();
+                    return;
+                }
+
+                for (int i = 0; i < files.Length; i++)
+                {
+                    fillFileGridRow(i, files[i].fileName, files[i].fileSize, files[i].fileOffset);
+                }
+
+                configureFileGridColumns();
+                filesDataGridView.ClearSelection();
+                ShowPreviewMessage(Loc.T("ArchiveUnpacker.previewSelectFile", "Select a file to preview it."));
+            }
+            finally
             {
-                fillFileGridRow(i, files[i].fileName, files[i].fileSize, files[i].fileOffset);
+                filesDataGridView.ResumeLayout();
+                fillingFileGrid = false;
             }
-
-            configureFileGridColumns();
-            filesDataGridView.ClearSelection();
         }
 
         public static void ExtractTtarchCli(string archivePath, string outputDir, byte[] key)
@@ -1755,26 +1803,39 @@ namespace TTG_Tools
 
         private void loadTtarch2Data(ClassesStructs.Ttarch2Class.Ttarch2files[] files)
         {
-            shownTtarch2Files = files;
-            shownTtarchFiles = null;
+            fillingFileGrid = true;
+            previewSeq++;
+            filesDataGridView.SuspendLayout();
 
-            setupFileGridColumns();
-
-            filesDataGridView.RowCount = Math.Max(1, files.Length);
-
-            if (files.Length == 0)
+            try
             {
-                showNoResultsMessage();
-                return;
-            }
+                shownTtarch2Files = files;
+                shownTtarchFiles = null;
 
-            for (int i = 0; i < files.Length; i++)
+                setupFileGridColumns();
+
+                filesDataGridView.RowCount = Math.Max(1, files.Length);
+
+                if (files.Length == 0)
+                {
+                    showNoResultsMessage();
+                    return;
+                }
+
+                for (int i = 0; i < files.Length; i++)
+                {
+                    fillFileGridRow(i, files[i].fileName, files[i].fileSize, files[i].fileOffset);
+                }
+
+                configureFileGridColumns();
+                filesDataGridView.ClearSelection();
+                ShowPreviewMessage(Loc.T("ArchiveUnpacker.previewSelectFile", "Select a file to preview it."));
+            }
+            finally
             {
-                fillFileGridRow(i, files[i].fileName, files[i].fileSize, files[i].fileOffset);
+                filesDataGridView.ResumeLayout();
+                fillingFileGrid = false;
             }
-
-            configureFileGridColumns();
-            filesDataGridView.ClearSelection();
         }
 
         private async void openToolStripMenuItem_Click(object sender, EventArgs e)
@@ -1792,6 +1853,9 @@ namespace TTG_Tools
 
         private void ArchiveUnpacker_Load(object sender, EventArgs e)
         {
+            loadingSettings = true;
+            try
+            {
             for (int i = 0; i < MainMenu.gamelist.Count; i++)
             {
                 gameListCB.Items.Add(i + ". " + MainMenu.gamelist[i].gamename);
@@ -1799,12 +1863,21 @@ namespace TTG_Tools
 
             gameListCB.SelectedIndex = MainMenu.settings.encKeyIndex >= 0 && MainMenu.settings.encKeyIndex < gameListCB.Items.Count ? MainMenu.settings.encKeyIndex : (gameListCB.Items.Count > 0 ? 0 : -1);
             customKeyTB.Text = MainMenu.settings.encCustomKey;
-            useCustomKeyCB.Checked = MainMenu.settings.customKey;
+            suppressCustomKeyEvent = true;
+            useCustomKeyCB.Checked = false;
+            useCustomKeyCB.Visible = false;
+            customKeyTB.Visible = false;
+            suppressCustomKeyEvent = false;
 
             searchTB.Enabled = searchFilesByNameCB.Checked;
             searchBtn.Enabled = searchFilesByNameCB.Checked;
 
             updateExtractionActions(false);
+            }
+            finally
+            {
+                loadingSettings = false;
+            }
         }
 
         private async void unpackToolStripMenuItem_Click(object sender, EventArgs e)
@@ -1847,11 +1920,13 @@ namespace TTG_Tools
 
         private void fileFormatsCB_SelectedIndexChanged(object sender, EventArgs e)
         {
+            if (suppressFormatFilterEvent) return;
             applyFilters();
         }
 
         private void gameListCB_SelectedIndexChanged(object sender, EventArgs e)
         {
+            if (loadingSettings) return;
             MainMenu.settings.encKeyIndex = gameListCB.SelectedIndex;
 
             Settings.SaveConfig(MainMenu.settings);
@@ -1859,6 +1934,7 @@ namespace TTG_Tools
 
         private void useCustomKeyCB_CheckedChanged(object sender, EventArgs e)
         {
+            if (suppressCustomKeyEvent) return;
             MainMenu.settings.customKey = useCustomKeyCB.Checked;
 
             MainMenu.settings.encCustomKey = customKeyTB.Text != "" ? customKeyTB.Text : MainMenu.settings.encCustomKey;
@@ -1991,6 +2067,7 @@ namespace TTG_Tools
 
         private void filesDataGridView_SelectionChanged(object sender, EventArgs e)
         {
+            if (fillingFileGrid) return;
             UpdatePreview();
         }
 

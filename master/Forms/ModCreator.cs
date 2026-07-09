@@ -1,5 +1,6 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -14,10 +15,23 @@ namespace TTG_Tools
         private readonly CommonOpenFileDialog folderDialog = new CommonOpenFileDialog();
         private readonly PokerNightRemasterProfile pokerNightProfile = new PokerNightRemasterProfile();
         private readonly SamAndMaxSaveWorldRemasterProfile samAndMaxSaveWorldProfile = new SamAndMaxSaveWorldRemasterProfile();
+        private readonly MinecraftStoryModeSeasonTwoProfile minecraftStoryModeSeasonTwoProfile = new MinecraftStoryModeSeasonTwoProfile();
+        private readonly ResourceDescriptorProfile walkingDeadSeasonTwoProfile = CreateWalkingDeadSeasonTwoProfile();
+        private readonly ResourceDescriptorProfile wolfAmongUsProfile = CreateWolfAmongUsProfile();
+        private readonly ResourceDescriptorProfile walkingDeadMichonneProfile = CreateWalkingDeadMichonneProfile();
+        private readonly ResourceDescriptorProfile batmanProfile = CreateBatmanProfile();
+        private readonly ResourceDescriptorProfile samAndMaxBeyondTimeAndSpaceRemasterProfile = CreateSamAndMaxBeyondTimeAndSpaceRemasterProfile();
+        private readonly ResourceDescriptorProfile gameOfThronesProfile = CreateGameOfThronesProfile();
+        private readonly ResourceDescriptorProfile samAndMaxDevilsPlayhouseRemasterProfile = CreateSamAndMaxDevilsPlayhouseRemasterProfile();
+        private readonly ResourceDescriptorProfile guardiansOfTheGalaxyProfile = CreateGuardiansOfTheGalaxyProfile();
+        private readonly ResourceDescriptorProfile talesFromTheBorderlandsProfile = CreateTalesFromTheBorderlandsProfile();
+        private readonly ResourceDescriptorProfile minecraftStoryModeSeasonOneProfile = CreateMinecraftStoryModeSeasonOneProfile();
+        private bool loadingSettings;
 
         public ModCreator()
         {
             InitializeComponent();
+            AppIcon.Apply(this);
             Localizer.Localize(this);
             AlignLocalizedLayout();
             folderDialog.IsFolderPicker = true;
@@ -90,15 +104,36 @@ namespace TTG_Tools
 
         private void ModCreator_Load(object sender, EventArgs e)
         {
+            loadingSettings = true;
             gameComboBox.Items.Clear();
-            gameComboBox.Items.Add(pokerNightProfile.GameDisplayName);
+            gameComboBox.Items.Add(wolfAmongUsProfile.GameDisplayName);
+            gameComboBox.Items.Add(walkingDeadSeasonTwoProfile.GameDisplayName);
+            gameComboBox.Items.Add(talesFromTheBorderlandsProfile.GameDisplayName);
+            gameComboBox.Items.Add(gameOfThronesProfile.GameDisplayName);
+            gameComboBox.Items.Add(minecraftStoryModeSeasonOneProfile.GameDisplayName);
+            gameComboBox.Items.Add(walkingDeadMichonneProfile.GameDisplayName);
+            gameComboBox.Items.Add(batmanProfile.GameDisplayName);
+            gameComboBox.Items.Add(guardiansOfTheGalaxyProfile.GameDisplayName);
+            gameComboBox.Items.Add(minecraftStoryModeSeasonTwoProfile.GameDisplayName);
             gameComboBox.Items.Add(samAndMaxSaveWorldProfile.GameDisplayName);
-            gameComboBox.SelectedIndex = 0;
+            gameComboBox.Items.Add(samAndMaxBeyondTimeAndSpaceRemasterProfile.GameDisplayName);
+            gameComboBox.Items.Add(samAndMaxDevilsPlayhouseRemasterProfile.GameDisplayName);
+            gameComboBox.Items.Add(pokerNightProfile.GameDisplayName);
+            gameComboBox.SelectedIndex = GetSafeSelectedIndex(MainMenu.settings.modCreatorGameIndex, gameComboBox.Items.Count);
             gameComboBox.Enabled = true;
 
             UpdateLayoutOptions();
 
             SetProgress(0);
+            loadingSettings = false;
+        }
+
+        private static int GetSafeSelectedIndex(int index, int itemCount)
+        {
+            if (itemCount <= 0) return -1;
+            if (index < 0) return 0;
+            if (index >= itemCount) return itemCount - 1;
+            return index;
         }
 
         private void browseInputButton_Click(object sender, EventArgs e)
@@ -159,8 +194,14 @@ namespace TTG_Tools
             }
 
             string archiveFileName = selectedProfile.BuildArchiveFileName(modName, selectedLayoutOption);
-            string archivePath = Path.Combine(outputFolder, archiveFileName);
-            string luaPath = Path.Combine(outputFolder, selectedProfile.BuildLuaFileName(modName, selectedLayoutOption));
+            string packageOutputFolder = ResolveLayoutOutputFolder(outputFolder, selectedLayoutOption);
+            if (!Directory.Exists(packageOutputFolder))
+            {
+                Directory.CreateDirectory(packageOutputFolder);
+            }
+
+            string archivePath = Path.Combine(packageOutputFolder, archiveFileName);
+            string luaPath = Path.Combine(packageOutputFolder, selectedProfile.BuildLuaFileName(modName, selectedLayoutOption));
 
             SetUiEnabled(false);
             SetProgress(0);
@@ -169,7 +210,7 @@ namespace TTG_Tools
 
             try
             {
-                await Task.Run(() => CreateModPackage(inputFolder, outputFolder, archivePath, luaPath, modName, archiveFileName, selectedProfile, selectedLayoutOption));
+                await Task.Run(() => CreateModPackage(inputFolder, packageOutputFolder, archivePath, luaPath, modName, archiveFileName, selectedProfile, selectedLayoutOption));
                 SetProgress(100);
                 AddLog("Mod created successfully.");
                 MessageBox.Show(Loc.T("ModCreator.msgCreated", "Mod created successfully."), Loc.T("Common.success", "Success"));
@@ -225,14 +266,77 @@ namespace TTG_Tools
             AddLog("Generating Lua descriptor: " + Path.GetFileName(luaPath));
             SetProgress(90);
             string luaContent = profile.BuildLuaDescriptor(modName, archiveFileName, layoutOption);
+            byte[] luaBytes = new UTF8Encoding(false).GetBytes(luaContent);
 
-            File.WriteAllText(luaPath, luaContent, new UTF8Encoding(false));
+            if (profile.CompileDescriptor)
+            {
+                AddLog("Compiling Lua descriptor before encryption...");
+                luaBytes = CompileLuaDescriptor(luaBytes, profile.DescriptorLuaVersionIndex);
+            }
 
-            AddLog("Encrypting Lua descriptor in-place (Lua Scripts for New Engine / method 7-9)...");
+            File.WriteAllBytes(luaPath, luaBytes);
+
+            AddLog("Encrypting Lua descriptor in-place...");
             SetProgress(95);
-            byte[] encryptedLua = Methods.encryptLua(File.ReadAllBytes(luaPath), gameKey, profile.NewEngineLua, 7);
+            byte[] encryptedLua = Methods.encryptLua(File.ReadAllBytes(luaPath), gameKey, profile.NewEngineLua, profile.DescriptorEncryptionVersion);
             File.WriteAllBytes(luaPath, encryptedLua);
             SetProgress(100);
+        }
+
+        private static byte[] CompileLuaDescriptor(byte[] sourceBytes, int luaVersionIndex)
+        {
+            string folder = luaVersionIndex == 0 ? "LuaP Files" : (luaVersionIndex == 2 ? "LuaR Files" : "LuaQ Files");
+            string baseDir = Path.GetDirectoryName(typeof(ModCreator).Assembly.Location) ?? AppDomain.CurrentDomain.BaseDirectory;
+            string toolsDir = Path.Combine(baseDir, "LencTools", folder);
+            string luac = Path.Combine(toolsDir, "luac.exe");
+            if (!File.Exists(luac))
+            {
+                throw new FileNotFoundException("luac.exe not found in " + toolsDir);
+            }
+
+            string tempDir = Path.Combine(Path.GetTempPath(), "TTGModCreator_Lua_" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(tempDir);
+            try
+            {
+                string input = Path.Combine(tempDir, "descriptor.lua");
+                File.WriteAllBytes(input, sourceBytes);
+
+                foreach (string file in Directory.GetFiles(toolsDir, "*.exe").Concat(Directory.GetFiles(toolsDir, "*.dll")))
+                {
+                    File.Copy(file, Path.Combine(tempDir, Path.GetFileName(file)), true);
+                }
+
+                using (Process process = new Process())
+                {
+                    process.StartInfo.FileName = Path.Combine(tempDir, "luac.exe");
+                    process.StartInfo.Arguments = "\"" + input + "\"";
+                    process.StartInfo.WorkingDirectory = tempDir;
+                    process.StartInfo.UseShellExecute = false;
+                    process.StartInfo.CreateNoWindow = true;
+                    process.StartInfo.RedirectStandardOutput = true;
+                    process.StartInfo.RedirectStandardError = true;
+                    process.Start();
+                    string error = process.StandardError.ReadToEnd();
+                    process.WaitForExit();
+
+                    if (process.ExitCode != 0)
+                    {
+                        throw new InvalidOperationException("luac failed: " + error);
+                    }
+                }
+
+                string output = Path.Combine(tempDir, "luac.out");
+                if (!File.Exists(output))
+                {
+                    throw new FileNotFoundException("luac.out was not produced.");
+                }
+
+                return File.ReadAllBytes(output);
+            }
+            finally
+            {
+                try { Directory.Delete(tempDir, true); } catch { }
+            }
         }
 
         private void SetProgress(int value)
@@ -259,6 +363,61 @@ namespace TTG_Tools
             if (string.Equals(selectedGame, samAndMaxSaveWorldProfile.GameDisplayName, StringComparison.Ordinal))
             {
                 return samAndMaxSaveWorldProfile;
+            }
+
+            if (string.Equals(selectedGame, minecraftStoryModeSeasonTwoProfile.GameDisplayName, StringComparison.Ordinal))
+            {
+                return minecraftStoryModeSeasonTwoProfile;
+            }
+
+            if (string.Equals(selectedGame, walkingDeadSeasonTwoProfile.GameDisplayName, StringComparison.Ordinal))
+            {
+                return walkingDeadSeasonTwoProfile;
+            }
+
+            if (string.Equals(selectedGame, wolfAmongUsProfile.GameDisplayName, StringComparison.Ordinal))
+            {
+                return wolfAmongUsProfile;
+            }
+
+            if (string.Equals(selectedGame, walkingDeadMichonneProfile.GameDisplayName, StringComparison.Ordinal))
+            {
+                return walkingDeadMichonneProfile;
+            }
+
+            if (string.Equals(selectedGame, batmanProfile.GameDisplayName, StringComparison.Ordinal))
+            {
+                return batmanProfile;
+            }
+
+            if (string.Equals(selectedGame, samAndMaxBeyondTimeAndSpaceRemasterProfile.GameDisplayName, StringComparison.Ordinal))
+            {
+                return samAndMaxBeyondTimeAndSpaceRemasterProfile;
+            }
+
+            if (string.Equals(selectedGame, gameOfThronesProfile.GameDisplayName, StringComparison.Ordinal))
+            {
+                return gameOfThronesProfile;
+            }
+
+            if (string.Equals(selectedGame, samAndMaxDevilsPlayhouseRemasterProfile.GameDisplayName, StringComparison.Ordinal))
+            {
+                return samAndMaxDevilsPlayhouseRemasterProfile;
+            }
+
+            if (string.Equals(selectedGame, guardiansOfTheGalaxyProfile.GameDisplayName, StringComparison.Ordinal))
+            {
+                return guardiansOfTheGalaxyProfile;
+            }
+
+            if (string.Equals(selectedGame, talesFromTheBorderlandsProfile.GameDisplayName, StringComparison.Ordinal))
+            {
+                return talesFromTheBorderlandsProfile;
+            }
+
+            if (string.Equals(selectedGame, minecraftStoryModeSeasonOneProfile.GameDisplayName, StringComparison.Ordinal))
+            {
+                return minecraftStoryModeSeasonOneProfile;
             }
 
             return null;
@@ -317,6 +476,16 @@ namespace TTG_Tools
             return Path.Combine(inputFolder, "ModCreator_Output");
         }
 
+        private static string ResolveLayoutOutputFolder(string outputFolder, ModLayoutOption layoutOption)
+        {
+            if (layoutOption == null || string.IsNullOrWhiteSpace(layoutOption.OutputSubfolder))
+            {
+                return outputFolder;
+            }
+
+            return Path.Combine(outputFolder, layoutOption.OutputSubfolder);
+        }
+
         private static string NormalizeModName(string modName)
         {
             char[] invalid = Path.GetInvalidFileNameChars();
@@ -325,6 +494,11 @@ namespace TTG_Tools
 
         private static byte[] GetEncryptionKeyForGame(string gameName)
         {
+            if (string.Equals(gameName, "Tales From the Borderlands (2014/2015)", StringComparison.Ordinal))
+            {
+                gameName = "Tales From the Borderlands";
+            }
+
             var gameKey = MainMenu.gamelist.FirstOrDefault(g => g.gamename == gameName);
             if (gameKey == null || gameKey.key == null)
             {
@@ -363,6 +537,11 @@ namespace TTG_Tools
         private void gameComboBox_SelectedIndexChanged(object sender, EventArgs e)
         {
             UpdateLayoutOptions();
+            if (loadingSettings) return;
+            if (gameComboBox.SelectedIndex < 0) return;
+
+            MainMenu.settings.modCreatorGameIndex = gameComboBox.SelectedIndex;
+            Settings.SaveConfig(MainMenu.settings);
         }
 
 
@@ -641,6 +820,15 @@ namespace TTG_Tools
             public int GameDataPriority { get; set; }
             public int DescriptionPriority { get; set; }
             public bool AppendArchiveSegmentToName { get; set; }
+            public bool UsePriorityForGameData { get; set; }
+            public bool UsePriorityForDescription { get; set; }
+            public string OutputSubfolder { get; set; }
+            public string LogicalDestination { get; set; }
+            public string Version { get; set; } = "trunk";
+            public string DescriptionFilenameOverride { get; set; } = "";
+            public bool ExcludePackaging { get; set; } = true;
+            public int EffectiveGameDataPriority => UsePriorityForGameData ? Priority : GameDataPriority;
+            public int EffectiveDescriptionPriority => UsePriorityForDescription ? Priority : DescriptionPriority;
 
             public override string ToString()
             {
@@ -657,6 +845,9 @@ namespace TTG_Tools
             bool NewEngineLua { get; }
             int Ttarch2Version { get; }
             bool RequiresLayoutSelection { get; }
+            int DescriptorEncryptionVersion { get; }
+            bool CompileDescriptor { get; }
+            int DescriptorLuaVersionIndex { get; }
 
             List<ModLayoutOption> GetLayoutOptions();
             string BuildArchiveFileName(string modName, ModLayoutOption layoutOption);
@@ -673,6 +864,9 @@ namespace TTG_Tools
             public bool NewEngineLua => true;
             public int Ttarch2Version => 2;
             public bool RequiresLayoutSelection => true;
+            public int DescriptorEncryptionVersion => 7;
+            public bool CompileDescriptor => false;
+            public int DescriptorLuaVersionIndex => 1;
 
             public List<ModLayoutOption> GetLayoutOptions()
             {
@@ -739,6 +933,9 @@ namespace TTG_Tools
             public bool NewEngineLua => true;
             public int Ttarch2Version => 2;
             public bool RequiresLayoutSelection => true;
+            public int DescriptorEncryptionVersion => 7;
+            public bool CompileDescriptor => false;
+            public int DescriptorLuaVersionIndex => 1;
 
             public List<ModLayoutOption> GetLayoutOptions()
             {
@@ -797,6 +994,473 @@ namespace TTG_Tools
                 sb.AppendLine("    \"_dev/\"");
                 sb.AppendLine("}");
                 sb.AppendLine("set.gameDataArchives =");
+                sb.AppendLine("{");
+                sb.AppendLine("    _currentDirectory .. \"" + archiveFileName + "\"");
+                sb.AppendLine("}");
+                sb.AppendLine("RegisterSetDescription(set)");
+
+                return sb.ToString();
+            }
+        }
+
+        private class ResourceDescriptorProfile : IModCreatorProfile
+        {
+            private readonly string archivePrefix;
+            private readonly string descriptorPrefix;
+            private readonly string descriptorExtension;
+            private readonly List<ModLayoutOption> layouts;
+
+            public ResourceDescriptorProfile(
+                string gameDisplayName,
+                string archivePrefix,
+                string descriptorPrefix,
+                string descriptorExtension,
+                bool compileDescriptor,
+                int descriptorLuaVersionIndex,
+                List<ModLayoutOption> layouts)
+            {
+                GameDisplayName = gameDisplayName;
+                this.archivePrefix = archivePrefix;
+                this.descriptorPrefix = descriptorPrefix;
+                this.descriptorExtension = descriptorExtension;
+                CompileDescriptor = compileDescriptor;
+                DescriptorLuaVersionIndex = descriptorLuaVersionIndex;
+                this.layouts = layouts;
+            }
+
+            public string GameDisplayName { get; private set; }
+            public bool CompressArchive => true;
+            public bool EncryptArchive => true;
+            public bool EncryptLuaInsideArchive => true;
+            public bool NewEngineLua => true;
+            public int Ttarch2Version => 2;
+            public bool RequiresLayoutSelection => true;
+            public int DescriptorEncryptionVersion => 7;
+            public bool CompileDescriptor { get; private set; }
+            public int DescriptorLuaVersionIndex { get; private set; }
+
+            public List<ModLayoutOption> GetLayoutOptions()
+            {
+                return new List<ModLayoutOption>(layouts);
+            }
+
+            public string BuildArchiveFileName(string modName, ModLayoutOption layoutOption)
+            {
+                return archivePrefix + layoutOption.ArchiveSegment + "_" + modName + ".ttarch2";
+            }
+
+            public string BuildLuaFileName(string modName, ModLayoutOption layoutOption)
+            {
+                return descriptorPrefix + layoutOption.ArchiveSegment + "_" + modName + descriptorExtension;
+            }
+
+            public string BuildLuaDescriptor(string modName, string archiveFileName, ModLayoutOption layoutOption)
+            {
+                string logicalDestination = string.IsNullOrEmpty(layoutOption.LogicalDestination) ? "<>" : "<" + layoutOption.LogicalDestination + ">";
+
+                StringBuilder sb = new StringBuilder();
+                sb.AppendLine("local set = {}");
+                sb.AppendLine("set.name = \"" + modName + "\"");
+                sb.AppendLine("set.setName = \"" + modName + "\"");
+                sb.AppendLine("set.descriptionFilenameOverride = \"" + layoutOption.DescriptionFilenameOverride + "\"");
+                sb.AppendLine("set.logicalName = \"<" + layoutOption.LogicalName + ">\"");
+                sb.AppendLine("set.logicalDestination = \"" + logicalDestination + "\"");
+                sb.AppendLine("set.priority = " + layoutOption.Priority);
+                sb.AppendLine("set.localDir = _currentDirectory");
+                sb.AppendLine("set.enableMode = \"" + layoutOption.EnableMode + "\"");
+                sb.AppendLine("set.version = \"" + layoutOption.Version + "\"");
+                sb.AppendLine("set.descriptionPriority = " + layoutOption.EffectiveDescriptionPriority);
+                sb.AppendLine("set.gameDataName = \"" + modName + " Game Data\"");
+                sb.AppendLine("set.gameDataPriority = " + layoutOption.EffectiveGameDataPriority);
+                sb.AppendLine("set.gameDataEnableMode = \"constant\"");
+                sb.AppendLine("set.localDirIncludeBase = true");
+                sb.AppendLine("set.localDirRecurse = false");
+                sb.AppendLine("set.localDirIncludeOnly = nil");
+                sb.AppendLine("set.localDirExclude =");
+                sb.AppendLine("{");
+                if (layoutOption.ExcludePackaging)
+                {
+                    sb.AppendLine("    \"Packaging/\",");
+                }
+                sb.AppendLine("    \"_dev/\"");
+                sb.AppendLine("}");
+                sb.AppendLine("set.gameDataArchives =");
+                sb.AppendLine("{");
+                sb.AppendLine("    _currentDirectory .. \"" + archiveFileName + "\"");
+                sb.AppendLine("}");
+                sb.AppendLine("RegisterSetDescription(set)");
+
+                return sb.ToString();
+            }
+        }
+
+        private static ModLayoutOption MakeLayout(
+            string displayName,
+            string archiveSegment,
+            string logicalName,
+            int priority,
+            string enableMode,
+            int descriptionPriority = 0,
+            int gameDataPriority = 0,
+            string logicalDestination = null,
+            string outputSubfolder = null,
+            bool excludePackaging = true)
+        {
+            return new ModLayoutOption
+            {
+                DisplayName = displayName,
+                ArchiveSegment = archiveSegment,
+                LogicalName = logicalName,
+                Priority = priority,
+                EnableMode = enableMode,
+                DescriptionPriority = descriptionPriority,
+                GameDataPriority = gameDataPriority,
+                UsePriorityForDescription = true,
+                UsePriorityForGameData = true,
+                LogicalDestination = logicalDestination,
+                OutputSubfolder = outputSubfolder,
+                ExcludePackaging = excludePackaging
+            };
+        }
+
+        private static ResourceDescriptorProfile CreateWalkingDeadSeasonTwoProfile()
+        {
+            return new ResourceDescriptorProfile(
+                "The Walking Dead: Season Two",
+                "WalkingDead_pc_",
+                "_resdesc_50_",
+                ".lenc",
+                true,
+                1,
+                new List<ModLayoutOption>
+                {
+                    MakeLayout("Boot", "Boot", "Boot", 10, "bootable"),
+                    MakeLayout("Menu", "Menu", "Menu", 10, "bootable"),
+                    MakeLayout("Project", "Project", "Project", -8888, "constant"),
+                    MakeLayout("WalkingDead201", "WalkingDead201", "WalkingDead201", 100, "bootable"),
+                    MakeLayout("WalkingDead202", "WalkingDead202", "WalkingDead202", 100, "bootable"),
+                    MakeLayout("WalkingDead203", "WalkingDead203", "WalkingDead203", 100, "bootable"),
+                    MakeLayout("WalkingDead204", "WalkingDead204", "WalkingDead204", 100, "bootable"),
+                    MakeLayout("WalkingDead205", "WalkingDead205", "WalkingDead205", 100, "bootable")
+                });
+        }
+
+        private static ResourceDescriptorProfile CreateWolfAmongUsProfile()
+        {
+            return new ResourceDescriptorProfile(
+                "The Wolf Among Us",
+                "Fables_pc_",
+                "_resourcedescriptions_500_",
+                ".lenc",
+                true,
+                1,
+                new List<ModLayoutOption>
+                {
+                    MakeLayout("Boot", "Boot", "Boot", 10, "bootable"),
+                    MakeLayout("Menu", "Menu", "Menu", 10, "bootable"),
+                    MakeLayout("Project", "Project", "Project", -8888, "constant"),
+                    MakeLayout("Fables101", "Fables101", "Fables101", 20, "bootable"),
+                    MakeLayout("Fables102", "Fables102", "Fables102", 20, "bootable"),
+                    MakeLayout("Fables103", "Fables103", "Fables103", 20, "bootable"),
+                    MakeLayout("Fables104", "Fables104", "Fables104", 20, "bootable"),
+                    MakeLayout("Fables105", "Fables105", "Fables105", 20, "bootable")
+                });
+        }
+
+        private static ResourceDescriptorProfile CreateWalkingDeadMichonneProfile()
+        {
+            return new ResourceDescriptorProfile(
+                "The Walking Dead: Michonne",
+                "WDM_pc_",
+                "_resdesc_50_",
+                ".lua",
+                false,
+                1,
+                new List<ModLayoutOption>
+                {
+                    MakeLayout("Boot", "Boot", "Boot", 10, "bootable"),
+                    MakeLayout("Menu", "Menu", "Menu", 20, "bootable"),
+                    MakeLayout("Project", "Project", "Project", -8888, "constant"),
+                    MakeLayout("UI", "UI", "UI", 30, "bootable"),
+                    MakeLayout("WalkingDeadM101", "WalkingDeadM101", "WalkingDeadM101", 100, "bootable"),
+                    MakeLayout("WalkingDeadM102", "WalkingDeadM102", "WalkingDeadM102", 100, "bootable"),
+                    MakeLayout("WalkingDeadM103", "WalkingDeadM103", "WalkingDeadM103", 100, "bootable")
+                });
+        }
+
+        private static ResourceDescriptorProfile CreateBatmanProfile()
+        {
+            return new ResourceDescriptorProfile(
+                "Batman: Telltale Series",
+                "BM_pc_",
+                "_resdesc_50_",
+                ".lua",
+                false,
+                1,
+                new List<ModLayoutOption>
+                {
+                    MakeLayout("Boot", "Boot", "Boot", 10, "bootable"),
+                    MakeLayout("Menu", "Menu", "Menu", 20, "bootable"),
+                    MakeLayout("Project", "Project", "Project", -8888, "constant"),
+                    MakeLayout("UI", "UI", "UI", 30, "bootable"),
+                    MakeLayout("Batman101", "Batman101", "Batman101", 101, "bootable"),
+                    MakeLayout("Batman102", "Batman102", "Batman102", 102, "bootable"),
+                    MakeLayout("Batman103", "Batman103", "Batman103", 103, "bootable"),
+                    MakeLayout("Batman104", "Batman104", "Batman104", 104, "bootable"),
+                    MakeLayout("Batman105", "Batman105", "Batman105", 105, "bootable")
+                });
+        }
+
+        private static ResourceDescriptorProfile CreateSamAndMaxBeyondTimeAndSpaceRemasterProfile()
+        {
+            return new ResourceDescriptorProfile(
+                "Sam & Max: Beyond Time and Space - Remastered",
+                "SM2_pc_",
+                "_resdesc_50_",
+                ".lua",
+                false,
+                1,
+                new List<ModLayoutOption>
+                {
+                    MakeLayout("Boot", "Boot", "Boot", 10, "bootable"),
+                    MakeLayout("Common", "Common", "Common", 100, "bootable"),
+                    MakeLayout("Menu", "Menu", "Menu", 20, "bootable"),
+                    MakeLayout("Project", "Project", "Project", -8888, "constant"),
+                    MakeLayout("UI", "UI", "UI", 30, "bootable"),
+                    MakeLayout("SamMax201", "SamMax201", "SamMax201", 101, "bootable"),
+                    MakeLayout("SamMax202", "SamMax202", "SamMax202", 102, "bootable"),
+                    MakeLayout("SamMax203", "SamMax203", "SamMax203", 103, "bootable"),
+                    MakeLayout("SamMax204", "SamMax204", "SamMax204", 104, "bootable"),
+                    MakeLayout("SamMax205", "SamMax205", "SamMax205", 105, "bootable")
+                });
+        }
+
+        private static ResourceDescriptorProfile CreateGameOfThronesProfile()
+        {
+            return new ResourceDescriptorProfile(
+                "Game of Thrones: A Telltale Games Series",
+                "GameOfThrones_pc_",
+                "_resdesc_50_",
+                ".lua",
+                true,
+                2,
+                new List<ModLayoutOption>
+                {
+                    MakeLayout("Boot", "Boot", "Boot", 10, "bootable"),
+                    MakeLayout("Menu", "Menu", "Menu", 20, "bootable"),
+                    MakeLayout("Project", "Project", "Project", -8888, "constant"),
+                    MakeLayout("UI", "UI", "UI", 30, "bootable"),
+                    MakeLayout("GameOfThrones101", "GameOfThrones101", "GameOfThrones101", 41, "bootable"),
+                    MakeLayout("GameOfThrones102", "GameOfThrones102", "GameOfThrones102", 42, "bootable"),
+                    MakeLayout("GameOfThrones103", "GameOfThrones103", "GameOfThrones103", 43, "bootable"),
+                    MakeLayout("GameOfThrones104", "GameOfThrones104", "GameOfThrones104", 44, "bootable"),
+                    MakeLayout("GameOfThrones105", "GameOfThrones105", "GameOfThrones105", 45, "bootable"),
+                    MakeLayout("GameOfThrones106", "GameOfThrones106", "GameOfThrones106", 46, "bootable")
+                });
+        }
+
+        private static ResourceDescriptorProfile CreateSamAndMaxDevilsPlayhouseRemasterProfile()
+        {
+            return new ResourceDescriptorProfile(
+                "Sam & Max: The Devil's Playhouse - Remastered",
+                "SM3_pc_",
+                "_resdesc_50_",
+                ".lua",
+                false,
+                1,
+                new List<ModLayoutOption>
+                {
+                    MakeLayout("Boot", "Boot", "Boot", 10, "bootable"),
+                    MakeLayout("Common", "Common", "Common", 100, "bootable"),
+                    MakeLayout("Menu", "Menu", "Menu", 20, "bootable"),
+                    MakeLayout("Project", "Project", "Project", -8888, "constant"),
+                    MakeLayout("UI", "UI", "UI", 30, "bootable"),
+                    MakeLayout("SamMax301", "SamMax301", "SamMax301", 101, "bootable"),
+                    MakeLayout("SamMax302", "SamMax302", "SamMax302", 102, "bootable"),
+                    MakeLayout("SamMax303", "SamMax303", "SamMax303", 103, "bootable"),
+                    MakeLayout("SamMax304", "SamMax304", "SamMax304", 104, "bootable"),
+                    MakeLayout("SamMax305", "SamMax305", "SamMax305", 105, "bootable")
+                });
+        }
+
+        private static ResourceDescriptorProfile CreateGuardiansOfTheGalaxyProfile()
+        {
+            return new ResourceDescriptorProfile(
+                "Guardians of the Galaxy: A Telltale Games Series",
+                "GoG_pc_",
+                "_resdesc_50_",
+                ".lua",
+                false,
+                1,
+                new List<ModLayoutOption>
+                {
+                    MakeLayout("Boot", "Boot", "Boot", 10, "bootable"),
+                    MakeLayout("Menu", "Menu", "Menu", 20, "bootable"),
+                    MakeLayout("Project", "Project", "Project", -8888, "constant"),
+                    MakeLayout("UI", "UI", "UI", 30, "bootable"),
+                    MakeLayout("Guardians101", "Guardians101", "Guardians101", 41, "bootable")
+                });
+        }
+
+        private static ResourceDescriptorProfile CreateTalesFromTheBorderlandsProfile()
+        {
+            return new ResourceDescriptorProfile(
+                "Tales From the Borderlands (2014/2015)",
+                "Borderlands_pc_",
+                "_resdesc_50_",
+                ".lua",
+                true,
+                2,
+                new List<ModLayoutOption>
+                {
+                    MakeLayout("Boot", "Boot", "Boot", 10, "bootable"),
+                    MakeLayout("Menu", "Menu", "Menu", 20, "bootable"),
+                    MakeLayout("Project", "Project", "Project", -8888, "constant"),
+                    MakeLayout("UI", "UI", "UI", 30, "bootable"),
+                    MakeLayout("Borderlands101", "Borderlands101", "Borderlands101", 41, "bootable"),
+                    MakeLayout("Borderlands102", "Borderlands102", "Borderlands102", 42, "bootable"),
+                    MakeLayout("Borderlands103", "Borderlands103", "Borderlands103", 43, "bootable"),
+                    MakeLayout("Borderlands104", "Borderlands104", "Borderlands104", 44, "bootable"),
+                    MakeLayout("Borderlands105", "Borderlands105", "Borderlands105", 45, "bootable")
+                });
+        }
+
+        private static ResourceDescriptorProfile CreateMinecraftStoryModeSeasonOneProfile()
+        {
+            return new ResourceDescriptorProfile(
+                "Minecraft: Story Mode - Season One",
+                "MCSM_pc_",
+                "_resdesc_50_",
+                ".lua",
+                false,
+                1,
+                new List<ModLayoutOption>
+                {
+                    MakeLayout("Boot", "Boot", "Boot", 10, "bootable"),
+                    MakeLayout("Menu", "Menu", "Menu", 20, "bootable"),
+                    MakeLayout("Project", "Project", "Project", -8888, "constant"),
+                    MakeLayout("UI", "UI", "UI", 30, "bootable"),
+                    MakeLayout("Minecraft101", "Minecraft101", "Minecraft101", 101, "bootable"),
+                    MakeLayout("Minecraft102", "Minecraft102", "Minecraft102", 102, "bootable", outputSubfolder: "102"),
+                    MakeLayout("Minecraft103", "Minecraft103", "Minecraft103", 103, "bootable", outputSubfolder: "103"),
+                    MakeLayout("Minecraft104", "Minecraft104", "Minecraft104", 104, "bootable", outputSubfolder: "104"),
+                    MakeLayout("Minecraft105", "Minecraft105", "Minecraft105", 105, "bootable", outputSubfolder: "105"),
+                    MakeLayout("Minecraft106", "Minecraft106", "Minecraft106", 106, "bootable", outputSubfolder: "106"),
+                    MakeLayout("Minecraft107", "Minecraft107", "Minecraft107", 107, "bootable", outputSubfolder: "107"),
+                    MakeLayout("Minecraft108", "Minecraft108", "Minecraft108", 108, "bootable", outputSubfolder: "108"),
+                    MakeLayout("JesseMale", "JesseMale", "JesseMale", 125, "localization", excludePackaging: false),
+                    MakeLayout("JesseMale101", "JesseMale101", "JesseMale101", 230, "localization", logicalDestination: "Minecraft101", excludePackaging: false),
+                    MakeLayout("JesseMale102", "JesseMale102", "JesseMale102", 231, "localization", logicalDestination: "Minecraft102", outputSubfolder: "102", excludePackaging: false),
+                    MakeLayout("JesseMale103", "JesseMale103", "JesseMale103", 232, "localization", logicalDestination: "Minecraft103", outputSubfolder: "103", excludePackaging: false),
+                    MakeLayout("JesseMale104", "JesseMale104", "JesseMale104", 233, "localization", logicalDestination: "Minecraft104", outputSubfolder: "104", excludePackaging: false),
+                    MakeLayout("JesseMale105", "JesseMale105", "JesseMale105", 234, "localization", logicalDestination: "Minecraft105", outputSubfolder: "105", excludePackaging: false),
+                    MakeLayout("JesseMale106", "JesseMale106", "JesseMale106", 235, "localization", logicalDestination: "Minecraft106", outputSubfolder: "106", excludePackaging: false),
+                    MakeLayout("JesseMale107", "JesseMale107", "JesseMale107", 236, "localization", logicalDestination: "Minecraft107", outputSubfolder: "107", excludePackaging: false),
+                    MakeLayout("JesseMale108", "JesseMale108", "JesseMale108", 237, "localization", logicalDestination: "Minecraft108", outputSubfolder: "108", excludePackaging: false)
+                });
+        }
+
+        private class MinecraftStoryModeSeasonTwoProfile : IModCreatorProfile
+        {
+            public string GameDisplayName => "Minecraft: Story Mode - Season Two";
+            public bool CompressArchive => true;
+            public bool EncryptArchive => true;
+            public bool EncryptLuaInsideArchive => true;
+            public bool NewEngineLua => true;
+            public int Ttarch2Version => 2;
+            public bool RequiresLayoutSelection => true;
+            public int DescriptorEncryptionVersion => 7;
+            public bool CompileDescriptor => false;
+            public int DescriptorLuaVersionIndex => 1;
+
+            public List<ModLayoutOption> GetLayoutOptions()
+            {
+                return new List<ModLayoutOption>
+                {
+                    CreateLayout("Boot", "Boot", "Boot", 10, "bootable"),
+                    CreateLayout("Menu", "Menu", "Menu", 20, "bootable"),
+                    CreateLayout("UI", "UI", "UI", 30, "bootable"),
+                    CreateLayout("Project", "Project", "Project", -8888, "constant"),
+                    CreateLayout("Minecraft201", "Minecraft201", "Minecraft201", 101, "bootable"),
+                    CreateLayout("Minecraft202", "Minecraft202", "Minecraft202", 102, "bootable", outputSubfolder: "202"),
+                    CreateLayout("Minecraft203", "Minecraft203", "Minecraft203", 103, "bootable", outputSubfolder: "203"),
+                    CreateLayout("Minecraft204", "Minecraft204", "Minecraft204", 104, "bootable", outputSubfolder: "204"),
+                    CreateLayout("Minecraft205", "Minecraft205", "Minecraft205", 105, "bootable", outputSubfolder: "205"),
+                    CreateLayout("JesseMale", "JesseMale", "JesseMale", 125, "localization", excludePackaging: false),
+                    CreateLayout("JesseMale201", "JesseMale201", "JesseMale201", 230, "localization", logicalDestination: "Minecraft201", excludePackaging: false),
+                    CreateLayout("JesseMale202", "JesseMale202", "JesseMale202", 231, "localization", logicalDestination: "Minecraft202", outputSubfolder: "202", excludePackaging: false),
+                    CreateLayout("JesseMale203", "JesseMale203", "JesseMale203", 232, "localization", logicalDestination: "Minecraft203", outputSubfolder: "203", excludePackaging: false),
+                    CreateLayout("JesseMale204", "JesseMale204", "JesseMale204", 233, "localization", logicalDestination: "Minecraft204", outputSubfolder: "204", excludePackaging: false),
+                    CreateLayout("JesseMale205", "JesseMale205", "JesseMale205", 234, "localization", logicalDestination: "Minecraft205", outputSubfolder: "205", excludePackaging: false)
+                };
+            }
+
+            private static ModLayoutOption CreateLayout(
+                string displayName,
+                string archiveSegment,
+                string logicalName,
+                int priority,
+                string enableMode,
+                string logicalDestination = null,
+                string outputSubfolder = null,
+                bool excludePackaging = true)
+            {
+                return new ModLayoutOption
+                {
+                    DisplayName = displayName,
+                    ArchiveSegment = archiveSegment,
+                    LogicalName = logicalName,
+                    Priority = priority,
+                    EnableMode = enableMode,
+                    LogicalDestination = logicalDestination,
+                    OutputSubfolder = outputSubfolder,
+                    ExcludePackaging = excludePackaging,
+                    UsePriorityForDescription = true,
+                    UsePriorityForGameData = true
+                };
+            }
+
+            public string BuildArchiveFileName(string modName, ModLayoutOption layoutOption)
+            {
+                return "MC2_pc_" + layoutOption.ArchiveSegment + "_" + modName + ".ttarch2";
+            }
+
+            public string BuildLuaFileName(string modName, ModLayoutOption layoutOption)
+            {
+                return "_resdesc_50_" + layoutOption.ArchiveSegment + "_" + modName + ".lua";
+            }
+
+            public string BuildLuaDescriptor(string modName, string archiveFileName, ModLayoutOption layoutOption)
+            {
+                string logicalDestination = string.IsNullOrEmpty(layoutOption.LogicalDestination) ? "<>" : "<" + layoutOption.LogicalDestination + ">";
+
+                StringBuilder sb = new StringBuilder();
+                sb.AppendLine("local set = {}");
+                sb.AppendLine("set.name = \"" + modName + "\"");
+                sb.AppendLine("set.setName = \"" + modName + "\"");
+                sb.AppendLine("set.descriptionFilenameOverride = \"" + layoutOption.DescriptionFilenameOverride + "\"");
+                sb.AppendLine("set.logicalName = \"<" + layoutOption.LogicalName + ">\"");
+                sb.AppendLine("set.logicalDestination = \"" + logicalDestination + "\"");
+                sb.AppendLine("set.priority = " + layoutOption.Priority);
+                sb.AppendLine("set.localDir = _currentDirectory");
+                sb.AppendLine("set.enableMode = \"" + layoutOption.EnableMode + "\"");
+                sb.AppendLine("set.version = \"" + layoutOption.Version + "\"");
+                sb.AppendLine("set.descriptionPriority = " + layoutOption.EffectiveDescriptionPriority);
+                sb.AppendLine("set.gameDataName = \"" + modName + " Game Data\"");
+                sb.AppendLine("set.gameDataPriority = " + layoutOption.EffectiveGameDataPriority);
+                sb.AppendLine("set.gameDataEnableMode = \"constant\"");
+                sb.AppendLine("set.localDirIncludeBase = true");
+                sb.AppendLine("set.localDirRecurse = false");
+                sb.AppendLine("set.localDirIncludeOnly = nil");
+                sb.AppendLine("set.localDirExclude = ");
+                sb.AppendLine("{");
+                if (layoutOption.ExcludePackaging)
+                {
+                    sb.AppendLine("    \"Packaging/\",");
+                }
+                sb.AppendLine("    \"_dev/\"");
+                sb.AppendLine("}");
+                sb.AppendLine("set.gameDataArchives = ");
                 sb.AppendLine("{");
                 sb.AppendLine("    _currentDirectory .. \"" + archiveFileName + "\"");
                 sb.AppendLine("}");

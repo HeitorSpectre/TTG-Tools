@@ -9,18 +9,14 @@ namespace TTG_Tools
     public partial class AutoPacker : Form
     {
         private readonly int _logBottomMargin;
+        private bool loadingSettings;
 
         public AutoPacker()
         {
             InitializeComponent();
+            AppIcon.Apply(this);
             Localizer.Localize(this);
             LocalizeEncryptionVersions();
-            //This warning is assigned during Load, after the localization reflow has already run.
-            //Let it wrap inside the free space to the left of the options groups instead of drawing
-            //under them and appearing cut off.
-            sortLabel.MaximumSize = new System.Drawing.Size(
-                Math.Max(100, groupBox1.Left - sortLabel.Left - 12),
-                0);
             _logBottomMargin = Math.Max(12, ClientSize.Height - listBox1.Bottom);
             AlignTopAreaAndLog();
         }
@@ -40,32 +36,18 @@ namespace TTG_Tools
             return index >= 0 && index < itemCount ? index : 0;
         }
 
+        private static bool IsEnglishUi()
+        {
+            string code = Localization.ActiveLanguageCode;
+            return string.IsNullOrEmpty(code) || string.Equals(code, "en", StringComparison.OrdinalIgnoreCase);
+        }
+
         private void AlignTopAreaAndLog()
         {
             const int gapBeforeLog = 14;
-            int importWidth = Math.Max(124, button1.PreferredSize.Width + 12);
-            int exportWidth = Math.Max(124, buttonDecrypt.PreferredSize.Width + 12);
-            button1.Width = importWidth;
-            buttonDecrypt.SetBounds(button1.Right + 16, buttonDecrypt.Top, exportWidth, buttonDecrypt.Height);
-
-            int swizzleContentRight = 0;
-            foreach (Control control in groupBox2.Controls)
-            {
-                if (control.Right > swizzleContentRight) swizzleContentRight = control.Right;
-            }
-
-            groupBox2.Width = Math.Max(groupBox2.Width, swizzleContentRight + 12);
-            groupBox1.Width = Math.Max(groupBox1.Width, groupBox2.Right + 16);
-            groupBox1.Left = Math.Max(groupBox1.Left, buttonDecrypt.Right + 24);
-
-            if (groupBox1.Right + 12 > ClientSize.Width)
-            {
-                ClientSize = new System.Drawing.Size(groupBox1.Right + 12, ClientSize.Height);
-            }
-
-            sortLabel.MaximumSize = new System.Drawing.Size(
-                Math.Max(100, groupBox1.Left - sortLabel.Left - 12),
-                0);
+            const int rightMargin = 12;
+            if (!IsEnglishUi())
+                ArrangeLocalizedCompactLayout(rightMargin);
 
             int topAreaBottom = Math.Max(groupBox1.Bottom, sortLabel.Bottom);
             int logTop = topAreaBottom + gapBeforeLog;
@@ -76,6 +58,56 @@ namespace TTG_Tools
                 logTop,
                 listBox1.Width,
                 Math.Max(80, logBottom - logTop));
+        }
+
+        private void ArrangeLocalizedCompactLayout(int rightMargin)
+        {
+            //Keep the English visual rhythm: same rows, same compact top area. Longer
+            //translations grow horizontally and push the right-side groups/window wider.
+            label1.AutoSize = true;
+            checkCustomKey.AutoSize = true;
+            checkEncLangdb.AutoSize = true;
+            checkEncDDS.AutoSize = true;
+            CheckNewEngine.AutoSize = true;
+            checkIOS.AutoSize = true;
+            labelUnicode.AutoSize = true;
+            label2.AutoSize = true;
+            sortLabel.AutoSize = true;
+
+            int importWidth = Math.Max(124, button1.PreferredSize.Width + 12);
+            int exportWidth = Math.Max(124, buttonDecrypt.PreferredSize.Width + 12);
+            button1.Width = importWidth;
+            buttonDecrypt.SetBounds(button1.Right + 16, buttonDecrypt.Top, exportWidth, buttonDecrypt.Height);
+
+            textBox1.Left = Math.Max(114, checkCustomKey.Right + 8);
+            if (textBox1.Right < comboBox1.Right)
+                textBox1.Width = comboBox1.Right - textBox1.Left;
+
+            int leftContentRight = Math.Max(label1.Right, Math.Max(textBox1.Right, Math.Max(buttonDecrypt.Right, sortLabel.Right)));
+            groupBox1.Left = Math.Max(368, leftContentRight + 18);
+
+            int optionRight = 0;
+            foreach (Control control in new Control[] { checkEncLangdb, checkEncDDS, label2, comboBox2, CheckNewEngine, checkIOS, labelUnicode })
+            {
+                if (control.Visible && control.Right > optionRight)
+                    optionRight = control.Right;
+            }
+
+            int swizzleRight = TextRenderer.MeasureText(groupBox2.Text, groupBox2.Font).Width + 24;
+            foreach (Control control in groupBox2.Controls)
+            {
+                if (control.Visible && control.Right > swizzleRight)
+                    swizzleRight = control.Right;
+            }
+
+            groupBox2.Width = Math.Max(126, swizzleRight + 12);
+            groupBox2.Left = Math.Max(276, optionRight + 16);
+            groupBox1.Width = Math.Max(442, groupBox2.Right + 10);
+
+            if (groupBox1.Right + rightMargin > ClientSize.Width)
+            {
+                ClientSize = new System.Drawing.Size(groupBox1.Right + rightMargin, ClientSize.Height);
+            }
         }
 
         public static FileInfo[] fi;
@@ -253,6 +285,9 @@ namespace TTG_Tools
 
         private void AutoPacker_Load(object sender, EventArgs e)
         {
+            loadingSettings = true;
+            try
+            {
 
             #region Load blowfish key list
 
@@ -304,6 +339,11 @@ namespace TTG_Tools
                 //Make unvisible that option for users with windows-1252 encoding
                 labelUnicode.Visible = false;
             }
+            }
+            finally
+            {
+                loadingSettings = false;
+            }
         }
 
         private void AutoPacker_FormClosing(object sender, FormClosingEventArgs e)
@@ -326,30 +366,35 @@ namespace TTG_Tools
 
         private void CheckNewEngine_CheckedChanged(object sender, EventArgs e)
         {
+            if (loadingSettings) return;
             MainMenu.settings.encNewLua = CheckNewEngine.Checked;
             Settings.SaveConfig(MainMenu.settings);
         }
 
         private void checkEncDDS_CheckedChanged(object sender, EventArgs e)
         {
+            if (loadingSettings) return;
             MainMenu.settings.encDDSonly = checkEncDDS.Checked;
             Settings.SaveConfig(MainMenu.settings);
         }
 
         private void checkEncLangdb_CheckedChanged(object sender, EventArgs e)
         {
+            if (loadingSettings) return;
             MainMenu.settings.encLangdb = checkEncLangdb.Checked;
             Settings.SaveConfig(MainMenu.settings);
         }
 
         private void checkIOS_CheckedChanged(object sender, EventArgs e)
         {
+            if (loadingSettings) return;
             MainMenu.settings.iOSsupport = checkIOS.Checked;
             Settings.SaveConfig(MainMenu.settings);
         }
 
         private void checkCustomKey_CheckedChanged(object sender, EventArgs e)
         {
+            if (loadingSettings) return;
             MainMenu.settings.customKey = checkCustomKey.Checked;
             Settings.SaveConfig(MainMenu.settings);
 
@@ -366,18 +411,21 @@ namespace TTG_Tools
 
         private void comboBox1_SelectedIndexChanged(object sender, EventArgs e)
         {
+            if (loadingSettings) return;
             MainMenu.settings.encKeyIndex = comboBox1.SelectedIndex;
             Settings.SaveConfig(MainMenu.settings);
         }
 
         private void comboBox2_SelectedIndexChanged(object sender, EventArgs e)
         {
+            if (loadingSettings) return;
             MainMenu.settings.versionEnc = comboBox2.SelectedIndex;
             Settings.SaveConfig(MainMenu.settings);
         }
 
         private void textBox1_TextChanged(object sender, EventArgs e)
         {
+            if (loadingSettings) return;
             if (checkCustomKey.Checked && Methods.stringToKey(textBox1.Text) != null)
             {
                 MainMenu.settings.customKey = checkCustomKey.Checked;
@@ -400,6 +448,7 @@ namespace TTG_Tools
                 : Loc.T("AutoPacker.unicodeNotSet", "Unicode is not set.");
 
             sortLabel.Text = MainMenu.settings.sortSameString ? Loc.T("AutoPacker.sortWarning", "Warning! Some files may be slowly extract due enabled sort strings.") : "";
+            AlignTopAreaAndLog();
         }
 
         private void SettingsForm_FormClosed(object sender, FormClosedEventArgs e)
@@ -409,6 +458,7 @@ namespace TTG_Tools
 
         private void rbNoSwizzle_CheckedChanged(object sender, EventArgs e)
         {
+            if (loadingSettings) return;
             if (rbNoSwizzle.Checked)
             {
                 MainMenu.settings.swizzleNintendoSwitch = false;
@@ -425,6 +475,7 @@ namespace TTG_Tools
 
         private void rbPS4Swizzle_CheckedChanged(object sender, EventArgs e)
         {
+            if (loadingSettings) return;
             if (rbPS4Swizzle.Checked)
             {
                 MainMenu.settings.swizzlePS4 = true;
@@ -441,6 +492,7 @@ namespace TTG_Tools
 
         private void rbSwitchSwizzle_CheckedChanged(object sender, EventArgs e)
         {
+            if (loadingSettings) return;
             if (rbSwitchSwizzle.Checked)
             {
                 MainMenu.settings.swizzleNintendoSwitch = true;
@@ -457,6 +509,7 @@ namespace TTG_Tools
 
         private void rbXbox360Swizzle_CheckedChanged(object sender, EventArgs e)
         {
+            if (loadingSettings) return;
             if (rbXbox360Swizzle.Checked)
             {
                 MainMenu.settings.swizzleXbox360 = true;
@@ -473,6 +526,7 @@ namespace TTG_Tools
 
         private void rbPSVitaSwizzle_CheckedChanged(object sender, EventArgs e)
         {
+            if (loadingSettings) return;
             if (rbPSVitaSwizzle.Checked)
             {
                 MainMenu.settings.swizzlePSVita = true;
@@ -490,6 +544,7 @@ namespace TTG_Tools
 
         private void rbWiiSwizzle_CheckedChanged(object sender, EventArgs e)
         {
+            if (loadingSettings) return;
             if (rbWiiSwizzle.Checked)
             {
                 MainMenu.settings.swizzlePSVita = false;
@@ -506,6 +561,7 @@ namespace TTG_Tools
 
         private void rbPS2Swizzle_CheckedChanged(object sender, EventArgs e)
         {
+            if (loadingSettings) return;
             if (rbPS2Swizzle.Checked)
             {
                 MainMenu.settings.swizzlePSVita = false;
@@ -522,6 +578,7 @@ namespace TTG_Tools
 
         private void rbWiiUSwizzle_CheckedChanged(object sender, EventArgs e)
         {
+            if (loadingSettings) return;
             if (rbWiiUSwizzle.Checked)
             {
                 MainMenu.settings.swizzlePSVita = false;
@@ -538,6 +595,7 @@ namespace TTG_Tools
 
         private void rbPS3Swizzle_CheckedChanged(object sender, EventArgs e)
         {
+            if (loadingSettings) return;
             if (rbPS3Swizzle.Checked)
             {
                 MainMenu.settings.swizzlePSVita = false;

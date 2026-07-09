@@ -122,6 +122,7 @@
     <Compile Include="ClassesStructs\Ttarch2Class.cs" />
     <Compile Include="ClassesStructs\TtarchClass.cs" />
     <Compile Include="Core\CRCs.cs" />
+    <Compile Include="Core\AppIcon.cs" />
     <Compile Include="ClassesStructs\FontClass.cs" />
     <Compile Include="ClassesStructs\TextureClass.cs" />
     <Compile Include="Graphics\DDS\Caps.cs" />
