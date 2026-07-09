@@ -945,13 +945,13 @@ namespace TTG_Tools
                     new ModLayoutOption { DisplayName = "UI", ArchiveSegment = "UI", LogicalName = "UI", Priority = 30, EnableMode = "bootable", GameDataPriority = 30, DescriptionPriority = 30 },
                     new ModLayoutOption { DisplayName = "Common", ArchiveSegment = "Common", LogicalName = "Common", Priority = 100, EnableMode = "bootable", GameDataPriority = 100, DescriptionPriority = 100 },
                     new ModLayoutOption { DisplayName = "Menu", ArchiveSegment = "Menu", LogicalName = "Menu", Priority = 20, EnableMode = "bootable", GameDataPriority = 20, DescriptionPriority = 20 },
-                    new ModLayoutOption { DisplayName = "Project", ArchiveSegment = "Project", LogicalName = "Project", Priority = -8888, EnableMode = "constant", GameDataPriority = 0 },
-                    new ModLayoutOption { DisplayName = "SamMax101", ArchiveSegment = "SamMax101", LogicalName = "SamMax101", Priority = 101, EnableMode = "bootable", GameDataPriority = 101, AppendArchiveSegmentToName = true },
-                    new ModLayoutOption { DisplayName = "SamMax102", ArchiveSegment = "SamMax102", LogicalName = "SamMax102", Priority = 102, EnableMode = "bootable", GameDataPriority = 102, AppendArchiveSegmentToName = true },
-                    new ModLayoutOption { DisplayName = "SamMax103", ArchiveSegment = "SamMax103", LogicalName = "SamMax103", Priority = 103, EnableMode = "bootable", GameDataPriority = 103, AppendArchiveSegmentToName = true },
-                    new ModLayoutOption { DisplayName = "SamMax104", ArchiveSegment = "SamMax104", LogicalName = "SamMax104", Priority = 104, EnableMode = "bootable", GameDataPriority = 104, AppendArchiveSegmentToName = true },
-                    new ModLayoutOption { DisplayName = "SamMax105", ArchiveSegment = "SamMax105", LogicalName = "SamMax105", Priority = 105, EnableMode = "bootable", GameDataPriority = 105, AppendArchiveSegmentToName = true },
-                    new ModLayoutOption { DisplayName = "SamMax106", ArchiveSegment = "SamMax106", LogicalName = "SamMax106", Priority = 106, EnableMode = "bootable", GameDataPriority = 106, AppendArchiveSegmentToName = true }
+                    new ModLayoutOption { DisplayName = "Project", ArchiveSegment = "Project", LogicalName = "Project", Priority = -8888, EnableMode = "constant", GameDataPriority = -8888, DescriptionPriority = -8888 },
+                    new ModLayoutOption { DisplayName = "SamMax101", ArchiveSegment = "SamMax101", LogicalName = "SamMax101", Priority = 101, EnableMode = "bootable", GameDataPriority = 101, DescriptionPriority = 101, AppendArchiveSegmentToName = true },
+                    new ModLayoutOption { DisplayName = "SamMax102", ArchiveSegment = "SamMax102", LogicalName = "SamMax102", Priority = 102, EnableMode = "bootable", GameDataPriority = 102, DescriptionPriority = 102, AppendArchiveSegmentToName = true },
+                    new ModLayoutOption { DisplayName = "SamMax103", ArchiveSegment = "SamMax103", LogicalName = "SamMax103", Priority = 103, EnableMode = "bootable", GameDataPriority = 103, DescriptionPriority = 103, AppendArchiveSegmentToName = true },
+                    new ModLayoutOption { DisplayName = "SamMax104", ArchiveSegment = "SamMax104", LogicalName = "SamMax104", Priority = 104, EnableMode = "bootable", GameDataPriority = 104, DescriptionPriority = 104, AppendArchiveSegmentToName = true },
+                    new ModLayoutOption { DisplayName = "SamMax105", ArchiveSegment = "SamMax105", LogicalName = "SamMax105", Priority = 105, EnableMode = "bootable", GameDataPriority = 105, DescriptionPriority = 105, AppendArchiveSegmentToName = true },
+                    new ModLayoutOption { DisplayName = "SamMax106", ArchiveSegment = "SamMax106", LogicalName = "SamMax106", Priority = 106, EnableMode = "bootable", GameDataPriority = 106, DescriptionPriority = 106, AppendArchiveSegmentToName = true }
                 };
             }
 
@@ -1028,16 +1028,16 @@ namespace TTG_Tools
                 this.layouts = layouts;
             }
 
-            public string GameDisplayName { get; private set; }
-            public bool CompressArchive => true;
-            public bool EncryptArchive => true;
-            public bool EncryptLuaInsideArchive => true;
-            public bool NewEngineLua => true;
-            public int Ttarch2Version => 2;
-            public bool RequiresLayoutSelection => true;
-            public int DescriptorEncryptionVersion => 7;
-            public bool CompileDescriptor { get; private set; }
-            public int DescriptorLuaVersionIndex { get; private set; }
+            public virtual string GameDisplayName { get; }
+            public virtual bool CompressArchive => true;
+            public virtual bool EncryptArchive => true;
+            public virtual bool EncryptLuaInsideArchive => true;
+            public virtual bool NewEngineLua => true;
+            public virtual int Ttarch2Version => 2;
+            public virtual bool RequiresLayoutSelection => true;
+            public virtual int DescriptorEncryptionVersion => 7;
+            public virtual bool CompileDescriptor { get; }
+            public virtual int DescriptorLuaVersionIndex { get; }
 
             public List<ModLayoutOption> GetLayoutOptions()
             {
@@ -1125,239 +1125,429 @@ namespace TTG_Tools
 
         private static ResourceDescriptorProfile CreateWalkingDeadSeasonTwoProfile()
         {
-            return new ResourceDescriptorProfile(
-                "The Walking Dead: Season Two",
-                "WalkingDead_pc_",
-                "_resdesc_50_",
-                ".lenc",
-                true,
-                1,
-                new List<ModLayoutOption>
-                {
-                    MakeLayout("Boot", "Boot", "Boot", 10, "bootable"),
-                    MakeLayout("Menu", "Menu", "Menu", 10, "bootable"),
-                    MakeLayout("Project", "Project", "Project", -8888, "constant"),
-                    MakeLayout("WalkingDead201", "WalkingDead201", "WalkingDead201", 100, "bootable"),
-                    MakeLayout("WalkingDead202", "WalkingDead202", "WalkingDead202", 100, "bootable"),
-                    MakeLayout("WalkingDead203", "WalkingDead203", "WalkingDead203", 100, "bootable"),
-                    MakeLayout("WalkingDead204", "WalkingDead204", "WalkingDead204", 100, "bootable"),
-                    MakeLayout("WalkingDead205", "WalkingDead205", "WalkingDead205", 100, "bootable")
-                });
+            return new WalkingDeadSeasonTwoProfile();
         }
 
         private static ResourceDescriptorProfile CreateWolfAmongUsProfile()
         {
-            return new ResourceDescriptorProfile(
-                "The Wolf Among Us",
-                "Fables_pc_",
-                "_resourcedescriptions_500_",
-                ".lenc",
-                true,
-                1,
-                new List<ModLayoutOption>
-                {
-                    MakeLayout("Boot", "Boot", "Boot", 10, "bootable"),
-                    MakeLayout("Menu", "Menu", "Menu", 10, "bootable"),
-                    MakeLayout("Project", "Project", "Project", -8888, "constant"),
-                    MakeLayout("Fables101", "Fables101", "Fables101", 20, "bootable"),
-                    MakeLayout("Fables102", "Fables102", "Fables102", 20, "bootable"),
-                    MakeLayout("Fables103", "Fables103", "Fables103", 20, "bootable"),
-                    MakeLayout("Fables104", "Fables104", "Fables104", 20, "bootable"),
-                    MakeLayout("Fables105", "Fables105", "Fables105", 20, "bootable")
-                });
+            return new WolfAmongUsProfile();
         }
 
         private static ResourceDescriptorProfile CreateWalkingDeadMichonneProfile()
         {
-            return new ResourceDescriptorProfile(
-                "The Walking Dead: Michonne",
-                "WDM_pc_",
-                "_resdesc_50_",
-                ".lua",
-                false,
-                1,
-                new List<ModLayoutOption>
-                {
-                    MakeLayout("Boot", "Boot", "Boot", 10, "bootable"),
-                    MakeLayout("Menu", "Menu", "Menu", 20, "bootable"),
-                    MakeLayout("Project", "Project", "Project", -8888, "constant"),
-                    MakeLayout("UI", "UI", "UI", 30, "bootable"),
-                    MakeLayout("WalkingDeadM101", "WalkingDeadM101", "WalkingDeadM101", 100, "bootable"),
-                    MakeLayout("WalkingDeadM102", "WalkingDeadM102", "WalkingDeadM102", 100, "bootable"),
-                    MakeLayout("WalkingDeadM103", "WalkingDeadM103", "WalkingDeadM103", 100, "bootable")
-                });
+            return new WalkingDeadMichonneProfile();
         }
 
         private static ResourceDescriptorProfile CreateBatmanProfile()
         {
-            return new ResourceDescriptorProfile(
-                "Batman: Telltale Series",
-                "BM_pc_",
-                "_resdesc_50_",
-                ".lua",
-                false,
-                1,
-                new List<ModLayoutOption>
-                {
-                    MakeLayout("Boot", "Boot", "Boot", 10, "bootable"),
-                    MakeLayout("Menu", "Menu", "Menu", 20, "bootable"),
-                    MakeLayout("Project", "Project", "Project", -8888, "constant"),
-                    MakeLayout("UI", "UI", "UI", 30, "bootable"),
-                    MakeLayout("Batman101", "Batman101", "Batman101", 101, "bootable"),
-                    MakeLayout("Batman102", "Batman102", "Batman102", 102, "bootable"),
-                    MakeLayout("Batman103", "Batman103", "Batman103", 103, "bootable"),
-                    MakeLayout("Batman104", "Batman104", "Batman104", 104, "bootable"),
-                    MakeLayout("Batman105", "Batman105", "Batman105", 105, "bootable")
-                });
+            return new BatmanProfile();
         }
 
         private static ResourceDescriptorProfile CreateSamAndMaxBeyondTimeAndSpaceRemasterProfile()
         {
-            return new ResourceDescriptorProfile(
-                "Sam & Max: Beyond Time and Space - Remastered",
-                "SM2_pc_",
-                "_resdesc_50_",
-                ".lua",
-                false,
-                1,
-                new List<ModLayoutOption>
-                {
-                    MakeLayout("Boot", "Boot", "Boot", 10, "bootable"),
-                    MakeLayout("Common", "Common", "Common", 100, "bootable"),
-                    MakeLayout("Menu", "Menu", "Menu", 20, "bootable"),
-                    MakeLayout("Project", "Project", "Project", -8888, "constant"),
-                    MakeLayout("UI", "UI", "UI", 30, "bootable"),
-                    MakeLayout("SamMax201", "SamMax201", "SamMax201", 101, "bootable"),
-                    MakeLayout("SamMax202", "SamMax202", "SamMax202", 102, "bootable"),
-                    MakeLayout("SamMax203", "SamMax203", "SamMax203", 103, "bootable"),
-                    MakeLayout("SamMax204", "SamMax204", "SamMax204", 104, "bootable"),
-                    MakeLayout("SamMax205", "SamMax205", "SamMax205", 105, "bootable")
-                });
+            return new SamAndMaxBeyondTimeAndSpaceRemasterProfile();
         }
 
         private static ResourceDescriptorProfile CreateGameOfThronesProfile()
         {
-            return new ResourceDescriptorProfile(
-                "Game of Thrones: A Telltale Games Series",
-                "GameOfThrones_pc_",
-                "_resdesc_50_",
-                ".lua",
-                true,
-                2,
-                new List<ModLayoutOption>
-                {
-                    MakeLayout("Boot", "Boot", "Boot", 10, "bootable"),
-                    MakeLayout("Menu", "Menu", "Menu", 20, "bootable"),
-                    MakeLayout("Project", "Project", "Project", -8888, "constant"),
-                    MakeLayout("UI", "UI", "UI", 30, "bootable"),
-                    MakeLayout("GameOfThrones101", "GameOfThrones101", "GameOfThrones101", 41, "bootable"),
-                    MakeLayout("GameOfThrones102", "GameOfThrones102", "GameOfThrones102", 42, "bootable"),
-                    MakeLayout("GameOfThrones103", "GameOfThrones103", "GameOfThrones103", 43, "bootable"),
-                    MakeLayout("GameOfThrones104", "GameOfThrones104", "GameOfThrones104", 44, "bootable"),
-                    MakeLayout("GameOfThrones105", "GameOfThrones105", "GameOfThrones105", 45, "bootable"),
-                    MakeLayout("GameOfThrones106", "GameOfThrones106", "GameOfThrones106", 46, "bootable")
-                });
+            return new GameOfThronesProfile();
         }
 
         private static ResourceDescriptorProfile CreateSamAndMaxDevilsPlayhouseRemasterProfile()
         {
-            return new ResourceDescriptorProfile(
-                "Sam & Max: The Devil's Playhouse - Remastered",
-                "SM3_pc_",
-                "_resdesc_50_",
-                ".lua",
-                false,
-                1,
-                new List<ModLayoutOption>
-                {
-                    MakeLayout("Boot", "Boot", "Boot", 10, "bootable"),
-                    MakeLayout("Common", "Common", "Common", 100, "bootable"),
-                    MakeLayout("Menu", "Menu", "Menu", 20, "bootable"),
-                    MakeLayout("Project", "Project", "Project", -8888, "constant"),
-                    MakeLayout("UI", "UI", "UI", 30, "bootable"),
-                    MakeLayout("SamMax301", "SamMax301", "SamMax301", 101, "bootable"),
-                    MakeLayout("SamMax302", "SamMax302", "SamMax302", 102, "bootable"),
-                    MakeLayout("SamMax303", "SamMax303", "SamMax303", 103, "bootable"),
-                    MakeLayout("SamMax304", "SamMax304", "SamMax304", 104, "bootable"),
-                    MakeLayout("SamMax305", "SamMax305", "SamMax305", 105, "bootable")
-                });
+            return new SamAndMaxDevilsPlayhouseRemasterProfile();
         }
 
         private static ResourceDescriptorProfile CreateGuardiansOfTheGalaxyProfile()
         {
-            return new ResourceDescriptorProfile(
-                "Guardians of the Galaxy: A Telltale Games Series",
-                "GoG_pc_",
-                "_resdesc_50_",
-                ".lua",
-                false,
-                1,
-                new List<ModLayoutOption>
-                {
-                    MakeLayout("Boot", "Boot", "Boot", 10, "bootable"),
-                    MakeLayout("Menu", "Menu", "Menu", 20, "bootable"),
-                    MakeLayout("Project", "Project", "Project", -8888, "constant"),
-                    MakeLayout("UI", "UI", "UI", 30, "bootable"),
-                    MakeLayout("Guardians101", "Guardians101", "Guardians101", 41, "bootable")
-                });
+            return new GuardiansOfTheGalaxyProfile();
         }
 
         private static ResourceDescriptorProfile CreateTalesFromTheBorderlandsProfile()
         {
-            return new ResourceDescriptorProfile(
-                "Tales From the Borderlands (2014/2015)",
-                "Borderlands_pc_",
-                "_resdesc_50_",
-                ".lua",
-                true,
-                2,
-                new List<ModLayoutOption>
-                {
-                    MakeLayout("Boot", "Boot", "Boot", 10, "bootable"),
-                    MakeLayout("Menu", "Menu", "Menu", 20, "bootable"),
-                    MakeLayout("Project", "Project", "Project", -8888, "constant"),
-                    MakeLayout("UI", "UI", "UI", 30, "bootable"),
-                    MakeLayout("Borderlands101", "Borderlands101", "Borderlands101", 41, "bootable"),
-                    MakeLayout("Borderlands102", "Borderlands102", "Borderlands102", 42, "bootable"),
-                    MakeLayout("Borderlands103", "Borderlands103", "Borderlands103", 43, "bootable"),
-                    MakeLayout("Borderlands104", "Borderlands104", "Borderlands104", 44, "bootable"),
-                    MakeLayout("Borderlands105", "Borderlands105", "Borderlands105", 45, "bootable")
-                });
+            return new TalesFromTheBorderlandsProfile();
         }
 
         private static ResourceDescriptorProfile CreateMinecraftStoryModeSeasonOneProfile()
         {
-            return new ResourceDescriptorProfile(
-                "Minecraft: Story Mode - Season One",
-                "MCSM_pc_",
-                "_resdesc_50_",
-                ".lua",
-                false,
-                1,
-                new List<ModLayoutOption>
-                {
-                    MakeLayout("Boot", "Boot", "Boot", 10, "bootable"),
-                    MakeLayout("Menu", "Menu", "Menu", 20, "bootable"),
-                    MakeLayout("Project", "Project", "Project", -8888, "constant"),
-                    MakeLayout("UI", "UI", "UI", 30, "bootable"),
-                    MakeLayout("Minecraft101", "Minecraft101", "Minecraft101", 101, "bootable"),
-                    MakeLayout("Minecraft102", "Minecraft102", "Minecraft102", 102, "bootable", outputSubfolder: "102"),
-                    MakeLayout("Minecraft103", "Minecraft103", "Minecraft103", 103, "bootable", outputSubfolder: "103"),
-                    MakeLayout("Minecraft104", "Minecraft104", "Minecraft104", 104, "bootable", outputSubfolder: "104"),
-                    MakeLayout("Minecraft105", "Minecraft105", "Minecraft105", 105, "bootable", outputSubfolder: "105"),
-                    MakeLayout("Minecraft106", "Minecraft106", "Minecraft106", 106, "bootable", outputSubfolder: "106"),
-                    MakeLayout("Minecraft107", "Minecraft107", "Minecraft107", 107, "bootable", outputSubfolder: "107"),
-                    MakeLayout("Minecraft108", "Minecraft108", "Minecraft108", 108, "bootable", outputSubfolder: "108"),
-                    MakeLayout("JesseMale", "JesseMale", "JesseMale", 125, "localization", excludePackaging: false),
-                    MakeLayout("JesseMale101", "JesseMale101", "JesseMale101", 230, "localization", logicalDestination: "Minecraft101", excludePackaging: false),
-                    MakeLayout("JesseMale102", "JesseMale102", "JesseMale102", 231, "localization", logicalDestination: "Minecraft102", outputSubfolder: "102", excludePackaging: false),
-                    MakeLayout("JesseMale103", "JesseMale103", "JesseMale103", 232, "localization", logicalDestination: "Minecraft103", outputSubfolder: "103", excludePackaging: false),
-                    MakeLayout("JesseMale104", "JesseMale104", "JesseMale104", 233, "localization", logicalDestination: "Minecraft104", outputSubfolder: "104", excludePackaging: false),
-                    MakeLayout("JesseMale105", "JesseMale105", "JesseMale105", 234, "localization", logicalDestination: "Minecraft105", outputSubfolder: "105", excludePackaging: false),
-                    MakeLayout("JesseMale106", "JesseMale106", "JesseMale106", 235, "localization", logicalDestination: "Minecraft106", outputSubfolder: "106", excludePackaging: false),
-                    MakeLayout("JesseMale107", "JesseMale107", "JesseMale107", 236, "localization", logicalDestination: "Minecraft107", outputSubfolder: "107", excludePackaging: false),
-                    MakeLayout("JesseMale108", "JesseMale108", "JesseMale108", 237, "localization", logicalDestination: "Minecraft108", outputSubfolder: "108", excludePackaging: false)
-                });
+            return new MinecraftStoryModeSeasonOneProfile();
+        }
+
+        private class WalkingDeadSeasonTwoProfile : ResourceDescriptorProfile
+        {
+            public override string GameDisplayName => "The Walking Dead: Season Two";
+            public override bool CompressArchive => true;
+            public override bool EncryptArchive => true;
+            public override bool EncryptLuaInsideArchive => true;
+            public override bool NewEngineLua => false;
+            public override int Ttarch2Version => 1;
+            public override bool RequiresLayoutSelection => true;
+            public override int DescriptorEncryptionVersion => 2;
+            public override bool CompileDescriptor => true;
+            public override int DescriptorLuaVersionIndex => 1;
+
+            public WalkingDeadSeasonTwoProfile()
+                : base(
+                    "The Walking Dead: Season Two",
+                    "WalkingDead_pc_",
+                    "_resdesc_50_",
+                    ".lenc",
+                    true,
+                    1,
+                    new List<ModLayoutOption>
+                    {
+                        MakeLayout("Boot", "Boot", "Boot", 10, "bootable"),
+                        MakeLayout("Menu", "Menu", "Menu", 10, "bootable"),
+                        MakeLayout("Project", "Project", "Project", -8888, "constant"),
+                        MakeLayout("WalkingDead201", "WalkingDead201", "WalkingDead201", 100, "bootable"),
+                        MakeLayout("WalkingDead202", "WalkingDead202", "WalkingDead202", 100, "bootable"),
+                        MakeLayout("WalkingDead203", "WalkingDead203", "WalkingDead203", 100, "bootable"),
+                        MakeLayout("WalkingDead204", "WalkingDead204", "WalkingDead204", 100, "bootable"),
+                        MakeLayout("WalkingDead205", "WalkingDead205", "WalkingDead205", 100, "bootable")
+                    })
+            {
+            }
+        }
+
+        private class WolfAmongUsProfile : ResourceDescriptorProfile
+        {
+            public override string GameDisplayName => "The Wolf Among Us";
+            public override bool CompressArchive => true;
+            public override bool EncryptArchive => false;
+            public override bool EncryptLuaInsideArchive => true;
+            public override bool NewEngineLua => false;
+            public override int Ttarch2Version => 1;
+            public override bool RequiresLayoutSelection => true;
+            public override int DescriptorEncryptionVersion => 2;
+            public override bool CompileDescriptor => true;
+            public override int DescriptorLuaVersionIndex => 1;
+
+            public WolfAmongUsProfile()
+                : base(
+                    "The Wolf Among Us",
+                    "Fables_pc_",
+                    "_resourcedescriptions_500_",
+                    ".lenc",
+                    true,
+                    1,
+                    new List<ModLayoutOption>
+                    {
+                        MakeLayout("Boot", "Boot", "Boot", 10, "bootable"),
+                        MakeLayout("Menu", "Menu", "Menu", 10, "bootable"),
+                        MakeLayout("Project", "Project", "Project", -8888, "constant"),
+                        MakeLayout("Fables101", "Fables101", "Fables101", 20, "bootable"),
+                        MakeLayout("Fables102", "Fables102", "Fables102", 20, "bootable"),
+                        MakeLayout("Fables103", "Fables103", "Fables103", 20, "bootable"),
+                        MakeLayout("Fables104", "Fables104", "Fables104", 20, "bootable"),
+                        MakeLayout("Fables105", "Fables105", "Fables105", 20, "bootable")
+                    })
+            {
+            }
+        }
+
+        private class WalkingDeadMichonneProfile : ResourceDescriptorProfile
+        {
+            public override string GameDisplayName => "The Walking Dead: Michonne";
+            public override bool CompressArchive => true;
+            public override bool EncryptArchive => true;
+            public override bool EncryptLuaInsideArchive => true;
+            public override bool NewEngineLua => true;
+            public override int Ttarch2Version => 2;
+            public override bool RequiresLayoutSelection => true;
+            public override int DescriptorEncryptionVersion => 7;
+            public override bool CompileDescriptor => false;
+            public override int DescriptorLuaVersionIndex => 1;
+
+            public WalkingDeadMichonneProfile()
+                : base(
+                    "The Walking Dead: Michonne",
+                    "WDM_pc_",
+                    "_resdesc_50_",
+                    ".lua",
+                    false,
+                    1,
+                    new List<ModLayoutOption>
+                    {
+                        MakeLayout("Boot", "Boot", "Boot", 10, "bootable"),
+                        MakeLayout("Menu", "Menu", "Menu", 20, "bootable"),
+                        MakeLayout("Project", "Project", "Project", -8888, "constant"),
+                        MakeLayout("UI", "UI", "UI", 30, "bootable"),
+                        MakeLayout("WalkingDeadM101", "WalkingDeadM101", "WalkingDeadM101", 100, "bootable"),
+                        MakeLayout("WalkingDeadM102", "WalkingDeadM102", "WalkingDeadM102", 100, "bootable"),
+                        MakeLayout("WalkingDeadM103", "WalkingDeadM103", "WalkingDeadM103", 100, "bootable")
+                    })
+            {
+            }
+        }
+
+        private class BatmanProfile : ResourceDescriptorProfile
+        {
+            public override string GameDisplayName => "Batman: Telltale Series";
+            public override bool CompressArchive => true;
+            public override bool EncryptArchive => true;
+            public override bool EncryptLuaInsideArchive => true;
+            public override bool NewEngineLua => true;
+            public override int Ttarch2Version => 2;
+            public override bool RequiresLayoutSelection => true;
+            public override int DescriptorEncryptionVersion => 7;
+            public override bool CompileDescriptor => false;
+            public override int DescriptorLuaVersionIndex => 1;
+
+            public BatmanProfile()
+                : base(
+                    "Batman: Telltale Series",
+                    "BM_pc_",
+                    "_resdesc_50_",
+                    ".lua",
+                    false,
+                    1,
+                    new List<ModLayoutOption>
+                    {
+                        MakeLayout("Boot", "Boot", "Boot", 10, "bootable"),
+                        MakeLayout("Menu", "Menu", "Menu", 20, "bootable"),
+                        MakeLayout("Project", "Project", "Project", -8888, "constant"),
+                        MakeLayout("UI", "UI", "UI", 30, "bootable"),
+                        MakeLayout("Batman101", "Batman101", "Batman101", 101, "bootable"),
+                        MakeLayout("Batman102", "Batman102", "Batman102", 102, "bootable"),
+                        MakeLayout("Batman103", "Batman103", "Batman103", 103, "bootable"),
+                        MakeLayout("Batman104", "Batman104", "Batman104", 104, "bootable"),
+                        MakeLayout("Batman105", "Batman105", "Batman105", 105, "bootable")
+                    })
+            {
+            }
+        }
+
+        private class SamAndMaxBeyondTimeAndSpaceRemasterProfile : ResourceDescriptorProfile
+        {
+            public override string GameDisplayName => "Sam & Max: Beyond Time and Space - Remastered";
+            public override bool CompressArchive => true;
+            public override bool EncryptArchive => true;
+            public override bool EncryptLuaInsideArchive => true;
+            public override bool NewEngineLua => true;
+            public override int Ttarch2Version => 2;
+            public override bool RequiresLayoutSelection => true;
+            public override int DescriptorEncryptionVersion => 7;
+            public override bool CompileDescriptor => false;
+            public override int DescriptorLuaVersionIndex => 1;
+
+            public SamAndMaxBeyondTimeAndSpaceRemasterProfile()
+                : base(
+                    "Sam & Max: Beyond Time and Space - Remastered",
+                    "SM2_pc_",
+                    "_resdesc_50_",
+                    ".lua",
+                    false,
+                    1,
+                    new List<ModLayoutOption>
+                    {
+                        MakeLayout("Boot", "Boot", "Boot", 10, "bootable"),
+                        MakeLayout("Common", "Common", "Common", 100, "bootable"),
+                        MakeLayout("Menu", "Menu", "Menu", 20, "bootable"),
+                        MakeLayout("Project", "Project", "Project", -8888, "constant"),
+                        MakeLayout("UI", "UI", "UI", 30, "bootable"),
+                        MakeLayout("SamMax201", "SamMax201", "SamMax201", 101, "bootable"),
+                        MakeLayout("SamMax202", "SamMax202", "SamMax202", 102, "bootable"),
+                        MakeLayout("SamMax203", "SamMax203", "SamMax203", 103, "bootable"),
+                        MakeLayout("SamMax204", "SamMax204", "SamMax204", 104, "bootable"),
+                        MakeLayout("SamMax205", "SamMax205", "SamMax205", 105, "bootable")
+                    })
+            {
+            }
+        }
+
+        private class GameOfThronesProfile : ResourceDescriptorProfile
+        {
+            public override string GameDisplayName => "Game of Thrones: A Telltale Games Series";
+            public override bool CompressArchive => true;
+            public override bool EncryptArchive => true;
+            public override bool EncryptLuaInsideArchive => true;
+            public override bool NewEngineLua => true;
+            public override int Ttarch2Version => 1;
+            public override bool RequiresLayoutSelection => true;
+            public override int DescriptorEncryptionVersion => 7;
+            public override bool CompileDescriptor => true;
+            public override int DescriptorLuaVersionIndex => 2;
+
+            public GameOfThronesProfile()
+                : base(
+                    "Game of Thrones: A Telltale Games Series",
+                    "GameOfThrones_pc_",
+                    "_resdesc_50_",
+                    ".lua",
+                    true,
+                    2,
+                    new List<ModLayoutOption>
+                    {
+                        MakeLayout("Boot", "Boot", "Boot", 10, "bootable"),
+                        MakeLayout("Menu", "Menu", "Menu", 20, "bootable"),
+                        MakeLayout("Project", "Project", "Project", -8888, "constant"),
+                        MakeLayout("UI", "UI", "UI", 30, "bootable"),
+                        MakeLayout("GameOfThrones101", "GameOfThrones101", "GameOfThrones101", 41, "bootable"),
+                        MakeLayout("GameOfThrones102", "GameOfThrones102", "GameOfThrones102", 42, "bootable"),
+                        MakeLayout("GameOfThrones103", "GameOfThrones103", "GameOfThrones103", 43, "bootable"),
+                        MakeLayout("GameOfThrones104", "GameOfThrones104", "GameOfThrones104", 44, "bootable"),
+                        MakeLayout("GameOfThrones105", "GameOfThrones105", "GameOfThrones105", 45, "bootable"),
+                        MakeLayout("GameOfThrones106", "GameOfThrones106", "GameOfThrones106", 46, "bootable")
+                    })
+            {
+            }
+        }
+
+        private class SamAndMaxDevilsPlayhouseRemasterProfile : ResourceDescriptorProfile
+        {
+            public override string GameDisplayName => "Sam & Max: The Devil's Playhouse - Remastered";
+            public override bool CompressArchive => true;
+            public override bool EncryptArchive => true;
+            public override bool EncryptLuaInsideArchive => true;
+            public override bool NewEngineLua => true;
+            public override int Ttarch2Version => 2;
+            public override bool RequiresLayoutSelection => true;
+            public override int DescriptorEncryptionVersion => 7;
+            public override bool CompileDescriptor => false;
+            public override int DescriptorLuaVersionIndex => 1;
+
+            public SamAndMaxDevilsPlayhouseRemasterProfile()
+                : base(
+                    "Sam & Max: The Devil's Playhouse - Remastered",
+                    "SM3_pc_",
+                    "_resdesc_50_",
+                    ".lua",
+                    false,
+                    1,
+                    new List<ModLayoutOption>
+                    {
+                        MakeLayout("Boot", "Boot", "Boot", 10, "bootable"),
+                        MakeLayout("Common", "Common", "Common", 100, "bootable"),
+                        MakeLayout("Menu", "Menu", "Menu", 20, "bootable"),
+                        MakeLayout("Project", "Project", "Project", -8888, "constant"),
+                        MakeLayout("UI", "UI", "UI", 30, "bootable"),
+                        MakeLayout("SamMax301", "SamMax301", "SamMax301", 101, "bootable"),
+                        MakeLayout("SamMax302", "SamMax302", "SamMax302", 102, "bootable"),
+                        MakeLayout("SamMax303", "SamMax303", "SamMax303", 103, "bootable"),
+                        MakeLayout("SamMax304", "SamMax304", "SamMax304", 104, "bootable"),
+                        MakeLayout("SamMax305", "SamMax305", "SamMax305", 105, "bootable")
+                    })
+            {
+            }
+        }
+
+        private class GuardiansOfTheGalaxyProfile : ResourceDescriptorProfile
+        {
+            public override string GameDisplayName => "Guardians of the Galaxy: A Telltale Games Series";
+            public override bool CompressArchive => true;
+            public override bool EncryptArchive => true;
+            public override bool EncryptLuaInsideArchive => true;
+            public override bool NewEngineLua => true;
+            public override int Ttarch2Version => 2;
+            public override bool RequiresLayoutSelection => true;
+            public override int DescriptorEncryptionVersion => 7;
+            public override bool CompileDescriptor => false;
+            public override int DescriptorLuaVersionIndex => 1;
+
+            public GuardiansOfTheGalaxyProfile()
+                : base(
+                    "Guardians of the Galaxy: A Telltale Games Series",
+                    "GoG_pc_",
+                    "_resdesc_50_",
+                    ".lua",
+                    false,
+                    1,
+                    new List<ModLayoutOption>
+                    {
+                        MakeLayout("Boot", "Boot", "Boot", 10, "bootable"),
+                        MakeLayout("Menu", "Menu", "Menu", 20, "bootable"),
+                        MakeLayout("Project", "Project", "Project", -8888, "constant"),
+                        MakeLayout("UI", "UI", "UI", 30, "bootable"),
+                        MakeLayout("Guardians101", "Guardians101", "Guardians101", 101, "bootable")
+                    })
+            {
+            }
+        }
+
+        private class TalesFromTheBorderlandsProfile : ResourceDescriptorProfile
+        {
+            public override string GameDisplayName => "Tales From the Borderlands (2014/2015)";
+            public override bool CompressArchive => true;
+            public override bool EncryptArchive => true;
+            public override bool EncryptLuaInsideArchive => true;
+            public override bool NewEngineLua => true;
+            public override int Ttarch2Version => 1;
+            public override bool RequiresLayoutSelection => true;
+            public override int DescriptorEncryptionVersion => 7;
+            public override bool CompileDescriptor => true;
+            public override int DescriptorLuaVersionIndex => 2;
+
+            public TalesFromTheBorderlandsProfile()
+                : base(
+                    "Tales From the Borderlands (2014/2015)",
+                    "Borderlands_pc_",
+                    "_resdesc_50_",
+                    ".lua",
+                    true,
+                    2,
+                    new List<ModLayoutOption>
+                    {
+                        MakeLayout("Boot", "Boot", "Boot", 10, "bootable"),
+                        MakeLayout("Menu", "Menu", "Menu", 20, "bootable"),
+                        MakeLayout("Project", "Project", "Project", -8888, "constant"),
+                        MakeLayout("UI", "UI", "UI", 30, "bootable"),
+                        MakeLayout("Borderlands101", "Borderlands101", "Borderlands101", 41, "bootable"),
+                        MakeLayout("Borderlands102", "Borderlands102", "Borderlands102", 42, "bootable"),
+                        MakeLayout("Borderlands103", "Borderlands103", "Borderlands103", 43, "bootable"),
+                        MakeLayout("Borderlands104", "Borderlands104", "Borderlands104", 44, "bootable"),
+                        MakeLayout("Borderlands105", "Borderlands105", "Borderlands105", 45, "bootable")
+                    })
+            {
+            }
+        }
+
+        private class MinecraftStoryModeSeasonOneProfile : ResourceDescriptorProfile
+        {
+            public override string GameDisplayName => "Minecraft: Story Mode - Season One";
+            public override bool CompressArchive => true;
+            public override bool EncryptArchive => true;
+            public override bool EncryptLuaInsideArchive => true;
+            public override bool NewEngineLua => true;
+            public override int Ttarch2Version => 2;
+            public override bool RequiresLayoutSelection => true;
+            public override int DescriptorEncryptionVersion => 7;
+            public override bool CompileDescriptor => false;
+            public override int DescriptorLuaVersionIndex => 1;
+
+            public MinecraftStoryModeSeasonOneProfile()
+                : base(
+                    "Minecraft: Story Mode - Season One",
+                    "MCSM_pc_",
+                    "_resdesc_50_",
+                    ".lua",
+                    false,
+                    1,
+                    new List<ModLayoutOption>
+                    {
+                        MakeLayout("Boot", "Boot", "Boot", 10, "bootable"),
+                        MakeLayout("Menu", "Menu", "Menu", 20, "bootable"),
+                        MakeLayout("Project", "Project", "Project", -8888, "constant"),
+                        MakeLayout("UI", "UI", "UI", 30, "bootable"),
+                        MakeLayout("Minecraft101", "Minecraft101", "Minecraft101", 101, "bootable"),
+                        MakeLayout("Minecraft102", "Minecraft102", "Minecraft102", 102, "bootable", outputSubfolder: "102"),
+                        MakeLayout("Minecraft103", "Minecraft103", "Minecraft103", 103, "bootable", outputSubfolder: "103"),
+                        MakeLayout("Minecraft104", "Minecraft104", "Minecraft104", 104, "bootable", outputSubfolder: "104"),
+                        MakeLayout("Minecraft105", "Minecraft105", "Minecraft105", 105, "bootable", outputSubfolder: "105"),
+                        MakeLayout("Minecraft106", "Minecraft106", "Minecraft106", 106, "bootable", outputSubfolder: "106"),
+                        MakeLayout("Minecraft107", "Minecraft107", "Minecraft107", 107, "bootable", outputSubfolder: "107"),
+                        MakeLayout("Minecraft108", "Minecraft108", "Minecraft108", 108, "bootable", outputSubfolder: "108"),
+                        MakeLayout("JesseMale", "JesseMale", "JesseMale", 125, "localization", excludePackaging: false),
+                        MakeLayout("JesseMale101", "JesseMale101", "JesseMale101", 130, "localization", logicalDestination: "Minecraft101", excludePackaging: false),
+                        MakeLayout("JesseMale102", "JesseMale102", "JesseMale102", 130, "localization", logicalDestination: "Minecraft102", outputSubfolder: "102", excludePackaging: false),
+                        MakeLayout("JesseMale103", "JesseMale103", "JesseMale103", 130, "localization", logicalDestination: "Minecraft103", outputSubfolder: "103", excludePackaging: false),
+                        MakeLayout("JesseMale104", "JesseMale104", "JesseMale104", 133, "localization", logicalDestination: "Minecraft104", outputSubfolder: "104", excludePackaging: false),
+                        MakeLayout("JesseMale105", "JesseMale105", "JesseMale105", 134, "localization", logicalDestination: "Minecraft105", outputSubfolder: "105", excludePackaging: false),
+                        MakeLayout("JesseMale106", "JesseMale106", "JesseMale106", 135, "localization", logicalDestination: "Minecraft106", outputSubfolder: "106", excludePackaging: false),
+                        MakeLayout("JesseMale107", "JesseMale107", "JesseMale107", 136, "localization", logicalDestination: "Minecraft107", outputSubfolder: "107", excludePackaging: false),
+                        MakeLayout("JesseMale108", "JesseMale108", "JesseMale108", 137, "localization", logicalDestination: "Minecraft108", outputSubfolder: "108", excludePackaging: false)
+                    })
+            {
+            }
         }
 
         private class MinecraftStoryModeSeasonTwoProfile : IModCreatorProfile
