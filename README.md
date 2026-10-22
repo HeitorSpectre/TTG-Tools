@@ -67,3 +67,4 @@ TTG Tools makes it easier to translate and modify Telltale Games and Skunkape Ga
 * Sam & Max: Beyond Time and Space - Remastered
 * Sam & Max: The Devil's Playhouse - Remastered
 * Poker Night at the Inventory - Remastered
+* The Wolf Among Us - Remastered
