@@ -23,6 +23,8 @@ This version of TTG Tools includes some modifications and has been uploaded with
 - [Gekonnn](https://github.com/gekonnn/lenctools) for LencTools.
 - [PUC-Rio](http://www.lua.inf.puc-rio.br/) for lua source code.
 - AMD (AddrLib), Exzap and [AboodXD](https://github.com/aboood40091) for the Nintendo Wii U (GX2) swizzle method.
+- [Microsoft](https://github.com/microsoft/DirectXTex) for DirectXTex (texconv), used for texture conversion.
+- [RAD Game Tools / Epic Games](https://www.radgametools.com/oodle.htm) for the Oodle compression library (`oo2core_5_win64.dll`).
 
 ## Features
 
@@ -54,6 +56,7 @@ TTG Tools makes it easier to translate and modify Telltale Games and Skunkape Ga
 * The Walking Dead: Season Two
 * Tales from the Borderlands (2015 & 2021 versions)
 * Game of Thrones: The Telltale Series
+* Back to the Future: The Game - 30th Anniversary Edition
 * Minecraft: Story Mode - A Telltale Games Series
 * The Walking Dead: Michonne - A Telltale Miniseries
 * Batman - The Telltale Series
@@ -62,6 +65,7 @@ TTG Tools makes it easier to translate and modify Telltale Games and Skunkape Ga
 * Minecraft: Story Mode - Season Two
 * Batman: The Enemy Within - The Telltale Series
 * The Walking Dead: The Final Season
+* The Walking Dead: The Telltale Series - Collection
 * The Walking Dead: The Telltale Definitive Series
 * Sam & Max: Save the World - Remastered
 * Sam & Max: Beyond Time and Space - Remastered
