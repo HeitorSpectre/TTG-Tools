@@ -355,6 +355,8 @@ namespace TTG_Tools
         private int _encKeyIndex;
         private int _versionEnc;
         private int _modCreatorGameIndex;
+        private string _modCreatorGame = ""; //Saved by name: the game list grows and is kept in release order
+        private string _modCreatorPlatform = "";
         private string _encCustomKey;
 
         private string _inputDirPath; //For Archive Packer
@@ -365,6 +367,8 @@ namespace TTG_Tools
         private bool _encArchive;
         private int _archiveFormat;
         private int _versionArchiveIndex;
+        private int _archiveVersionNumber = -1; //-1 = not saved yet, derive it from versionArchiveIndex
+        private int _archivePlatform = 2; //Platform id written in old .ttarch headers (2 = PC)
         private bool _swizzleNintendoSwitch;
         private bool _newTxtFormat;
         private bool _changeLangFlags;
@@ -673,6 +677,32 @@ namespace TTG_Tools
             }
         }
 
+        [XmlAttribute("modCreatorGame")]
+        public string modCreatorGame
+        {
+            get
+            {
+                return _modCreatorGame;
+            }
+            set
+            {
+                _modCreatorGame = value;
+            }
+        }
+
+        [XmlAttribute("modCreatorPlatform")]
+        public string modCreatorPlatform
+        {
+            get
+            {
+                return _modCreatorPlatform;
+            }
+            set
+            {
+                _modCreatorPlatform = value;
+            }
+        }
+
         [XmlAttribute("modCreatorGameIndex")]
         public int modCreatorGameIndex
         {
@@ -800,6 +830,32 @@ namespace TTG_Tools
             set
             {
                 _versionArchiveIndex = value;
+            }
+        }
+
+        [XmlAttribute("archiveVersionNumber")]
+        public int archiveVersionNumber
+        {
+            get
+            {
+                return _archiveVersionNumber;
+            }
+            set
+            {
+                _archiveVersionNumber = value;
+            }
+        }
+
+        [XmlAttribute("archivePlatform")]
+        public int archivePlatform
+        {
+            get
+            {
+                return _archivePlatform;
+            }
+            set
+            {
+                _archivePlatform = value;
             }
         }
 

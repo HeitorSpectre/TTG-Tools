@@ -59,6 +59,7 @@ namespace TTG_Tools
                     case ".png":
                     case ".jpg":
                     case ".jpeg":
+                    case ".jpe":
                     case ".bmp":
                     case ".gif":
                     case ".tga":
@@ -69,6 +70,10 @@ namespace TTG_Tools
 
                     case ".txt":
                     case ".xml":
+                    case ".html":
+                    case ".htm":
+                    case ".js":
+                    case ".css":
                     case ".json":
                     case ".ini":
                     case ".yaml":

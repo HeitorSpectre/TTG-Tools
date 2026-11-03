@@ -55,7 +55,7 @@ namespace TTG_Tools
             this.encryptionLabel = new System.Windows.Forms.Label();
             this.versionLabel = new System.Windows.Forms.Label();
             this.splitContainer1 = new System.Windows.Forms.SplitContainer();
-            this.filesDataGridView = new System.Windows.Forms.DataGridView();
+            this.filesDataGridView = new DragAwareDataGridView();
             this.previewPictureBox = new System.Windows.Forms.PictureBox();
             this.previewTextBox = new System.Windows.Forms.RichTextBox();
             this.previewInfoLabel = new System.Windows.Forms.Label();
@@ -448,7 +448,7 @@ namespace TTG_Tools
         private System.Windows.Forms.ToolStripMenuItem unpackToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem unpackSelectedToolStripMenuItem;
         private System.Windows.Forms.Panel topPanel;
-        private System.Windows.Forms.DataGridView filesDataGridView;
+        private DragAwareDataGridView filesDataGridView;
         private System.Windows.Forms.GroupBox groupBox1;
         private System.Windows.Forms.ComboBox fileFormatsCB;
         private System.Windows.Forms.Label label1;

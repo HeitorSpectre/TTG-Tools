@@ -18,17 +18,32 @@ namespace TTG_Tools
         {
             if (args.Length >= 3 && args[0] == "--extract-ttarch")
             {
-                // --extract-ttarch <archive> <outputDir>
+                // --extract-ttarch <archive> <outputDir> [hexKey]
                 string archive = args[1];
                 string outDir = args[2];
                 byte[] key = { 0x96, 0xCA, 0x99, 0xA0, 0x85, 0xCF, 0x98, 0x8A, 0xE4, 0xDB, 0xE2, 0xCD, 0xA6, 0x96, 0x83, 0x88, 0xC0, 0x8B, 0x99, 0xE3, 0x9E, 0xD8, 0x9B, 0xB6, 0xD7, 0x90, 0xDC, 0xBE, 0xAD, 0x9D, 0x91, 0x65, 0xB6, 0xA6, 0x9E, 0xBB, 0xC2, 0xC6, 0x9E, 0xB3, 0xE7, 0xE3, 0xE5, 0xD5, 0xAB, 0x63, 0x82, 0xA0, 0x9C, 0xC4, 0x92, 0x9F, 0xD1, 0xD5, 0xA4 };
+                if (args.Length >= 4) key = HexToKey(args[3]);
                 Settings.EnsureConfigAvailable();
                 ArchiveUnpacker.ExtractTtarchCli(archive, outDir, key);
                 return 0;
             }
+            if (args.Length >= 3 && args[0] == "--preview-test")
+            {
+                // --preview-test <archive> <outputDir> [ext1,ext2,...]
+                ApplyDefaultFont();
+                Settings.EnsureConfigAvailable();
+                return PreviewTest.Run(args);
+            }
+            if (args.Length >= 3 && args[0] == "--preview-file")
+            {
+                // --preview-file <fileOrFolder> <outputDir>
+                ApplyDefaultFont();
+                Settings.EnsureConfigAvailable();
+                return PreviewTest.RunFiles(args);
+            }
             if (args.Length >= 8 && args[0] == "--pack-ttarch")
             {
-                // --pack-ttarch <inputDir> <outputFile> <gameIndex> <version> <compress 0|1> <encrypt 0|1> <dontEncLua 0|1> [<compressAlgo 0|1>]
+                // --pack-ttarch <inputDir> <outputFile> <gameIndex> <version> <compress 0|1> <encrypt 0|1> <dontEncLua 0|1> [<compressAlgo 0|1>] [<platform>] [<hexKey or ->] [<xmode 0|1>]
                 string inputDir = args[1];
                 string outputFile = args[2];
                 int gameIndex = int.Parse(args[3]);
@@ -37,12 +52,25 @@ namespace TTG_Tools
                 bool encrypt = args[6] == "1";
                 bool dontEncLua = args[7] == "1";
                 int compressAlgo = args.Length >= 9 ? int.Parse(args[8]) : 0;
+                int platform = args.Length >= 10 ? int.Parse(args[9]) : 2;
 
                 Settings.EnsureConfigAvailable();
                 // Hardcoded WG Ep1 key for CLI test (gameIndex 21).
                 byte[] key = { 0x96, 0xCA, 0x99, 0xA0, 0x85, 0xCF, 0x98, 0x8A, 0xE4, 0xDB, 0xE2, 0xCD, 0xA6, 0x96, 0x83, 0x88, 0xC0, 0x8B, 0x99, 0xE3, 0x9E, 0xD8, 0x9B, 0xB6, 0xD7, 0x90, 0xDC, 0xBE, 0xAD, 0x9D, 0x91, 0x65, 0xB6, 0xA6, 0x9E, 0xBB, 0xC2, 0xC6, 0x9E, 0xB3, 0xE7, 0xE3, 0xE5, 0xD5, 0xAB, 0x63, 0x82, 0xA0, 0x9C, 0xC4, 0x92, 0x9F, 0xD1, 0xD5, 0xA4 };
-                Console.WriteLine("CLI pack: " + inputDir + " -> " + outputFile + " v" + version + " game=" + gameIndex);
-                ArchivePacker.PackTtarchCli(inputDir, outputFile, key, version, compress, encrypt, dontEncLua, compressAlgo);
+                if (args.Length >= 11 && args[10] != "-") key = HexToKey(args[10]);
+                if (args.Length >= 12) MainMenu.settings.oldXmode = args[11] == "1";
+                Console.WriteLine("CLI pack: " + inputDir + " -> " + outputFile + " v" + version + " game=" + gameIndex + " platform=" + platform);
+                ArchivePacker.PackTtarchCli(inputDir, outputFile, key, version, compress, encrypt, dontEncLua, compressAlgo, platform);
+                Console.WriteLine("CLI pack DONE");
+                return 0;
+            }
+            if (args.Length >= 9 && args[0] == "--pack-ttarch2")
+            {
+                // --pack-ttarch2 <inputDir> <outputFile> <version 1|2> <compress 0|1> <compressAlgo 0=deflate|1=oodle> <encrypt 0|1> <encLua 0|1> <newEngineLua 0|1> [<hexKey or ->] [<platform>]
+                Settings.EnsureConfigAvailable();
+                byte[] key = args.Length >= 10 && args[9] != "-" ? HexToKey(args[9]) : new byte[] { 0 };
+                int platform = args.Length >= 11 ? int.Parse(args[10]) : 2;
+                ArchivePacker.PackTtarch2Cli(args[1], args[2], key, int.Parse(args[3]), args[4] == "1", args[6] == "1", args[7] == "1", args[8] == "1", int.Parse(args[5]), platform);
                 Console.WriteLine("CLI pack DONE");
                 return 0;
             }
@@ -92,6 +120,13 @@ namespace TTG_Tools
         // Control.defaultFont (the lazy backing field of Control.DefaultFont)
         // via reflection. Every Form built after this point inherits the font
         // we set; controls that don't override it pick it up automatically.
+        private static byte[] HexToKey(string hex)
+        {
+            byte[] key = new byte[hex.Length / 2];
+            for (int i = 0; i < key.Length; i++) key[i] = Convert.ToByte(hex.Substring(i * 2, 2), 16);
+            return key;
+        }
+
         private static void ApplyDefaultFont()
         {
             try

@@ -112,14 +112,20 @@ namespace TTG_Tools
                                 // we still need to trigger DoWork.
                                 if (fileDestination.Length == 0)
                                 {
-                                    if (destinationForExport == ".d3dtx" && whatImport == ".dds" && MainMenu.settings.swizzlePS2)
+                                    // "Extract textures as PNG" promises the inverse operation on
+                                    // import, but the AutoPacker's trigger list historically only
+                                    // looked for DDS/PVR files. Accept the matching PNG for every
+                                    // D3DTX here; TextureWorker will choose the correct conversion
+                                    // after reading the texture's real platform/format metadata.
+                                    if (destinationForExport == ".d3dtx" && whatImport == ".dds")
                                     {
-                                        string ps2PngPattern = q == 0
+                                        string pngPattern = q == 0
                                             ? onlyNameImporting + ".png"
                                             : onlyNameImporting + "(*)" + ".png";
-                                        fileDestination = inputFiles[i].Directory.GetFiles(ps2PngPattern);
+
+                                        fileDestination = inputFiles[i].Directory.GetFiles(pngPattern);
                                     }
-                                    else if (destinationForExport == ".d3dtx" && whatImport == ".dds" && MainMenu.settings.swizzleNintendoWii)
+                                    if (fileDestination.Length == 0 && destinationForExport == ".d3dtx" && whatImport == ".dds" && MainMenu.settings.swizzleNintendoWii)
                                     {
                                         string wiiTgaPattern = q == 0
                                             ? onlyNameImporting + ".tga"

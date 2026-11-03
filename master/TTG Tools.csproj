@@ -128,6 +128,7 @@
     <Compile Include="Graphics\DDS\Caps.cs" />
     <Compile Include="Graphics\DDS\dds.cs" />
     <Compile Include="Graphics\DDS\Decompress.cs" />
+    <Compile Include="Graphics\DDS\DirectXTexBridge.cs" />
     <Compile Include="Graphics\DDS\DdsPngConverter.cs" />
     <Compile Include="Graphics\DDS\Flags.cs" />
     <Compile Include="Graphics\DDS\SomeActions.cs" />
@@ -161,6 +162,7 @@
     </Compile>
     <Compile Include="Core\ForThreads.cs" />
     <Compile Include="Core\PreviewBuilder.cs" />
+    <Compile Include="Core\PreviewTest.cs" />
     <Compile Include="Forms\FontEditor.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -194,6 +196,9 @@
     </Compile>
     <Compile Include="Forms\ModCreator.cs">
       <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\ModCreatorPlatformProfiles.cs">
+      <DependentUpon>ModCreator.cs</DependentUpon>
     </Compile>
     <Compile Include="Forms\ModCreator.Designer.cs">
       <DependentUpon>ModCreator.cs</DependentUpon>
@@ -272,6 +277,16 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Languages\**\*.lang">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Tools\DirectXTex\texconv.exe">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Tools\Oodle\oo2core_5_win64.dll">
+      <Link>oo2core_5_win64.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="ThirdPartyLicenses\DirectXTex-LICENSE.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>

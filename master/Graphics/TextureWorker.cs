@@ -29,6 +29,11 @@ namespace TTG_Tools.Graphics
         // to preview and export iOS font glyph atlases as PNG.
         public static byte[] DecodePvrContentToRgba(byte[] pvrContent, out int width, out int height)
         {
+            return DecodePvrContentToRgba(pvrContent, out width, out height, false);
+        }
+
+        public static byte[] DecodePvrContentToRgba(byte[] pvrContent, out int width, out int height, bool rgba4444NibbleOrder)
+        {
             width = 0; height = 0;
             if (pvrContent == null || pvrContent.Length < 52) return null;
             if (!(pvrContent[0] == 'P' && pvrContent[1] == 'V' && pvrContent[2] == 'R' && pvrContent[3] == 3)) return null;
@@ -51,7 +56,7 @@ namespace TTG_Tools.Graphics
                 case (ulong)pvr.HeaderFormat.PVRTC4bppRGB:  return PVR.PvrtcDecoder.Decode(data, w, h, false, true);
                 case (ulong)pvr.HeaderFormat.PVRTC4bppRGBA: return PVR.PvrtcDecoder.Decode(data, w, h, false, false);
                 case 0x404040461626772UL: // rgba4444 (edited PNG re-injected as ARGB4444)
-                    return DecodeUncompressedToRgba(data, w, h, 0x04);
+                    return DecodeUncompressedToRgba(data, w, h, 0x04, rgba4444NibbleOrder);
                 case 0x105050561626772UL: // rgba5551 (old iOS font atlases: 5-5-5-1, alpha in low bit)
                 {
                     int px = w * h;
@@ -81,12 +86,21 @@ namespace TTG_Tools.Graphics
         }
 
         // Classifies an old-engine iOS (ERTM/"PVR!") mobTexFormat. Returns true for the PVRTC
-        // variants these games use (all 4bpp) and reports whether alpha is present.
+        // variants these games use and reports whether they are 2bpp and whether alpha is absent.
         private static bool IsOldIosPvrtc(uint mob, out bool is2Bpp, out bool opaque)
         {
-            is2Bpp = false; // no 2bpp variants exist in the old iOS format table
+            is2Bpp = false;
             switch (mob)
             {
+                case (uint)ClassesStructs.TextureClass.OldTexturePVRFormat.PVRTC2bppRGB_1:
+                    is2Bpp = true;
+                    opaque = true;
+                    return true;
+                case (uint)ClassesStructs.TextureClass.OldTexturePVRFormat.PVRTC2bppRGBA_1:
+                case (uint)ClassesStructs.TextureClass.OldTexturePVRFormat.PVRTC2bppRGBA_2:
+                    is2Bpp = true;
+                    opaque = false;
+                    return true;
                 case (uint)ClassesStructs.TextureClass.OldTexturePVRFormat.PVRTC4bppRGB_1:
                 case (uint)ClassesStructs.TextureClass.OldTexturePVRFormat.PVRTC4bppRGB_2:
                     opaque = true;
@@ -105,23 +119,126 @@ namespace TTG_Tools.Graphics
             }
         }
 
+        // Produces a stable, printable texture-format name for extraction logs. The previous
+        // old-format message interpreted the numeric value as four ASCII bytes, which worked
+        // for FourCC values such as DXT1/DXT5 but emitted control characters for values such
+        // as ARGB8888 (0x16). Unknown formats keep their exact numeric id and container.
+        public static string DescribeTextureFormat(uint format, bool oldFormat, bool pvrContainer)
+        {
+            string name = null;
+
+            if (pvrContainer)
+            {
+                if (oldFormat)
+                {
+                    switch (format)
+                    {
+                        case (uint)ClassesStructs.TextureClass.OldTexturePVRFormat.PVRTC_RGB565_1:
+                        case (uint)ClassesStructs.TextureClass.OldTexturePVRFormat.PVRTC_RGB565_2:
+                            name = "RGB565";
+                            break;
+                        case (uint)ClassesStructs.TextureClass.OldTexturePVRFormat.PVRTC_RGBA8:
+                            name = "RGBA8888";
+                            break;
+                        case (uint)ClassesStructs.TextureClass.OldTexturePVRFormat.PVRTC_RGBA4:
+                            name = "RGBA4444";
+                            break;
+                        case (uint)ClassesStructs.TextureClass.OldTexturePVRFormat.PVRTC_RGBA1555:
+                            name = "RGBA5551";
+                            break;
+                        case (uint)ClassesStructs.TextureClass.OldTexturePVRFormat.PVRTC2bppRGB_1:
+                            name = "PVRTC 2bpp RGB";
+                            break;
+                        case (uint)ClassesStructs.TextureClass.OldTexturePVRFormat.PVRTC2bppRGBA_1:
+                        case (uint)ClassesStructs.TextureClass.OldTexturePVRFormat.PVRTC2bppRGBA_2:
+                            name = "PVRTC 2bpp RGBA";
+                            break;
+                        case (uint)ClassesStructs.TextureClass.OldTexturePVRFormat.PVRTC4bppRGB_1:
+                        case (uint)ClassesStructs.TextureClass.OldTexturePVRFormat.PVRTC4bppRGB_2:
+                            name = "PVRTC 4bpp RGB";
+                            break;
+                        case (uint)ClassesStructs.TextureClass.OldTexturePVRFormat.PVRTC4bppRGBA_1:
+                        case (uint)ClassesStructs.TextureClass.OldTexturePVRFormat.PVRTC4bppRGBA_2:
+                        case (uint)ClassesStructs.TextureClass.OldTexturePVRFormat.PVRTC4bppRGBA_3:
+                        case (uint)ClassesStructs.TextureClass.OldTexturePVRFormat.PVRTC4bppRGBA_4:
+                        case (uint)ClassesStructs.TextureClass.OldTexturePVRFormat.PVRTC4bppRGBA_5:
+                        case (uint)ClassesStructs.TextureClass.OldTexturePVRFormat.PVRTC4bppRGBA_6:
+                            name = "PVRTC 4bpp RGBA";
+                            break;
+                    }
+                }
+                else
+                {
+                    switch (format)
+                    {
+                        case 0x00: name = "ARGB8888"; break;
+                        case 0x04: name = "ARGB4444"; break;
+                        case 0x10: name = "A8"; break;
+                        case 0x11: name = "IL8"; break;
+                        case 0x50: name = "PVRTC 2bpp RGB"; break;
+                        case 0x51: name = "PVRTC 4bpp RGB"; break;
+                        case 0x52: name = "PVRTC 2bpp RGBA"; break;
+                        case 0x53: name = "PVRTC 4bpp RGBA"; break;
+                    }
+                }
+            }
+            else if (oldFormat)
+            {
+                switch (format)
+                {
+                    case (uint)ClassesStructs.TextureClass.OldTextureFormat.DX_L8: name = "L8"; break;
+                    case (uint)ClassesStructs.TextureClass.OldTextureFormat.DX_LA8: name = "LA8"; break;
+                    case (uint)ClassesStructs.TextureClass.OldTextureFormat.DX_ARGB8888: name = "ARGB8888"; break;
+                    case (uint)ClassesStructs.TextureClass.OldTextureFormat.DX_DXT1: name = "DXT1"; break;
+                    case (uint)ClassesStructs.TextureClass.OldTextureFormat.DX_DXT3: name = "DXT3"; break;
+                    case (uint)ClassesStructs.TextureClass.OldTextureFormat.DX_DXT5: name = "DXT5"; break;
+                }
+            }
+            else
+            {
+                switch (format)
+                {
+                    case 0x00: name = "ARGB8888"; break;
+                    case 0x04: name = "ARGB4444"; break;
+                    case 0x10: name = "A8"; break;
+                    case 0x11: name = "IL8"; break;
+                    case 0x40: name = "DXT1 / BC1"; break;
+                    case 0x41: name = "DXT3 / BC2"; break;
+                    case 0x42: name = "DXT5 / BC3"; break;
+                    case 0x43: name = "BC4"; break;
+                    case 0x44: name = "BC5"; break;
+                    case 0x45: name = "BC6"; break;
+                    case 0x46: name = "BC7"; break;
+                }
+            }
+
+            if (name == null) name = "Unknown";
+            string hex = format <= 0xFFFF ? format.ToString("X4") : format.ToString("X8");
+            return name + " (0x" + hex + ", " + (pvrContainer ? "PVR" : "DDS") + ")";
+        }
+
         // Decodes an uncompressed, de-swizzled Vita mip block into 32-bit RGBA (R,G,B,A order).
         // Supports ARGB8 (0x00, stored BGRA) and A8 (0x10, alpha-only shown as grayscale).
         private static byte[] DecodeUncompressedToRgba(byte[] block, int width, int height, uint textureFormat)
+        {
+            return DecodeUncompressedToRgba(block, width, height, textureFormat, false);
+        }
+
+        private static byte[] DecodeUncompressedToRgba(byte[] block, int width, int height, uint textureFormat, bool mobileChannelsAreRgba)
         {
             if (block == null || width <= 0 || height <= 0) return null;
 
             int pixels = width * height;
             byte[] rgba = new byte[pixels * 4];
 
-            if (textureFormat == 0x00) // ARGB8, stored as BGRA in memory
+            if (textureFormat == 0x00)
             {
                 if (block.Length < pixels * 4) return null;
                 for (int i = 0; i < pixels; i++)
                 {
-                    rgba[i * 4] = block[i * 4 + 2];     // R
+                    rgba[i * 4] = mobileChannelsAreRgba ? block[i * 4] : block[i * 4 + 2]; // R
                     rgba[i * 4 + 1] = block[i * 4 + 1]; // G
-                    rgba[i * 4 + 2] = block[i * 4];     // B
+                    rgba[i * 4 + 2] = mobileChannelsAreRgba ? block[i * 4 + 2] : block[i * 4]; // B
                     rgba[i * 4 + 3] = block[i * 4 + 3]; // A
                 }
                 return rgba;
@@ -147,9 +264,9 @@ namespace TTG_Tools.Graphics
                 for (int i = 0; i < pixels; i++)
                 {
                     int v = block[i * 2] | (block[i * 2 + 1] << 8);
-                    rgba[i * 4] = (byte)(((v >> 4) & 0xF) * 17);   // R
+                    rgba[i * 4] = (byte)(((v >> (mobileChannelsAreRgba ? 12 : 4)) & 0xF) * 17); // R
                     rgba[i * 4 + 1] = (byte)(((v >> 8) & 0xF) * 17);  // G
-                    rgba[i * 4 + 2] = (byte)(((v >> 12) & 0xF) * 17); // B
+                    rgba[i * 4 + 2] = (byte)(((v >> (mobileChannelsAreRgba ? 4 : 12)) & 0xF) * 17); // B
                     rgba[i * 4 + 3] = (byte)((v & 0xF) * 17);      // A
                 }
                 return rgba;
@@ -840,6 +957,15 @@ namespace TTG_Tools.Graphics
                 {
                     switch (format)
                     {
+                        case (uint)ClassesStructs.TextureClass.OldTexturePVRFormat.PVRTC2bppRGBA_1:
+                        case (uint)ClassesStructs.TextureClass.OldTexturePVRFormat.PVRTC2bppRGBA_2:
+                            head.PixelFormat = (ulong)pvr.HeaderFormat.PVRTC2bppRGBA;
+                            break;
+
+                        case (uint)ClassesStructs.TextureClass.OldTexturePVRFormat.PVRTC2bppRGB_1:
+                            head.PixelFormat = (ulong)pvr.HeaderFormat.PVRTC2bppRGB;
+                            break;
+
                         case (uint)ClassesStructs.TextureClass.OldTexturePVRFormat.PVRTC4bppRGBA_1:
                         case (uint)ClassesStructs.TextureClass.OldTexturePVRFormat.PVRTC4bppRGBA_2:
                         case (uint)ClassesStructs.TextureClass.OldTexturePVRFormat.PVRTC4bppRGBA_3:
@@ -1230,7 +1356,10 @@ namespace TTG_Tools.Graphics
                     {
                         try
                         {
-                            result = "File " + fi.Name + " successfully extracted. Texture format " + Convert.ToString(oldTex.TextureFormat) + " (" + Encoding.ASCII.GetString(BitConverter.GetBytes(oldTex.TextureFormat)) + "). ";
+                            string oldFormatDescription = DescribeTextureFormat(
+                                oldTex.isIOS ? oldTex.mobTexFormat : oldTex.TextureFormat,
+                                true,
+                                oldTex.isIOS);
 
                             byte[] oldPng = null;
                             if (MainMenu.settings.extractTexturesAsPng && !oldTex.isIOS)
@@ -1249,20 +1378,25 @@ namespace TTG_Tools.Graphics
                                 if (iosRgba != null)
                                     oldPng = DDS.DdsPngConverter.RgbaToPng(iosRgba, oldTex.Width, oldTex.Height);
                             }
-                            // Old-engine iOS re-injected as uncompressed RGBA4444 (mob 0x8110): decode
-                            // straight to PNG so an already-edited texture can be re-opened and edited again.
-                            else if (oldTex.isIOS && oldTex.Content != null && oldTex.Content.Length >= 52 + oldTex.Width * oldTex.Height * 2
-                                && oldTex.mobTexFormat == (uint)ClassesStructs.TextureClass.OldTexturePVRFormat.PVRTC_RGBA4)
+                            // Old-engine iOS textures re-injected as uncompressed RGBA5551/RGBA4444/
+                            // RGBA8888: decode straight to PNG so edited assets reopen exactly as the
+                            // game sees them. RGBA5551 (0x8010) matches the working Puzzle Agent mod.
+                            else if (oldTex.isIOS && oldTex.Content != null
+                                && (oldTex.mobTexFormat == (uint)ClassesStructs.TextureClass.OldTexturePVRFormat.PVRTC_RGBA1555
+                                    || oldTex.mobTexFormat == (uint)ClassesStructs.TextureClass.OldTexturePVRFormat.PVRTC_RGBA4
+                                    || oldTex.mobTexFormat == (uint)ClassesStructs.TextureClass.OldTexturePVRFormat.PVRTC_RGBA8))
                             {
-                                byte[] data = new byte[oldTex.Width * oldTex.Height * 2];
-                                Array.Copy(oldTex.Content, 52, data, 0, data.Length);
-                                byte[] iosRgba = DecodeUncompressedToRgba(data, oldTex.Width, oldTex.Height, 0x04);
+                                int decodedWidth, decodedHeight;
+                                byte[] iosRgba = DecodePvrContentToRgba(
+                                    oldTex.Content, out decodedWidth, out decodedHeight, true);
                                 if (iosRgba != null)
-                                    oldPng = DDS.DdsPngConverter.RgbaToPng(iosRgba, oldTex.Width, oldTex.Height);
+                                    oldPng = DDS.DdsPngConverter.RgbaToPng(iosRgba, decodedWidth, decodedHeight);
                             }
 
                             if (oldPng != null)
                             {
+                                result = "File " + fi.Name + " successfully extracted. Texture format: "
+                                    + oldFormatDescription + ". Output: PNG. ";
                                 string pngPath = OutputDir + Path.DirectorySeparatorChar + fi.Name.Replace(".d3dtx", ".png");
                                 if (File.Exists(pngPath)) File.Delete(pngPath);
                                 File.WriteAllBytes(pngPath, oldPng);
@@ -1270,6 +1404,8 @@ namespace TTG_Tools.Graphics
                             else
                             {
                                 string format = oldTex.isIOS ? ".pvr" : ".dds";
+                                result = "File " + fi.Name + " successfully extracted. Texture format: "
+                                    + oldFormatDescription + ". Output: " + format.Substring(1).ToUpperInvariant() + ". ";
                                 if (File.Exists(OutputDir + Path.DirectorySeparatorChar + fi.Name.Replace(".d3dtx", format))) File.Delete(OutputDir + Path.DirectorySeparatorChar + fi.Name.Replace(".d3dtx", format));
                                 File.WriteAllBytes(OutputDir + Path.DirectorySeparatorChar + fi.Name.Replace(".d3dtx", format), oldTex.Content);
                             }
@@ -1294,12 +1430,16 @@ namespace TTG_Tools.Graphics
                                 NewContent = DDS.DdsPngConverter.PngToDds(File.ReadAllBytes(oldBasePath + "png"), bcFmt, oldTex.Mip);
                         }
 
-                        // Old-engine iOS: re-inject the edited PNG as uncompressed ARGB4444, wrapped in
-                        // a PVR the existing isIOS import path understands (it maps rgba4444 -> the
-                        // RGBA4444 texture format). This mirrors the community mods' approach; no PVRTC
-                        // re-encoder is needed. Falls back to a raw .pvr if no PNG was produced.
+                        // Old-engine iOS: keep the established uncompressed RGBA4444 path
+                        // (mobTexFormat 0x8110), but pack the nibbles in the R,G,B,A order
+                        // expected by Puzzle Agent. Using the Russian mod's RGBA5551 layout as
+                        // a drop-in replacement corrupts these assets because this game path
+                        // still interprets their texels as 4-4-4-4.
                         if (NewContent == null && oldTex.isIOS && File.Exists(oldBasePath + "png"))
-                            NewContent = DDS.DdsPngConverter.PngToPvrArgb4(File.ReadAllBytes(oldBasePath + "png"));
+                        {
+                            NewContent = DDS.DdsPngConverter.PngToPvrArgb4(
+                                File.ReadAllBytes(oldBasePath + "png"), true);
+                        }
 
                         if (NewContent == null)
                             NewContent = oldTex.isIOS ? File.ReadAllBytes(oldBasePath + "pvr") : File.ReadAllBytes(oldBasePath + "dds");
@@ -1386,6 +1526,7 @@ namespace TTG_Tools.Graphics
                             if (File.Exists(pngPath)) File.Delete(pngPath);
                             File.WriteAllBytes(pngPath, png);
                             if (additionalMessage != null) result += additionalMessage;
+                            result += " Output: PNG.";
                             return result;
                         }
                     }
@@ -1408,6 +1549,7 @@ namespace TTG_Tools.Graphics
                                 if (File.Exists(pngPath)) File.Delete(pngPath);
                                 File.WriteAllBytes(pngPath, png);
                                 if (additionalMessage != null) result += additionalMessage;
+                                result += " Output: PNG.";
                                 return result;
                             }
                         }
@@ -1420,7 +1562,12 @@ namespace TTG_Tools.Graphics
                         && tex.Tex.Textures != null && tex.Tex.Textures.Length > 0
                         && tex.Tex.Textures[0].Block != null)
                     {
-                        byte[] rgba = DecodeUncompressedToRgba(tex.Tex.Textures[0].Block, tex.Width, tex.Height, tex.TextureFormat);
+                        // Platform 7 covers iOS/Android. Native uncompressed 0x00 assets from
+                        // Android use RGBA bytes (iOS originals in this family are PVRTC; edited
+                        // iOS assets use 0x04 ARGB4444). Treating Android RGBA as PC/Vita BGRA is
+                        // what swapped red and blue in ui_diagram_touch.d3dtx.
+                        bool androidChannelOrder = tex.platform.platform == 7 && !MainMenu.settings.iOSsupport;
+                        byte[] rgba = DecodeUncompressedToRgba(tex.Tex.Textures[0].Block, tex.Width, tex.Height, tex.TextureFormat, androidChannelOrder);
                         if (rgba != null)
                         {
                             byte[] png = DDS.DdsPngConverter.RgbaToPng(rgba, tex.Width, tex.Height);
@@ -1430,6 +1577,7 @@ namespace TTG_Tools.Graphics
                                 if (File.Exists(pngPath)) File.Delete(pngPath);
                                 File.WriteAllBytes(pngPath, png);
                                 if (additionalMessage != null) result += additionalMessage;
+                                result += " Output: PNG.";
                                 return result;
                             }
                         }
@@ -1441,6 +1589,7 @@ namespace TTG_Tools.Graphics
                     File.WriteAllBytes(OutputDir + "\\" + fi.Name.Replace(".d3dtx", format), tex.Tex.Content);
 
                     if (additionalMessage != null) result += additionalMessage;
+                    result += " Output: " + format.Substring(1).ToUpperInvariant() + ".";
 
                     return result;
                 }
@@ -1480,7 +1629,14 @@ namespace TTG_Tools.Graphics
                     if (tex.platform.platform == 7 && File.Exists(pngImportPath))
                     {
                         byte[] iosPng = File.ReadAllBytes(pngImportPath);
-                        if (tex.TextureFormat == 0x10 || tex.TextureFormat == 0x11)
+                        if (tex.TextureFormat == 0x00)
+                        {
+                            // Android RGBA8: preserve both the original lossless format and its
+                            // native channel order. Do not route it through the iOS ARGB4444 PVR
+                            // fallback, which changes precision and swaps red/blue on Android.
+                            NewContent = DDS.DdsPngConverter.PngToUncompressedDds(iosPng, 0x00, tex.Tex.MipCount, !MainMenu.settings.iOSsupport);
+                        }
+                        else if (tex.TextureFormat == 0x10 || tex.TextureFormat == 0x11)
                         {
                             // A8/IL8 stay single-channel (the value is read from the grayscale R
                             // channel, matching extraction) via the DDS import path.
@@ -1488,7 +1644,7 @@ namespace TTG_Tools.Graphics
                         }
                         else
                         {
-                            NewContent = DDS.DdsPngConverter.PngToPvrArgb4(iosPng);
+                            NewContent = DDS.DdsPngConverter.PngToPvrArgb4(iosPng, !MainMenu.settings.iOSsupport);
                             if (NewContent != null) importedFromPvr = true;
                         }
                     }
@@ -1707,6 +1863,8 @@ namespace TTG_Tools.Graphics
                 tmp = BitConverter.GetBytes(tex.mobTexFormat);
                 Array.Copy(tmp, 0, tex.block, tex.block.Length - 0x24, tmp.Length);
 
+                // Preserve the original TTG ERTM convention: the declared content length
+                // includes the trailing sentinel byte stored by the container.
                 tmp = BitConverter.GetBytes(tex.Content.Length);
                 Array.Copy(tmp, 0, tex.block, tex.block.Length - 0x20, tmp.Length);
             }
@@ -2879,11 +3037,13 @@ namespace TTG_Tools.Graphics
                 return null;
             }
 
-            AdditionalInfo = "Platform:" + tex.platform.platform + ". Texture format: " + format + ". Mip count: " + Convert.ToString(tex.Mip);
+            AdditionalInfo = "Platform: " + tex.platform.platform + ". Texture format: "
+                + DescribeTextureFormat(tex.TextureFormat, false, usePvrHeader)
+                + ". Mip count: " + Convert.ToString(tex.Mip) + ".";
 
             if (((checkHeader == "6VSM") || (checkHeader == "5VSM")) && tex.SomeValue >= 8)
             {
-                AdditionalInfo += ". Faces: " + Convert.ToString(tex.Faces) + ". Array members: " + Convert.ToString(tex.ArrayMembers);
+                AdditionalInfo += " Faces: " + Convert.ToString(tex.Faces) + ". Array members: " + Convert.ToString(tex.ArrayMembers) + ".";
             }
 
             tex.Tex.Content = new byte[tex.Tex.TexSize + header.Length];

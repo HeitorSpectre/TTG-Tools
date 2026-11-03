@@ -26,11 +26,74 @@ namespace TTG_Tools
         private readonly ResourceDescriptorProfile guardiansOfTheGalaxyProfile = CreateGuardiansOfTheGalaxyProfile();
         private readonly ResourceDescriptorProfile talesFromTheBorderlandsProfile = CreateTalesFromTheBorderlandsProfile();
         private readonly ResourceDescriptorProfile minecraftStoryModeSeasonOneProfile = CreateMinecraftStoryModeSeasonOneProfile();
+        private readonly List<IModCreatorProfile> profiles = new List<IModCreatorProfile>();
         private bool loadingSettings;
+
+        private Label platformLabel;
+        private ComboBox platformComboBox;
+
+        //Games in release order. A game shows up when at least one platform has a profile for it.
+        private static readonly string[] GameOrder =
+        {
+            "The Walking Dead: Season One",
+            "The Wolf Among Us",
+            "The Walking Dead: Season Two",
+            "Tales From the Borderlands (2014/2015)",
+            "Game of Thrones: A Telltale Games Series",
+            "Back to the Future: The Game - 30th Anniversary Edition",
+            "Minecraft: Story Mode - Season One",
+            "The Walking Dead: Michonne",
+            "Batman: Telltale Series",
+            "The Walking Dead: A New Frontier",
+            "Guardians of the Galaxy: A Telltale Games Series",
+            "Minecraft: Story Mode - Season Two",
+            "Batman: The Enemy Within",
+            "The Walking Dead: The Final Season",
+            "The Walking Dead: The Telltale Series - Collection",
+            "The Walking Dead: The Telltale Definitive Series",
+            "Sam & Max: Save the World - Remastered",
+            "Sam & Max: Beyond Time and Space - Remastered",
+            "Sam & Max: The Devil's Playhouse - Remastered",
+            "Poker Night at the Inventory - Remastered",
+            "The Wolf Among Us - Remastered"
+        };
+
+        //Order of the game list before platforms were added; older configs saved the selection by this index
+        private static readonly string[] LegacyGameOrder =
+        {
+            "The Wolf Among Us",
+            "The Walking Dead: Season Two",
+            "Tales From the Borderlands (2014/2015)",
+            "Game of Thrones: A Telltale Games Series",
+            "Minecraft: Story Mode - Season One",
+            "The Walking Dead: Michonne",
+            "Batman: Telltale Series",
+            "Guardians of the Galaxy: A Telltale Games Series",
+            "Minecraft: Story Mode - Season Two",
+            "Sam & Max: Save the World - Remastered",
+            "Sam & Max: Beyond Time and Space - Remastered",
+            "Sam & Max: The Devil's Playhouse - Remastered",
+            "Poker Night at the Inventory - Remastered"
+        };
+
+        private static readonly string[] PlatformCodes = { "PC", "PS3", "PS4", "Xbox", "Switch", "PS Vita", "iOS" };
+        private static readonly string[] PlatformNames = { "PC", "PlayStation 3", "PlayStation 4", "Xbox", "Nintendo Switch", "PlayStation Vita", "iOS" };
+
+        private class PlatformItem
+        {
+            public string Code { get; set; }
+            public string Name { get; set; }
+
+            public override string ToString()
+            {
+                return Name;
+            }
+        }
 
         public ModCreator()
         {
             InitializeComponent();
+            CreatePlatformControls();
             AppIcon.Apply(this);
             Localizer.Localize(this);
             AlignLocalizedLayout();
@@ -43,6 +106,37 @@ namespace TTG_Tools
             inputFolderTextBox.AllowDrop = true;
             inputFolderTextBox.DragEnter += InputFolder_DragEnter;
             inputFolderTextBox.DragDrop += InputFolder_DragDrop;
+
+            profiles.Add(wolfAmongUsProfile);
+            profiles.Add(walkingDeadSeasonTwoProfile);
+            profiles.Add(talesFromTheBorderlandsProfile);
+            profiles.Add(gameOfThronesProfile);
+            profiles.Add(minecraftStoryModeSeasonOneProfile);
+            profiles.Add(walkingDeadMichonneProfile);
+            profiles.Add(batmanProfile);
+            profiles.Add(guardiansOfTheGalaxyProfile);
+            profiles.Add(minecraftStoryModeSeasonTwoProfile);
+            profiles.Add(samAndMaxSaveWorldProfile);
+            profiles.Add(samAndMaxBeyondTimeAndSpaceRemasterProfile);
+            profiles.Add(samAndMaxDevilsPlayhouseRemasterProfile);
+            profiles.Add(pokerNightProfile);
+            profiles.AddRange(CreatePlatformProfiles());
+        }
+
+        private void CreatePlatformControls()
+        {
+            platformLabel = new Label();
+            platformLabel.Name = "platformLabel";
+            platformLabel.AutoSize = true;
+            platformLabel.Text = "Platform:";
+
+            platformComboBox = new ComboBox();
+            platformComboBox.Name = "platformComboBox";
+            platformComboBox.DropDownStyle = ComboBoxStyle.DropDownList;
+            platformComboBox.SelectedIndexChanged += platformComboBox_SelectedIndexChanged;
+
+            Controls.Add(platformLabel);
+            Controls.Add(platformComboBox);
         }
 
         private void AlignLocalizedLayout()
@@ -83,6 +177,13 @@ namespace TTG_Tools
             inputFolderTextBox.SetBounds(fieldLeft, inputFolderTextBox.Top, longFieldWidth, inputFolderTextBox.Height);
             outputFolderTextBox.SetBounds(fieldLeft, outputFolderTextBox.Top, longFieldWidth, outputFolderTextBox.Height);
             modNameTextBox.Left = fieldLeft;
+            platformLabel.Left = modNameTextBox.Right + 16;
+            platformLabel.Top = modNameTextBox.Top + 3;
+            platformComboBox.SetBounds(
+                platformLabel.Right + labelGap,
+                modNameTextBox.Top - 1,
+                Math.Max(140, actionLeft - buttonGap - (platformLabel.Right + labelGap)),
+                platformComboBox.Height);
             gameComboBox.SetBounds(fieldLeft, gameComboBox.Top, longFieldWidth, gameComboBox.Height);
             modLayoutComboBox.SetBounds(
                 fieldLeft,
@@ -106,22 +207,23 @@ namespace TTG_Tools
         {
             loadingSettings = true;
             gameComboBox.Items.Clear();
-            gameComboBox.Items.Add(wolfAmongUsProfile.GameDisplayName);
-            gameComboBox.Items.Add(walkingDeadSeasonTwoProfile.GameDisplayName);
-            gameComboBox.Items.Add(talesFromTheBorderlandsProfile.GameDisplayName);
-            gameComboBox.Items.Add(gameOfThronesProfile.GameDisplayName);
-            gameComboBox.Items.Add(minecraftStoryModeSeasonOneProfile.GameDisplayName);
-            gameComboBox.Items.Add(walkingDeadMichonneProfile.GameDisplayName);
-            gameComboBox.Items.Add(batmanProfile.GameDisplayName);
-            gameComboBox.Items.Add(guardiansOfTheGalaxyProfile.GameDisplayName);
-            gameComboBox.Items.Add(minecraftStoryModeSeasonTwoProfile.GameDisplayName);
-            gameComboBox.Items.Add(samAndMaxSaveWorldProfile.GameDisplayName);
-            gameComboBox.Items.Add(samAndMaxBeyondTimeAndSpaceRemasterProfile.GameDisplayName);
-            gameComboBox.Items.Add(samAndMaxDevilsPlayhouseRemasterProfile.GameDisplayName);
-            gameComboBox.Items.Add(pokerNightProfile.GameDisplayName);
-            gameComboBox.SelectedIndex = GetSafeSelectedIndex(MainMenu.settings.modCreatorGameIndex, gameComboBox.Items.Count);
+            foreach (string game in GameOrder)
+            {
+                if (profiles.Any(p => p.GameDisplayName == game)) gameComboBox.Items.Add(game);
+            }
+
+            string savedGame = MainMenu.settings.modCreatorGame;
+            if (string.IsNullOrEmpty(savedGame))
+            {
+                int legacyIndex = GetSafeSelectedIndex(MainMenu.settings.modCreatorGameIndex, LegacyGameOrder.Length);
+                savedGame = legacyIndex >= 0 ? LegacyGameOrder[legacyIndex] : null;
+            }
+
+            int gameIndex = savedGame != null ? gameComboBox.Items.IndexOf(savedGame) : -1;
+            gameComboBox.SelectedIndex = gameIndex >= 0 ? gameIndex : GetSafeSelectedIndex(0, gameComboBox.Items.Count);
             gameComboBox.Enabled = true;
 
+            UpdatePlatformOptions(MainMenu.settings.modCreatorPlatform);
             UpdateLayoutOptions();
 
             SetProgress(0);
@@ -206,7 +308,7 @@ namespace TTG_Tools
             SetUiEnabled(false);
             SetProgress(0);
             logListBox.Items.Clear();
-            AddLog("Starting mod creation for " + selectedProfile.GameDisplayName + "...");
+            AddLog("Starting mod creation for " + selectedProfile.GameDisplayName + " (" + selectedProfile.Platform + ")...");
 
             try
             {
@@ -241,8 +343,15 @@ namespace TTG_Tools
             IModCreatorProfile profile,
             ModLayoutOption layoutOption)
         {
-            byte[] gameKey = GetEncryptionKeyForGame(profile.GameDisplayName);
+            if (profile.OodleCompression && !OodleTools.Imports.IsAvailable())
+            {
+                throw new InvalidOperationException(string.Format(Loc.T("ArchivePacker.reportOodleMissing", "Oodle compression needs {0} in the TTG Tools folder. Copy it from a newer Telltale PC game or choose zlib/deflate compression."), OodleTools.Imports.DllName));
+            }
 
+            bool needsKey = profile.EncryptArchive || profile.EncryptLuaInsideArchive || profile.EncryptDescriptor;
+            byte[] gameKey = needsKey ? GetEncryptionKeyForGame(profile.KeyGameName) : null;
+
+            AddLog("Platform: " + profile.Platform + (profile.OodleCompression ? " (Oodle)" : " (zlib)"));
             AddLog("Output folder: " + outputFolder);
             AddLog("Creating archive: " + Path.GetFileName(archivePath));
             SetProgress(5);
@@ -251,10 +360,12 @@ namespace TTG_Tools
                 inputFolder,
                 archivePath,
                 profile.CompressArchive,
+                profile.OodleCompression,
                 profile.EncryptArchive,
                 profile.EncryptLuaInsideArchive,
                 gameKey,
                 profile.Ttarch2Version,
+                profile.PlatformId,
                 profile.NewEngineLua,
                 SetProgress,
                 new HashSet<string>(StringComparer.OrdinalIgnoreCase)
@@ -276,10 +387,15 @@ namespace TTG_Tools
 
             File.WriteAllBytes(luaPath, luaBytes);
 
-            AddLog("Encrypting Lua descriptor in-place...");
-            SetProgress(95);
-            byte[] encryptedLua = Methods.encryptLua(File.ReadAllBytes(luaPath), gameKey, profile.NewEngineLua, profile.DescriptorEncryptionVersion);
-            File.WriteAllBytes(luaPath, encryptedLua);
+            //Console and mobile builds (and The Wolf Among Us - Remastered) read plain descriptors
+            if (profile.EncryptDescriptor)
+            {
+                AddLog("Encrypting Lua descriptor in-place...");
+                SetProgress(95);
+                byte[] encryptedLua = Methods.encryptLua(File.ReadAllBytes(luaPath), gameKey, profile.NewEngineLua, profile.DescriptorEncryptionVersion);
+                File.WriteAllBytes(luaPath, encryptedLua);
+            }
+
             SetProgress(100);
         }
 
@@ -354,73 +470,34 @@ namespace TTG_Tools
         private IModCreatorProfile GetSelectedProfile()
         {
             string selectedGame = gameComboBox.SelectedItem as string;
+            PlatformItem selectedPlatform = platformComboBox.SelectedItem as PlatformItem;
+            if (selectedGame == null || selectedPlatform == null) return null;
 
-            if (string.Equals(selectedGame, pokerNightProfile.GameDisplayName, StringComparison.Ordinal))
+            return profiles.FirstOrDefault(p => p.GameDisplayName == selectedGame && p.Platform == selectedPlatform.Code);
+        }
+
+        //Lists only the platforms that have a profile for the selected game
+        private void UpdatePlatformOptions(string preferredPlatform)
+        {
+            string selectedGame = gameComboBox.SelectedItem as string;
+            platformComboBox.Items.Clear();
+
+            for (int i = 0; i < PlatformCodes.Length; i++)
             {
-                return pokerNightProfile;
+                string code = PlatformCodes[i];
+                if (profiles.Any(p => p.GameDisplayName == selectedGame && p.Platform == code))
+                {
+                    platformComboBox.Items.Add(new PlatformItem { Code = code, Name = PlatformNames[i] });
+                }
             }
 
-            if (string.Equals(selectedGame, samAndMaxSaveWorldProfile.GameDisplayName, StringComparison.Ordinal))
+            int index = 0;
+            for (int i = 0; i < platformComboBox.Items.Count; i++)
             {
-                return samAndMaxSaveWorldProfile;
+                if (((PlatformItem)platformComboBox.Items[i]).Code == preferredPlatform) index = i;
             }
 
-            if (string.Equals(selectedGame, minecraftStoryModeSeasonTwoProfile.GameDisplayName, StringComparison.Ordinal))
-            {
-                return minecraftStoryModeSeasonTwoProfile;
-            }
-
-            if (string.Equals(selectedGame, walkingDeadSeasonTwoProfile.GameDisplayName, StringComparison.Ordinal))
-            {
-                return walkingDeadSeasonTwoProfile;
-            }
-
-            if (string.Equals(selectedGame, wolfAmongUsProfile.GameDisplayName, StringComparison.Ordinal))
-            {
-                return wolfAmongUsProfile;
-            }
-
-            if (string.Equals(selectedGame, walkingDeadMichonneProfile.GameDisplayName, StringComparison.Ordinal))
-            {
-                return walkingDeadMichonneProfile;
-            }
-
-            if (string.Equals(selectedGame, batmanProfile.GameDisplayName, StringComparison.Ordinal))
-            {
-                return batmanProfile;
-            }
-
-            if (string.Equals(selectedGame, samAndMaxBeyondTimeAndSpaceRemasterProfile.GameDisplayName, StringComparison.Ordinal))
-            {
-                return samAndMaxBeyondTimeAndSpaceRemasterProfile;
-            }
-
-            if (string.Equals(selectedGame, gameOfThronesProfile.GameDisplayName, StringComparison.Ordinal))
-            {
-                return gameOfThronesProfile;
-            }
-
-            if (string.Equals(selectedGame, samAndMaxDevilsPlayhouseRemasterProfile.GameDisplayName, StringComparison.Ordinal))
-            {
-                return samAndMaxDevilsPlayhouseRemasterProfile;
-            }
-
-            if (string.Equals(selectedGame, guardiansOfTheGalaxyProfile.GameDisplayName, StringComparison.Ordinal))
-            {
-                return guardiansOfTheGalaxyProfile;
-            }
-
-            if (string.Equals(selectedGame, talesFromTheBorderlandsProfile.GameDisplayName, StringComparison.Ordinal))
-            {
-                return talesFromTheBorderlandsProfile;
-            }
-
-            if (string.Equals(selectedGame, minecraftStoryModeSeasonOneProfile.GameDisplayName, StringComparison.Ordinal))
-            {
-                return minecraftStoryModeSeasonOneProfile;
-            }
-
-            return null;
+            if (platformComboBox.Items.Count > 0) platformComboBox.SelectedIndex = index;
         }
 
         private ModLayoutOption GetSelectedLayoutOption(IModCreatorProfile profile)
@@ -530,17 +607,33 @@ namespace TTG_Tools
             browseOutputButton.Enabled = enabled;
             createModButton.Enabled = enabled;
             gameComboBox.Enabled = enabled;
+            platformComboBox.Enabled = enabled;
             modLayoutComboBox.Enabled = enabled && GetSelectedProfile() != null && GetSelectedProfile().RequiresLayoutSelection;
             modLayoutLabel.Enabled = enabled && GetSelectedProfile() != null && GetSelectedProfile().RequiresLayoutSelection;
         }
 
         private void gameComboBox_SelectedIndexChanged(object sender, EventArgs e)
         {
+            PlatformItem currentPlatform = platformComboBox.SelectedItem as PlatformItem;
+            UpdatePlatformOptions(currentPlatform != null ? currentPlatform.Code : MainMenu.settings.modCreatorPlatform);
             UpdateLayoutOptions();
             if (loadingSettings) return;
             if (gameComboBox.SelectedIndex < 0) return;
 
             MainMenu.settings.modCreatorGameIndex = gameComboBox.SelectedIndex;
+            MainMenu.settings.modCreatorGame = gameComboBox.SelectedItem as string;
+            Settings.SaveConfig(MainMenu.settings);
+        }
+
+        private void platformComboBox_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            UpdateLayoutOptions();
+            if (loadingSettings) return;
+
+            PlatformItem platform = platformComboBox.SelectedItem as PlatformItem;
+            if (platform == null) return;
+
+            MainMenu.settings.modCreatorPlatform = platform.Code;
             Settings.SaveConfig(MainMenu.settings);
         }
 
@@ -585,10 +678,12 @@ namespace TTG_Tools
             string inputFolder,
             string outputPath,
             bool compression,
+            bool oodle,
             bool encryption,
             bool encLua,
             byte[] key,
             int versionArchive,
+            int platformId,
             bool newEngine,
             Action<int> progressCallback,
             ISet<string> excludedPaths)
@@ -703,7 +798,7 @@ namespace TTG_Tools
 
                 if (versionArchive == 1)
                 {
-                    fs.Write(BitConverter.GetBytes(2), 0, 4);
+                    fs.Write(BitConverter.GetBytes(platformId), 0, 4);
                 }
 
                 fs.Write(BitConverter.GetBytes(nameSize), 0, 4);
@@ -742,26 +837,38 @@ namespace TTG_Tools
             {
                 ulong fullIt = Methods.pad_it(commonSize, 0x10000);
                 uint blocksCount = (uint)fullIt / 0x10000;
-                byte[] compressedHeader = encryption ? Encoding.ASCII.GetBytes("ECTT") : Encoding.ASCII.GetBytes("ZCTT");
+                byte[] compressedHeader;
+                if (oodle) compressedHeader = encryption ? Encoding.ASCII.GetBytes("eCTT") : Encoding.ASCII.GetBytes("zCTT");
+                else compressedHeader = encryption ? Encoding.ASCII.GetBytes("ECTT") : Encoding.ASCII.GetBytes("ZCTT");
                 byte[] chunkSize = { 0x00, 0x00, 0x01, 0x00 };
                 ulong chunkTableSize = 8 * blocksCount + 8;
-                offset = chunkTableSize + 12;
+                int tableOffset = oodle ? 16 : 12; //Oodle archives keep an extra int (1) after the magic
+                offset = chunkTableSize + (ulong)tableOffset;
                 byte[] chunkTable = new byte[chunkTableSize];
 
                 Array.Copy(BitConverter.GetBytes(offset), 0, chunkTable, 0, 8);
 
                 fs.Write(compressedHeader, 0, compressedHeader.Length);
+                if (oodle) fs.Write(BitConverter.GetBytes(1), 0, 4);
                 fs.Write(chunkSize, 0, 4);
                 fs.Write(BitConverter.GetBytes(blocksCount), 0, 4);
                 fs.Write(chunkTable, 0, chunkTable.Length);
 
-                tempFr.Seek(versionArchive == 1 ? 16 : 12, SeekOrigin.Begin);
+                tempFr.Seek(12, SeekOrigin.Begin); //Skip "NCTT" and the size; "3ATT"/"4ATT" belongs to the compressed stream
 
                 for (int i = 0; i < blocksCount; i++)
                 {
                     byte[] temp = new byte[0x10000];
                     tempFr.Read(temp, 0, temp.Length);
-                    byte[] compressedBlock = DeflateCompressor(temp);
+                    byte[] compressedBlock;
+
+                    if (oodle)
+                    {
+                        //A chunk Oodle can't shrink is stored raw; readers recognise it by its full chunk size
+                        compressedBlock = ArchivePacker.OodleCompress(temp);
+                        if (compressedBlock.Length >= temp.Length) compressedBlock = temp;
+                    }
+                    else compressedBlock = DeflateCompressor(temp);
 
                     if (encryption)
                     {
@@ -779,7 +886,7 @@ namespace TTG_Tools
                     }
                 }
 
-                fs.Seek(12, SeekOrigin.Begin);
+                fs.Seek(tableOffset, SeekOrigin.Begin);
                 fs.Write(chunkTable, 0, chunkTable.Length);
             }
 
@@ -839,6 +946,11 @@ namespace TTG_Tools
         private interface IModCreatorProfile
         {
             string GameDisplayName { get; }
+            string Platform { get; }
+            int PlatformId { get; }
+            bool OodleCompression { get; }
+            string KeyGameName { get; }
+            bool EncryptDescriptor { get; }
             bool CompressArchive { get; }
             bool EncryptArchive { get; }
             bool EncryptLuaInsideArchive { get; }
@@ -858,6 +970,11 @@ namespace TTG_Tools
         private class PokerNightRemasterProfile : IModCreatorProfile
         {
             public string GameDisplayName => "Poker Night at the Inventory - Remastered";
+            public string Platform => "PC";
+            public int PlatformId => 2;
+            public bool OodleCompression => false;
+            public string KeyGameName => GameDisplayName;
+            public bool EncryptDescriptor => true;
             public bool CompressArchive => true;
             public bool EncryptArchive => true;
             public bool EncryptLuaInsideArchive => true;
@@ -927,6 +1044,11 @@ namespace TTG_Tools
         private class SamAndMaxSaveWorldRemasterProfile : IModCreatorProfile
         {
             public string GameDisplayName => "Sam & Max: Save the World - Remastered";
+            public string Platform => "PC";
+            public int PlatformId => 2;
+            public bool OodleCompression => false;
+            public string KeyGameName => GameDisplayName;
+            public bool EncryptDescriptor => true;
             public bool CompressArchive => true;
             public bool EncryptArchive => true;
             public bool EncryptLuaInsideArchive => false;
@@ -1029,6 +1151,11 @@ namespace TTG_Tools
             }
 
             public virtual string GameDisplayName { get; }
+            public virtual string Platform => "PC";
+            public virtual int PlatformId => 2;
+            public virtual bool OodleCompression => false;
+            public virtual string KeyGameName => GameDisplayName;
+            public virtual bool EncryptDescriptor => true;
             public virtual bool CompressArchive => true;
             public virtual bool EncryptArchive => true;
             public virtual bool EncryptLuaInsideArchive => true;
@@ -1054,14 +1181,21 @@ namespace TTG_Tools
                 return descriptorPrefix + layoutOption.ArchiveSegment + "_" + modName + descriptorExtension;
             }
 
+            //Name registered for the set; the newer profiles make it unique per layout (Boot_MyMod, Menu_MyMod...)
+            protected virtual string GetSetName(string modName, ModLayoutOption layoutOption)
+            {
+                return modName;
+            }
+
             public string BuildLuaDescriptor(string modName, string archiveFileName, ModLayoutOption layoutOption)
             {
                 string logicalDestination = string.IsNullOrEmpty(layoutOption.LogicalDestination) ? "<>" : "<" + layoutOption.LogicalDestination + ">";
+                string setName = GetSetName(modName, layoutOption);
 
                 StringBuilder sb = new StringBuilder();
                 sb.AppendLine("local set = {}");
-                sb.AppendLine("set.name = \"" + modName + "\"");
-                sb.AppendLine("set.setName = \"" + modName + "\"");
+                sb.AppendLine("set.name = \"" + setName + "\"");
+                sb.AppendLine("set.setName = \"" + setName + "\"");
                 sb.AppendLine("set.descriptionFilenameOverride = \"" + layoutOption.DescriptionFilenameOverride + "\"");
                 sb.AppendLine("set.logicalName = \"<" + layoutOption.LogicalName + ">\"");
                 sb.AppendLine("set.logicalDestination = \"" + logicalDestination + "\"");
@@ -1070,7 +1204,7 @@ namespace TTG_Tools
                 sb.AppendLine("set.enableMode = \"" + layoutOption.EnableMode + "\"");
                 sb.AppendLine("set.version = \"" + layoutOption.Version + "\"");
                 sb.AppendLine("set.descriptionPriority = " + layoutOption.EffectiveDescriptionPriority);
-                sb.AppendLine("set.gameDataName = \"" + modName + " Game Data\"");
+                sb.AppendLine("set.gameDataName = \"" + setName + " Game Data\"");
                 sb.AppendLine("set.gameDataPriority = " + layoutOption.EffectiveGameDataPriority);
                 sb.AppendLine("set.gameDataEnableMode = \"constant\"");
                 sb.AppendLine("set.localDirIncludeBase = true");
@@ -1091,6 +1225,86 @@ namespace TTG_Tools
                 sb.AppendLine("RegisterSetDescription(set)");
 
                 return sb.ToString();
+            }
+        }
+
+        private enum DescriptorMode
+        {
+            PlainText,      //consoles, mobile and The Wolf Among Us - Remastered ship readable descriptors
+            EncryptedText   //newer PC games: Lua source encrypted with the "LEo" header
+        }
+
+        //Platform id stored after "3ATT" in version 1 .ttarch2 archives (version 2 archives don't keep it)
+        private static int GetPlatformId(string platform)
+        {
+            switch (platform)
+            {
+                case "Xbox": return 4;
+                case "PS3": return 5;
+                case "iOS": return 7;
+                case "PS Vita": return 9;
+                case "PS4": return 11;
+                default: return 2;
+            }
+        }
+
+        private enum Compression
+        {
+            Zlib,   //"ZCTT"/"ECTT" archives
+            Oodle   //"zCTT"/"eCTT" archives (Oodle Kraken)
+        }
+
+        private class PlatformProfile : ResourceDescriptorProfile
+        {
+            private readonly Compression compression;
+            private readonly string platform;
+            private readonly string keyGameName;
+            private readonly int ttarch2Version;
+            private readonly bool encryptArchive;
+            private readonly bool encryptLua;
+            private readonly DescriptorMode descriptorMode;
+
+            public PlatformProfile(
+                string gameDisplayName,
+                string keyGameName,
+                string platform,
+                string archivePrefix,
+                string descriptorPrefix,
+                int ttarch2Version,
+                bool encryptArchive,
+                bool encryptLua,
+                DescriptorMode descriptorMode,
+                Compression compression,
+                List<ModLayoutOption> layouts)
+                : base(gameDisplayName, archivePrefix, descriptorPrefix, ".lua", false, 1, layouts)
+            {
+                this.compression = compression;
+                this.platform = platform;
+                this.keyGameName = keyGameName;
+                this.ttarch2Version = ttarch2Version;
+                this.encryptArchive = encryptArchive;
+                this.encryptLua = encryptLua;
+                this.descriptorMode = descriptorMode;
+            }
+
+            public override string Platform => platform;
+            public override int PlatformId => GetPlatformId(platform);
+            public override bool OodleCompression => compression == Compression.Oodle;
+            public override string KeyGameName => keyGameName;
+            public override bool EncryptDescriptor => descriptorMode == DescriptorMode.EncryptedText;
+            public override bool CompressArchive => true;
+            public override bool EncryptArchive => encryptArchive;
+            public override bool EncryptLuaInsideArchive => encryptLua;
+            public override bool NewEngineLua => true;
+            public override int Ttarch2Version => ttarch2Version;
+            public override bool RequiresLayoutSelection => true;
+            public override int DescriptorEncryptionVersion => 7;
+            public override bool CompileDescriptor => false;
+            public override int DescriptorLuaVersionIndex => 1;
+
+            protected override string GetSetName(string modName, ModLayoutOption layoutOption)
+            {
+                return layoutOption.ArchiveSegment + "_" + modName;
             }
         }
 
@@ -1553,6 +1767,11 @@ namespace TTG_Tools
         private class MinecraftStoryModeSeasonTwoProfile : IModCreatorProfile
         {
             public string GameDisplayName => "Minecraft: Story Mode - Season Two";
+            public string Platform => "PC";
+            public int PlatformId => 2;
+            public bool OodleCompression => false;
+            public string KeyGameName => GameDisplayName;
+            public bool EncryptDescriptor => true;
             public bool CompressArchive => true;
             public bool EncryptArchive => true;
             public bool EncryptLuaInsideArchive => true;

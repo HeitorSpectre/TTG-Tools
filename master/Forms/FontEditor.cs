@@ -727,7 +727,8 @@ namespace TTG_Tools
             // like every other platform. DecodePvrContentToRgba returns R,G,B,A; the bitmap buffer
             // needs B,G,R,A (Format32bppArgb memory order).
             int pvrW, pvrH;
-            byte[] pvrRgba = Graphics.TextureWorker.DecodePvrContentToRgba(texContent, out pvrW, out pvrH);
+            byte[] pvrRgba = Graphics.TextureWorker.DecodePvrContentToRgba(
+                texContent, out pvrW, out pvrH, !font.NewFormat);
             if (pvrRgba != null)
             {
                 byte[] pvrBgra = new byte[pvrRgba.Length];
@@ -2782,7 +2783,8 @@ namespace TTG_Tools
                 {
                     byte[] iosContent = font.NewFormat ? font.NewTex[file_n].Tex.Content : font.tex[file_n].Content;
                     int iosW, iosH;
-                    byte[] iosRgba = Graphics.TextureWorker.DecodePvrContentToRgba(iosContent, out iosW, out iosH);
+                    byte[] iosRgba = Graphics.TextureWorker.DecodePvrContentToRgba(
+                        iosContent, out iosW, out iosH, !font.NewFormat);
                     if (iosRgba != null)
                     {
                         Methods.DeleteCurrentFile(saveFD.FileName);
@@ -2883,11 +2885,14 @@ namespace TTG_Tools
                 }
                 else if (isIosFont)
                 {
-                    // iOS: convert the edited PNG to uncompressed ARGB4444 wrapped in a PVR, then
+                    // iOS: convert the edited PNG to an uncompressed PVR, then
                     // store it exactly like the texture editor's re-inject path so SaveFont writes
-                    // it back (new format -> platform 7 / ARGB4 via ReplaceTexture; old ERTM format
-                    // -> mobTexFormat RGBA4444 via ReplaceOldTextures).
-                    byte[] iosPvr = Graphics.DDS.DdsPngConverter.PngToPvrArgb4(File.ReadAllBytes(openFD.FileName));
+                    // it back. Old ERTM fonts use RGBA4444 with Puzzle Agent's R,G,B,A
+                    // nibble order; later platform-7 fonts retain the community-compatible
+                    // B,G,R,A order.
+                    byte[] iosPvr = font.NewFormat
+                        ? Graphics.DDS.DdsPngConverter.PngToPvrArgb4(File.ReadAllBytes(openFD.FileName))
+                        : Graphics.DDS.DdsPngConverter.PngToPvrArgb4(File.ReadAllBytes(openFD.FileName), true);
                     if (iosPvr == null)
                     {
                         MessageBox.Show(Loc.T("FontEditor.msgIosPngFailed", "Could not convert the PNG for this iOS font texture."),

@@ -496,7 +496,11 @@ namespace TTG_Tools
                     {
                         GameIndex = gameIndex,
                         EncMethodIndex = methodIndex,
-                        NewEngineLua = methodIndex == 1 || newEngineHeader,
+                        // Blowfish versions 7-9 and the LEn/LEo wrapper are independent
+                        // choices. Some classic scripts (for example Law & Order: Legacies)
+                        // use Blowfish 7 over the whole Lua chunk but do not use the
+                        // new-engine header. Only the explicit header proves this option.
+                        NewEngineLua = newEngineHeader,
                         LuaVersionIndex = DetectLuaVersionFromBytes(decoded) ?? -1,
                         WorkflowModeIndex = string.Equals(ext, ".lenc", StringComparison.OrdinalIgnoreCase) ? 0 : 1,
                         DecodedBytes = decoded,

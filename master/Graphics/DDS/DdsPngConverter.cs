@@ -93,6 +93,12 @@ namespace TTG_Tools.Graphics.DDS
                 if (!IsConvertible(format)) return null;
                 if (mipCount < 1) mipCount = 1;
 
+                // DirectXTex gives substantially better BC compression than the small
+                // self-contained encoder below and preserves BC1/2/3/4/5 plus the full mip
+                // count. Keep the managed implementation as a resilient fallback.
+                byte[] directXTexDds = DirectXTexBridge.CompressPngToDds(png, format, mipCount);
+                if (directXTexDds != null) return directXTexDds;
+
                 int w, h;
                 byte[] rgba0 = PngToRgba(png, out w, out h);
                 if (rgba0 == null || w <= 0 || h <= 0) return null;
@@ -127,6 +133,15 @@ namespace TTG_Tools.Graphics.DDS
         // and A8 textures stay A8. Returns null on failure.
         public static byte[] PngToUncompressedDds(byte[] png, uint format, int mipCount)
         {
+            return PngToUncompressedDds(png, format, mipCount, false);
+        }
+
+        // Android platform-7 ARGB8 textures store their channels as literal RGBA, unlike the
+        // BGRA byte order used by PC DDS and Vita ARGB8. The DDS wrapper is only an internal
+        // transport for TextureWorker; this flag keeps the mip payload in the platform's native
+        // order so ReplaceNewTextures can write it back without a lossy format change.
+        public static byte[] PngToUncompressedDds(byte[] png, uint format, int mipCount, bool storeArgb8AsRgba)
+        {
             try
             {
                 if (format != 0x00 && format != 0x10) return null;
@@ -144,14 +159,14 @@ namespace TTG_Tools.Graphics.DDS
                         byte[] rgba = (m == 0) ? rgba0 : Downscale(rgba0, w, h, mw, mh);
                         int px = mw * mh;
 
-                        if (format == 0x00) // ARGB8 stored as BGRA
+                        if (format == 0x00)
                         {
                             byte[] enc = new byte[px * 4];
                             for (int i = 0; i < px; i++)
                             {
-                                enc[i * 4] = rgba[i * 4 + 2];     // B
+                                enc[i * 4] = storeArgb8AsRgba ? rgba[i * 4] : rgba[i * 4 + 2]; // R or B
                                 enc[i * 4 + 1] = rgba[i * 4 + 1]; // G
-                                enc[i * 4 + 2] = rgba[i * 4];     // R
+                                enc[i * 4 + 2] = storeArgb8AsRgba ? rgba[i * 4 + 2] : rgba[i * 4]; // B or R
                                 enc[i * 4 + 3] = rgba[i * 4 + 3]; // A
                             }
                             body.Write(enc, 0, enc.Length);
@@ -179,12 +194,18 @@ namespace TTG_Tools.Graphics.DDS
         // Converts an edited PNG into a single-mip PVR3 file holding uncompressed ARGB4444
         // (Telltale eSurface_ARGB4, 0x04). This is the format the community iOS mods use to
         // re-inject edited UI/textures: 2 bytes/pixel (half of ARGB8), no PVRTC re-encoder
-        // needed, and natively supported by the iOS engine. The 16-bit value is packed as
-        // B<<12 | G<<8 | R<<4 | A (alpha in the low nibble) so it is the exact inverse of
-        // TextureWorker.DecodeUncompressedToRgba's 0x04 path. The PVR pixel-format label is
-        // "rgba4444" (ChannelType 4), matching GenPvrHeader's 0x04 case so the re-insert
-        // pipeline reads it back as texture format 0x04.
+        // needed, and natively supported by the mobile engine. The default overload preserves
+        // the community-compatible later-iOS B,G,R,A nibble layout. Android and old ERTM iOS
+        // callers select the R,G,B,A layout below. The PVR pixel-format label is "rgba4444" (ChannelType 4),
+        // matching GenPvrHeader's 0x04 case so the re-insert pipeline reads it back as 0x04.
         public static byte[] PngToPvrArgb4(byte[] png)
+        {
+            return PngToPvrArgb4(png, false);
+        }
+
+        // The R,G,B,A layout is used by Android and by old ERTM iOS games such as Puzzle Agent.
+        // Later platform-7 iOS community mods use the opposite B,G,R,A layout.
+        public static byte[] PngToPvrArgb4(byte[] png, bool rgbaNibbleOrder)
         {
             try
             {
@@ -200,12 +221,49 @@ namespace TTG_Tools.Graphics.DDS
                     int g = (rgba[i * 4 + 1] * 15 + 127) / 255;
                     int b = (rgba[i * 4 + 2] * 15 + 127) / 255;
                     int a = (rgba[i * 4 + 3] * 15 + 127) / 255;
-                    int v = (b << 12) | (g << 8) | (r << 4) | a;
+                    int v = rgbaNibbleOrder
+                        ? (r << 12) | (g << 8) | (b << 4) | a
+                        : (b << 12) | (g << 8) | (r << 4) | a;
                     data[i * 2] = (byte)(v & 0xFF);
                     data[i * 2 + 1] = (byte)((v >> 8) & 0xFF);
                 }
 
                 return BuildArgb4PvrHeader(w, h).Concat(data);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        // Old ERTM iOS games accept this exact uncompressed format in shipped/modded assets.
+        // Puzzle Agent's working Russian localization uses mobTexFormat 0x8010 extensively.
+        // RGB receives 5 bits per channel (less colour noise than ARGB4444); alpha is 1 bit.
+        public static byte[] PngToPvrRgba5551(byte[] png)
+        {
+            try
+            {
+                int w, h;
+                byte[] rgba = PngToRgba(png, out w, out h);
+                if (rgba == null || w <= 0 || h <= 0) return null;
+
+                int px = w * h;
+                byte[] data = new byte[px * 2];
+                for (int i = 0; i < px; i++)
+                {
+                    int r = (rgba[i * 4] * 31 + 127) / 255;
+                    int g = (rgba[i * 4 + 1] * 31 + 127) / 255;
+                    int b = (rgba[i * 4 + 2] * 31 + 127) / 255;
+                    int a = rgba[i * 4 + 3] >= 128 ? 1 : 0;
+
+                    // PVR rgba5551 stores channels from the least-significant bits:
+                    // RRRRR GGGGG BBBBB A -> numeric B<<11 | G<<6 | R<<1 | A.
+                    int v = (b << 11) | (g << 6) | (r << 1) | a;
+                    data[i * 2] = (byte)(v & 0xFF);
+                    data[i * 2 + 1] = (byte)((v >> 8) & 0xFF);
+                }
+
+                return BuildRgba5551PvrHeader(w, h).Concat(data);
             }
             catch
             {
@@ -232,6 +290,28 @@ namespace TTG_Tools.Graphics.DDS
                 bw.Write((uint)1);   // Face
                 bw.Write((uint)1);   // Mip
                 bw.Write((uint)0);   // MetaSize
+            }
+            return hdr;
+        }
+
+        private static byte[] BuildRgba5551PvrHeader(int width, int height)
+        {
+            byte[] hdr = new byte[52];
+            using (MemoryStream ms = new MemoryStream(hdr))
+            using (BinaryWriter bw = new BinaryWriter(ms))
+            {
+                bw.Write(BitConverter.ToUInt32(System.Text.Encoding.ASCII.GetBytes("PVR\x03"), 0));
+                bw.Write((uint)0);
+                bw.Write(BitConverter.ToUInt64(System.Text.Encoding.ASCII.GetBytes("rgba\x5\x5\x5\x1"), 0));
+                bw.Write((uint)0);
+                bw.Write((uint)4); // Unsigned short normalised
+                bw.Write((uint)height);
+                bw.Write((uint)width);
+                bw.Write((uint)1);
+                bw.Write((uint)1);
+                bw.Write((uint)1);
+                bw.Write((uint)1);
+                bw.Write((uint)0);
             }
             return hdr;
         }

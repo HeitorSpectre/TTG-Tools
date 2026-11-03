@@ -187,14 +187,44 @@ Maybe some games doesn't work.
 ===
 [Version history]
 
-v.1.16.2 (08.07.2026)
+v.1.16.2 (03.11.2026)
 + Archive Unpacker:
 Improved the Archive Unpacker interface with a cleaner Telltale Explorer-inspired layout, a better organized file list, integrated previews for supported images, textures, fonts, text, localization, Lua and script files, sortable file columns, and cleaner filters.
+Added encryption keys for the CSI: Hard Evidence, Wallace &amp; Gromit's Grand Adventures and CSI: Deadly Intent demos and for the Tales of Monkey Island launcher.
+Added support for the oldest archive formats (Sam &amp; Max: Save the World 2007, the 2006 Sam &amp; Max demo and Bone for Mac). Bone for Mac uses the CSI: 3 Dimensions of Murder key, and the key name now says so.
+Fixed opening compressed Xbox archives (Sam &amp; Max: Save the World) and Wii archives (Tales of Monkey Island episodes 4 and 5).
+Console archives (PlayStation 4, Nintendo Switch, Xbox One and iOS) are not encrypted, they need the Oodle library. A clear warning is now shown when it is missing instead of a wrong-key error.
+Archives of games installed under Program Files now open without administrator rights.
+Fixed selecting several files with Ctrl and Shift.
+The list of files that could not be extracted is now shown.
+Added previews for web page and script files.
++ Archive Packer:
+Added a platform option (PC, Wii, Xbox 360, PlayStation 3, Mac, iOS, PlayStation Vita and PlayStation 4).
+Rebuilt console archives now match the original ones (checked on 100 games).
+Fixed games ignoring the files of containers with only a few files (for example The Wolf Among Us - Remastered).
+Fixed a crash when compressing with Oodle. Oodle archives now use the same compression as the original games.
+Added support for creating the oldest archive versions (0 and 1).
+Added support for very long folder and file names.
 + Mod Creator:
 Added Mod Creator support for The Walking Dead: Season Two, The Wolf Among Us, The Walking Dead: Michonne, Batman: The Telltale Series, Game of Thrones: A Telltale Games Series, Guardians of the Galaxy: A Telltale Games Series, Tales From the Borderlands (2014/2015), Minecraft: Story Mode - Season One, Minecraft: Story Mode - Season Two, Sam &amp; Max: Beyond Time and Space - Remastered and Sam &amp; Max: The Devil's Playhouse - Remastered.
 Improved the game list order and names to match the rest of the tool and made the selected Mod Creator game persist between sessions.
+Added a platform option (PC, PlayStation 3, PlayStation 4, Xbox, Nintendo Switch, PlayStation Vita and iOS) with profiles for the console and mobile versions.
+Added Mod Creator support for Batman: The Enemy Within, The Walking Dead: A New Frontier, The Walking Dead: The Final Season, The Walking Dead: The Telltale Definitive Series, The Walking Dead: The Telltale Series - Collection, The Walking Dead: Season One, Back to the Future: The Game - 30th Anniversary Edition and The Wolf Among Us - Remastered.
+The game list now follows the release order and mods use the same compression as each original game.
+Fixed mods for The Wolf Among Us, The Walking Dead: Season Two, Game of Thrones and Tales From the Borderlands.
++ Auto(De)Packer:
+Improved texture conversion quality with DirectXTex (now included with the tool).
+Added more iOS texture formats and Android texture support.
+PNG files are now accepted when importing textures of every platform.
+Clearer texture format names in the extraction log.
 + Font Editor:
 Added support for extracting and reinserting Xbox 360 fonts from older games.
+Fixed the colors of old iOS fonts (for example Puzzle Agent).
++ Lua Editor:
+Fixed the detection of the encryption type in some older games (for example Law &amp; Order: Legacies).
++ TTG Tools:
+The Oodle library is now included with the tool.
+All new texts are translated into the 13 interface languages.
 
 v.1.16.1 (06.07.2026)
 + Auto(De)Packer:

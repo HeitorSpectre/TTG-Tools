@@ -1185,7 +1185,7 @@ namespace TTG_Tools
 
         public static bool meta_check(FileInfo fi)
         {
-            FileStream fs = new FileStream(fi.FullName, FileMode.Open);
+            FileStream fs = new FileStream(ArchiveUnpacker.ToLongPath(fi.FullName), FileMode.Open);
             
             byte[] header = new byte[4];
             fs.Read(header, 0, header.Length);

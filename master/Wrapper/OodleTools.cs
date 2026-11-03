@@ -1,6 +1,7 @@
 ﻿//Used from here: https://github.com/Tamely/Oodle-Tools/tree/main
 //Imported dll from here: https://aluigi.altervista.org/papers/ttarchext.zip
 
+using System;
 using System.Runtime.InteropServices;
 
 namespace OodleTools
@@ -41,13 +42,27 @@ namespace OodleTools
 
     public class Imports
     {
+        public const string DllName = "oo2core_5_win64.dll";
+
+        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        private static extern IntPtr LoadLibrary(string fileName);
+
+        /// <summary>
+        /// Checks if the Oodle library can be loaded. It isn't shipped with the tool, so zCTT/eCTT
+        /// archives (newer PC games and every console port since Batman) can't be read without it.
+        /// </summary>
+        public static bool IsAvailable()
+        {
+            return LoadLibrary(DllName) != IntPtr.Zero;
+        }
+
         /// <summary>
         /// Does a math operation to determine the max size the compressed data can be.
         /// </summary>
         /// <param name="BufferSize">uint: The length of the decompressed buffer.</param>
         /// <returns>uint: The max size the compressed buffer can be.</returns>
         internal static uint GetCompressedBounds(uint BufferSize)
-            => BufferSize + 274 * ((BufferSize + 0x3FFFF) / 0x400000);
+            => BufferSize + 274 * ((BufferSize + 0x3FFFF) / 0x40000) + 0x100; //274 bytes per 256KB block (was /0x400000, leaving no room for incompressible chunks)
 
         /// <summary>
         /// This should never be called!!! If you are going to compress something, use the Compress method in the Oodle class and don't call it from the library directly!
@@ -62,7 +77,7 @@ namespace OodleTools
         /// <param name="c">uint: unused</param>
         /// <returns>int: The length of the compressed data.</returns>
         [DllImport("oo2core_5_win64.dll")]
-        internal static extern int OodleLZ_Compress(OodleFormat Format, byte[] Buffer, long BufferSize, byte[] OutputBuffer, OodleCompressionLevel Level, uint a, uint b, uint c);
+        internal static extern long OodleLZ_Compress(OodleFormat Format, byte[] Buffer, long BufferSize, byte[] OutputBuffer, OodleCompressionLevel Level, long options, long dictionaryBase, long lrm, long scratchMem, long scratchSize);
 
         /// <summary>
         /// This should never be called!!! If you are going to decompress something, use the Decompress method in the Oodle class and don't call it from the library directly!
@@ -83,6 +98,6 @@ namespace OodleTools
         /// <param name="ThreadModule">int: not really used, pass nullptr/void* in cpp or just 0 in C#</param>
         /// <returns>int: The length of the decompressed data.</returns>
         [DllImport("oo2core_5_win64.dll")]
-        internal static extern int OodleLZ_Decompress(byte[] Buffer, long BufferSize, byte[] OutputBuffer, long OutputBufferSize, uint a, uint b, uint c, uint d, uint e, uint f, uint g, uint h, uint i, int ThreadModule);
+        internal static extern long OodleLZ_Decompress(byte[] Buffer, long BufferSize, byte[] OutputBuffer, long OutputBufferSize, int fuzzSafe, int checkCRC, int verbosity, long decBufBase, long decBufSize, long fpCallback, long callbackUserData, long decoderMemory, long decoderMemorySize, int threadPhase);
     }
 }

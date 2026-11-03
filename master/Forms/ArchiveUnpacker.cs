@@ -3,11 +3,13 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.IO;
+using System.Diagnostics;
 using System.Windows.Forms;
 using TTG_Tools.ClassesStructs;
 using System.Threading.Tasks;
 using System.Runtime.Remoting.Messaging;
 using Microsoft.WindowsAPICodePack.Dialogs;
+using System.Drawing;
 
 namespace TTG_Tools
 {
@@ -25,10 +27,15 @@ namespace TTG_Tools
             filesDataGridView.ReadOnly = true;
             filesDataGridView.EditMode = DataGridViewEditMode.EditProgrammatically;
             filesDataGridView.ColumnHeaderMouseClick += filesDataGridView_ColumnHeaderMouseClick;
+            filesDataGridView.PreviewMouseDown += filesDataGridView_MouseDown;
+            filesDataGridView.MouseMove += filesDataGridView_MouseMove;
             previewTextBox.MaxLength = 1000000;
+            previewTextBox.DetectUrls = true;
+            previewTextBox.LinkClicked += previewTextBox_LinkClicked;
 
             previewPictureBox.Resize += (s, e) => AdjustPreviewSizeMode();
             ShowPreviewMessage("");
+            CleanupStaleDragFolders();
         }
 
         private static ClassesStructs.TtarchClass ttarch;
@@ -48,6 +55,21 @@ namespace TTG_Tools
         private bool suppressCustomKeyEvent;
         private bool loadingSettings;
         private int archiveInfoBaseWidth;
+        private const int SearchButtonMinWidth = 75;
+        private const int SearchButtonMaxWidth = 120;
+        private Point fileDragStartPoint;
+        private bool fileDragArmed;
+        private bool preparingFileDrag;
+        private int[] pendingFileDragIndexes;
+        private static readonly string DragTempRoot = Path.Combine(Path.GetTempPath(), "TTGTools_DragOut");
+
+        // Archives are input files. Opening them must never request write access or change their
+        // attributes: both operations fail for ordinary users when a game is installed below
+        // Program Files, even though reading the archive itself is permitted.
+        private static FileStream OpenArchiveReadStream(string path)
+        {
+            return new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+        }
 
         private void ArrangeTopPanel()
         {
@@ -69,6 +91,7 @@ namespace TTG_Tools
                 searchFilesByNameCB.Anchor = AnchorStyles.Top | AnchorStyles.Left;
                 searchTB.Anchor = AnchorStyles.Top | AnchorStyles.Left;
                 searchBtn.Anchor = AnchorStyles.Top | AnchorStyles.Left;
+                searchBtn.AutoSize = false;
                 decryptLuaCB.Anchor = AnchorStyles.Top | AnchorStyles.Left;
             }
 
@@ -94,14 +117,18 @@ namespace TTG_Tools
 
             searchFilesByNameCB.SetBounds(left, 74, searchFilesByNameCB.PreferredSize.Width, searchFilesByNameCB.Height);
             searchTB.SetBounds(controlLeft, 72, 300, searchTB.Height);
-            int searchButtonWidth = Math.Max(75, searchBtn.PreferredSize.Width + 12);
+            int searchButtonWidth = Math.Max(SearchButtonMinWidth,
+                Math.Min(SearchButtonMaxWidth, TextRenderer.MeasureText(searchBtn.Text ?? "", searchBtn.Font).Width + 24));
+            searchBtn.AutoSize = false;
+            searchBtn.MinimumSize = new System.Drawing.Size(SearchButtonMinWidth, searchBtn.Height);
+            searchBtn.MaximumSize = new System.Drawing.Size(SearchButtonMaxWidth, searchBtn.Height);
             searchBtn.SetBounds(searchTB.Right + controlGap, 70, searchButtonWidth, searchBtn.Height);
             decryptLuaCB.SetBounds(searchBtn.Right + controlGap, 74, decryptLuaCB.PreferredSize.Width, decryptLuaCB.Height);
 
             if (decryptLuaCB.Right > groupBox1.Left - 8)
             {
-                topPanel.Height = 132;
                 decryptLuaCB.SetBounds(left, 101, decryptLuaCB.PreferredSize.Width, decryptLuaCB.Height);
+                topPanel.Height = 132;
             }
             else
             {
@@ -112,7 +139,7 @@ namespace TTG_Tools
         }
 
         // Prefixa com \\?\ para permitir caminhos maiores que MAX_PATH (260) no Win32.
-        private static string ToLongPath(string path)
+        internal static string ToLongPath(string path)
         {
             if (string.IsNullOrEmpty(path)) return path;
             if (path.StartsWith(@"\\?\")) return path;
@@ -179,12 +206,27 @@ namespace TTG_Tools
             header = null;
             version = 0;
 
-            using (FileStream fs = new FileStream(path, FileMode.Open, FileAccess.Read))
+            using (FileStream fs = OpenArchiveReadStream(path))
             using (BinaryReader br = new BinaryReader(fs))
             {
                 version = br.ReadInt32();
+
+                if (IsHeaderlessTtarch(version))
+                {
+                    byte[] oldHeader;
+                    bool oldEncrypted;
+                    uint oldFilesOffset;
+                    ReadHeaderlessTtarch(br, out oldHeader, out oldEncrypted, out oldFilesOffset);
+
+                    version = 0;
+                    if (!oldEncrypted) return false;
+
+                    header = oldHeader;
+                    return header != null;
+                }
+
                 int encryption = br.ReadInt32();
-                int two = br.ReadInt32();
+                if (version > 1) br.ReadInt32(); //Version 1 archives don't have this field
 
                 int val = 0;
 
@@ -213,7 +255,8 @@ namespace TTG_Tools
 
                             if (version > 7)
                             {
-                                br.ReadByte();
+                                if (version == 8) SkipV8Flags(br);
+                                else br.ReadByte();
                                 if (version == 9) br.ReadUInt32(); //crc32
                             }
                         }
@@ -253,7 +296,8 @@ namespace TTG_Tools
                     if (ms.Position + 4 > ms.Length) return false;
                     int nameLen = br.ReadInt32();
                     if (nameLen < 0 || nameLen > 4096 || ms.Position + nameLen > ms.Length) return false;
-                    if (!IsPrintableAscii(br.ReadBytes(nameLen))) return false;
+                    byte[] dirName = br.ReadBytes(nameLen);
+                    if (nameLen > 0 && !IsPrintableAscii(dirName)) return false; //some v2 archives start with an empty folder name
                 }
 
                 if (ms.Position + 4 > ms.Length) return false;
@@ -270,7 +314,7 @@ namespace TTG_Tools
 
         private static int DetectTtarch2Key(string path)
         {
-            using (FileStream fs = new FileStream(path, FileMode.Open, FileAccess.Read))
+            using (FileStream fs = OpenArchiveReadStream(path))
             using (BinaryReader br = new BinaryReader(fs))
             {
                 string magic = Encoding.ASCII.GetString(br.ReadBytes(4));
@@ -369,7 +413,7 @@ namespace TTG_Tools
             long decBufSize = chunkSize > 0 ? (long)chunkSize : bytes.Length;
             byte[] outBuf = new byte[decBufSize];
 
-            int size = OodleTools.Imports.OodleLZ_Decompress(bytes, bytes.Length, outBuf, decBufSize, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3);
+            int size = (int)OodleTools.Imports.OodleLZ_Decompress(bytes, bytes.Length, outBuf, decBufSize, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3);
             if (size <= 0) return null;
 
             byte[] tmp = new byte[size];
@@ -429,8 +473,6 @@ namespace TTG_Tools
             try
             {
                 FileInfo fi = new FileInfo(filePath);
-
-                if(fi.Attributes.HasFlag(FileAttributes.ReadOnly) || !fi.Attributes.HasFlag(FileAttributes.Normal)) fi.Attributes = FileAttributes.Normal;
 
                 //Immediate feedback so the title reflects the drop right away, even while it loads.
                 Text = Loc.T("ArchiveUnpacker.titleLoading", "Archive Unpacker. Loading:") + " " + fi.Name;
@@ -843,12 +885,141 @@ namespace TTG_Tools
                 retBytes = new byte[decBufSize];
             }
 
-            int size = OodleTools.Imports.OodleLZ_Decompress(bytes, bufSize, retBytes, decBufSize, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3);
+            int size = (int)OodleTools.Imports.OodleLZ_Decompress(bytes, bufSize, retBytes, decBufSize, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3);
 
             byte[] tmp = new byte[size];
             Array.Copy(retBytes, 0, tmp, 0, tmp.Length);
 
             return tmp;
+        }
+
+        private static void ReadTtarchFileTable(byte[] header, byte[] key, BinaryReader br)
+        {
+            using (MemoryStream ms = new MemoryStream(header))
+            {
+                using (BinaryReader mbr = new BinaryReader(ms))
+                {
+                    int dirsCount = mbr.ReadInt32();
+
+                    for(int d = 0; d < dirsCount; d++)
+                    {
+                        int nameLen = mbr.ReadInt32();
+                        byte[] tmpName = mbr.ReadBytes(nameLen);
+                        string name = Encoding.GetEncoding(MainMenu.settings.ASCII_N).GetString(tmpName);
+                    }
+
+                    int filesCount = mbr.ReadInt32();
+
+                    ttarch.files = new ClassesStructs.TtarchClass.ttarchFiles[filesCount];
+
+                    for(int f = 0; f < filesCount; f++)
+                    {
+                        int nameLen = mbr.ReadInt32();
+                        byte[] tmpName = mbr.ReadBytes(nameLen);
+                        ttarch.files[f].fileName = Encoding.GetEncoding(MainMenu.settings.ASCII_N).GetString(tmpName);
+                        int zeroVal = mbr.ReadInt32(); //always shows 0 value
+                        ttarch.files[f].fileOffset = mbr.ReadUInt32();
+                        ttarch.files[f].fileSize = mbr.ReadInt32();
+
+                        if (((Methods.GetExtension(ttarch.files[f].fileName).ToLower() == ".lenc") || (Methods.GetExtension(ttarch.files[f].fileName).ToLower() == ".lua"))
+                            && !ttarch.isEncryptedLua)
+                        {
+                            ttarch.isEncryptedLua = Methods.GetExtension(ttarch.files[f].fileName).ToLower() == ".lenc";
+
+                            byte[] tmp = getTtarchFile(ttarch, ttarch.files[f], key, ttarch.chunkSize * 1024, br);
+
+                            ttarch.isEncryptedLua = Methods.isLuaEncrypted(tmp);
+                        }
+
+                        string ext = Methods.GetExtension(ttarch.files[f].fileName);
+
+                        if ((ext != "") && !ttarch.fileFormats.Contains(ext))
+                        {
+                            ttarch.fileFormats.Add(ext);
+                        }
+                    }
+                }
+            }
+        }
+
+        //Version 8 stores one flag byte after the chunk size. Some Wii archives (Tales of Monkey Island
+        //episodes 4 and 5) have an extra int (1) before it; read normally, the header size would then be 0.
+        private static void SkipV8Flags(BinaryReader br)
+        {
+            long pos = br.BaseStream.Position;
+            br.ReadByte();
+
+            if (br.BaseStream.Position + 4 <= br.BaseStream.Length && br.ReadInt32() == 0)
+            {
+                br.BaseStream.Seek(pos + 5, SeekOrigin.Begin);
+                return;
+            }
+
+            br.BaseStream.Seek(pos + 1, SeekOrigin.Begin);
+        }
+
+        //The oldest archives (Bone, Sam & Max 101 2006 demo) have no version block: the file starts
+        //either with the plain directory table or with the size of the Blowfish-encrypted table.
+        private static bool IsHeaderlessTtarch(int firstValue)
+        {
+            return firstValue < 1 || firstValue > 9;
+        }
+
+        private static void ReadHeaderlessTtarch(BinaryReader br, out byte[] header, out bool encrypted, out uint filesOffset)
+        {
+            br.BaseStream.Seek(0, SeekOrigin.Begin);
+            long plainEnd = GetPlainTtarchHeaderEnd(br);
+            br.BaseStream.Seek(0, SeekOrigin.Begin);
+
+            if (plainEnd > 0)
+            {
+                header = br.ReadBytes((int)plainEnd);
+                encrypted = false;
+                filesOffset = br.ReadUInt32(); //absolute offset of the files block
+                return;
+            }
+
+            int headerSize = br.ReadInt32();
+            header = br.ReadBytes(headerSize);
+            encrypted = true;
+            filesOffset = (uint)br.BaseStream.Position;
+        }
+
+        //Returns the length of an unencrypted directory table starting at the current position,
+        //or -1 when the bytes don't look like one.
+        private static long GetPlainTtarchHeaderEnd(BinaryReader br)
+        {
+            try
+            {
+                long len = br.BaseStream.Length;
+                int dirsCount = br.ReadInt32();
+                if (dirsCount < 0 || dirsCount > 100000) return -1;
+
+                for (int d = 0; d < dirsCount; d++)
+                {
+                    int nameLen = br.ReadInt32();
+                    if (nameLen < 0 || nameLen > 4096 || br.BaseStream.Position + nameLen > len) return -1;
+                    byte[] name = br.ReadBytes(nameLen);
+                    if (nameLen > 0 && !IsPrintableAscii(name)) return -1;
+                }
+
+                int filesCount = br.ReadInt32();
+                if (filesCount <= 0 || filesCount > 5000000) return -1;
+
+                for (int f = 0; f < filesCount; f++)
+                {
+                    int nameLen = br.ReadInt32();
+                    if (nameLen <= 0 || nameLen > 4096 || br.BaseStream.Position + nameLen + 12 > len) return -1;
+                    if (!IsPrintableAscii(br.ReadBytes(nameLen))) return -1;
+                    br.BaseStream.Seek(12, SeekOrigin.Current);
+                }
+
+                return br.BaseStream.Position;
+            }
+            catch
+            {
+                return -1;
+            }
         }
 
         private void ReadHeaderTtarch(string path, byte[] key)
@@ -857,11 +1028,37 @@ namespace TTG_Tools
             {
                 ttarch.filePath = path;
                 ttarch.fileFormats = new List<string>();
-                FileStream fs = new FileStream(path, FileMode.Open);
+                FileStream fs = OpenArchiveReadStream(path);
                 BinaryReader br = new BinaryReader(fs);
                 ttarch.version = br.ReadInt32();
+
+                if (IsHeaderlessTtarch(ttarch.version))
+                {
+                    //Bone / Sam & Max 2006 demo era: no version block at all
+                    byte[] oldHeader;
+                    bool oldEncrypted;
+                    uint oldFilesOffset;
+                    ReadHeaderlessTtarch(br, out oldHeader, out oldEncrypted, out oldFilesOffset);
+
+                    ttarch.version = 0;
+                    ttarch.filesOffset = oldFilesOffset;
+
+                    if (oldEncrypted)
+                    {
+                        ttarch.isEncrypted = true;
+                        BlowFishCS.BlowFish dec = new BlowFishCS.BlowFish(key, 0);
+                        oldHeader = dec.Crypt_ECB(oldHeader, 0, true);
+                    }
+
+                    ReadTtarchFileTable(oldHeader, key, br);
+
+                    br.Close();
+                    fs.Close();
+                    return;
+                }
+
                 int encryption = br.ReadInt32();
-                int two = br.ReadInt32();
+                if (ttarch.version > 1) br.ReadInt32(); //Version 1 archives don't have this field
 
                 int countCompressedBlocks;
                 int val = 0;
@@ -899,7 +1096,8 @@ namespace TTG_Tools
 
                             if(ttarch.version > 7)
                             {
-                                byte b = br.ReadByte();
+                                if (ttarch.version == 8) SkipV8Flags(br);
+                                else br.ReadByte();
 
                                 if(ttarch.version == 9)
                                 {
@@ -934,55 +1132,11 @@ namespace TTG_Tools
                     header = dec.Crypt_ECB(header, ttarch.version, true);
                 }
 
-                using (MemoryStream ms = new MemoryStream(header))
-                {
-                    using (BinaryReader mbr = new BinaryReader(ms))
-                    {
-                        int dirsCount = mbr.ReadInt32();
-                        
-                        for(int d = 0; d < dirsCount; d++)
-                        {
-                            int nameLen = mbr.ReadInt32();
-                            byte[] tmpName = mbr.ReadBytes(nameLen);
-                            string name = Encoding.GetEncoding(MainMenu.settings.ASCII_N).GetString(tmpName);
-                        }
-
-                        int filesCount = mbr.ReadInt32();
-
-                        ttarch.files = new ClassesStructs.TtarchClass.ttarchFiles[filesCount];
-
-                        for(int f = 0; f < filesCount; f++)
-                        {
-                            int nameLen = mbr.ReadInt32();
-                            byte[] tmpName = mbr.ReadBytes(nameLen);
-                            ttarch.files[f].fileName = Encoding.GetEncoding(MainMenu.settings.ASCII_N).GetString(tmpName);
-                            int zeroVal = mbr.ReadInt32(); //always shows 0 value
-                            ttarch.files[f].fileOffset = mbr.ReadUInt32();
-                            ttarch.files[f].fileSize = mbr.ReadInt32();
-
-                            if (((Methods.GetExtension(ttarch.files[f].fileName).ToLower() == ".lenc") || (Methods.GetExtension(ttarch.files[f].fileName).ToLower() == ".lua"))
-                                && !ttarch.isEncryptedLua)
-                            {
-                                ttarch.isEncryptedLua = Methods.GetExtension(ttarch.files[f].fileName).ToLower() == ".lenc";
-
-                                byte[] tmp = getTtarchFile(ttarch, ttarch.files[f], key, ttarch.chunkSize * 1024, br);
-
-                                ttarch.isEncryptedLua = Methods.isLuaEncrypted(tmp);
-                            }
-
-                            string ext = Methods.GetExtension(ttarch.files[f].fileName);
-
-                            if ((ext != "") && !ttarch.fileFormats.Contains(ext))
-                            {
-                                ttarch.fileFormats.Add(ext);
-                            }
-                        }
-                    }
-                }
-
-                //Check oldest compressed archives. Need to find out compression algorithm (default it must be zlib)
+                //Oldest compressed archives: find out the compression algorithm (zlib or deflate) from the first
+                //block before the file table is read, since checking its Lua files already decompresses blocks.
                 if(ttarch.version < 7 && ttarch.isCompressed)
                 {
+                    br.BaseStream.Seek(ttarch.filesOffset, SeekOrigin.Begin);
                     byte[] tmp = br.ReadBytes(ttarch.compressedBlocks[0]);
 
                     if(ttarch.isEncrypted)
@@ -991,9 +1145,11 @@ namespace TTG_Tools
                         tmp = dec.Crypt_ECB(tmp, ttarch.version, true);
                     }
 
-                    tmp = decompressBlock(tmp);
-                    tmp = null;
+                    decompressBlock(tmp);
                 }
+
+                ReadTtarchFileTable(header, key, br);
+
 
                 br.Close();
                 fs.Close();
@@ -1010,7 +1166,7 @@ namespace TTG_Tools
             var files = getFilteredTtarchFiles(format, searchPattern);
             List<string> failedFiles = new List<string>();
 
-            FileStream fs = new FileStream(ttarch.filePath, FileMode.Open);
+            FileStream fs = OpenArchiveReadStream(ttarch.filePath);
             BinaryReader br = new BinaryReader(fs);
 
             int count = indexes != null ? indexes.Length : files.Length;
@@ -1079,7 +1235,7 @@ namespace TTG_Tools
         {
             try
             {
-                FileStream fs = new FileStream(path, FileMode.Open);
+                FileStream fs = OpenArchiveReadStream(path);
                 BinaryReader br = new BinaryReader(fs);
 
                 ulong foffset = 0;
@@ -1095,6 +1251,18 @@ namespace TTG_Tools
                 if (ttarch2.isCompressed)
                 {
                     ttarch2.compressAlgorithm = Encoding.ASCII.GetString(header) == "eCTT" || Encoding.ASCII.GetString(header) == "zCTT" ? 2 : 1;
+
+                    //Without the Oodle library every block fails to decompress and the archive looks like it
+                    //has a wrong key, which is misleading: console archives aren't even encrypted.
+                    if (ttarch2.compressAlgorithm == 2 && !OodleTools.Imports.IsAvailable())
+                    {
+                        br.Close();
+                        fs.Close();
+                        MessageBox.Show(string.Format(Loc.T("ArchiveUnpacker.msgOodleMissing", "This archive is compressed with Oodle, but {0} wasn't found.\r\nCopy {0} from the folder of a newer Telltale PC game (e.g. Batman, The Walking Dead: The Telltale Definitive Series) into the TTG Tools folder and open the archive again."), OodleTools.Imports.DllName), Loc.T("ArchiveUnpacker.titleOodleMissing", "Oodle library not found"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        ttarch2 = null;
+                        return;
+                    }
+
                     if (Encoding.ASCII.GetString(header) == "eCTT" || Encoding.ASCII.GetString(header) == "zCTT")
                     {
                         int one = br.ReadInt32();
@@ -1341,7 +1509,7 @@ namespace TTG_Tools
             SetMinimum(0);
             SetMaximum(count);
 
-            FileStream fs = new FileStream(ttarch2.fileName, FileMode.Open);
+            FileStream fs = OpenArchiveReadStream(ttarch2.fileName);
             BinaryReader br = new BinaryReader(fs);
 
             for (int i = 0; i < count; i++)
@@ -1638,7 +1806,7 @@ namespace TTG_Tools
             if (ttarch == null) throw new Exception("Failed to read header");
             if (!Directory.Exists(outputDir)) Directory.CreateDirectory(outputDir);
             int chunkSz = ttarch.chunkSize * 1024;
-            using (var fs = new FileStream(archivePath, FileMode.Open))
+            using (var fs = OpenArchiveReadStream(archivePath))
             using (var br = new BinaryReader(fs))
             {
                 for (int i = 0; i < ttarch.files.Length; i++)
@@ -1646,7 +1814,7 @@ namespace TTG_Tools
                     byte[] data = getTtarchFile(ttarch, ttarch.files[i], key, chunkSz, br);
                     if (data == null) { Console.WriteLine("FAIL: " + ttarch.files[i].fileName); continue; }
                     string outPath = Path.Combine(outputDir, ttarch.files[i].fileName);
-                    File.WriteAllBytes(outPath, data);
+                    File.WriteAllBytes(ToLongPath(outPath), data); //Some old file names (Bone) exceed MAX_PATH
                     if (i % 1000 == 0) Console.WriteLine("extracted " + i + "/" + ttarch.files.Length);
                 }
             }
@@ -1958,27 +2126,13 @@ namespace TTG_Tools
                 //Capture filter values on the UI thread so background extraction never touches UI controls.
                 string format = getSelectedFormat();
                 string searchPattern = isSearchEnabled() ? searchTB.Text.ToLower() : null;
-                var indexesList = new List<int>();
+                int[] indexes = GetSelectedFileIndexes();
 
-                for (int i = 0; i < filesDataGridView.SelectedRows.Count; i++)
-                {
-                    object cellValue = filesDataGridView.SelectedRows[i].Cells[0].Value;
-                    int rowIndex;
-
-                    if (cellValue != null && int.TryParse(cellValue.ToString(), out rowIndex) && rowIndex > 0)
-                    {
-                        indexesList.Add(rowIndex - 1);
-                    }
-                }
-
-                if (indexesList.Count == 0)
+                if (indexes.Length == 0)
                 {
                     MessageBox.Show(Loc.T("ArchiveUnpacker.msgSelectValidFiles", "Please select valid files from list first."), Loc.T("ArchiveUnpacker.titleNoSelection", "No selected files from list"), MessageBoxButtons.OK, MessageBoxIcon.Information);
                     return;
                 }
-
-                int[] indexes = indexesList.ToArray();
-
                 if(ttarch != null)
                 {
                     string selectedFolder = SelectFolder();
@@ -2056,6 +2210,250 @@ namespace TTG_Tools
 
             await OpenArchiveFile(files[0]);
         }
+
+        #region Drag selected archive files to Windows Explorer
+
+        private sealed class DragExtractionResult
+        {
+            public readonly List<string> Files = new List<string>();
+            public readonly List<string> Errors = new List<string>();
+        }
+
+        private void filesDataGridView_MouseDown(object sender, MouseEventArgs e)
+        {
+            fileDragArmed = false;
+            pendingFileDragIndexes = null;
+            if (e.Button != MouseButtons.Left || preparingFileDrag) return;
+
+            DataGridView.HitTestInfo hit = filesDataGridView.HitTest(e.X, e.Y);
+            if (hit.RowIndex < 0) return;
+
+            //DataGridView normally collapses Ctrl+A/multi-selection in its own MouseDown
+            //processing. This preview event runs immediately before that happens, so keep the
+            //original archive indexes only for an ordinary click on an already selected row.
+            //With Ctrl/Shift, let the grid apply its native add/remove/range selection first.
+            bool selectionModifier = (ModifierKeys & (Keys.Control | Keys.Shift)) != Keys.None;
+            if (!selectionModifier && filesDataGridView.Rows[hit.RowIndex].Selected)
+                pendingFileDragIndexes = GetSelectedFileIndexes();
+
+            fileDragStartPoint = e.Location;
+            fileDragArmed = true;
+        }
+
+        private async void filesDataGridView_MouseMove(object sender, MouseEventArgs e)
+        {
+            if (!fileDragArmed || preparingFileDrag || e.Button != MouseButtons.Left) return;
+
+            Size dragSize = SystemInformation.DragSize;
+            Rectangle dragBox = new Rectangle(
+                fileDragStartPoint.X - dragSize.Width / 2,
+                fileDragStartPoint.Y - dragSize.Height / 2,
+                dragSize.Width,
+                dragSize.Height);
+
+            if (dragBox.Contains(e.Location)) return;
+
+            fileDragArmed = false;
+            int[] indexes = pendingFileDragIndexes;
+            pendingFileDragIndexes = null;
+            RestoreSelectedFileIndexes(indexes);
+            await BeginSelectedFilesDragAsync(indexes);
+        }
+
+        private async Task BeginSelectedFilesDragAsync(int[] indexes = null)
+        {
+            if (indexes == null) indexes = GetSelectedFileIndexes();
+            if (indexes.Length == 0 || (ttarch == null && ttarch2 == null)) return;
+
+            var arc1 = ttarch;
+            var arc2 = ttarch2;
+            var selected1 = arc1 != null && shownTtarchFiles != null
+                ? indexes.Where(i => i >= 0 && i < shownTtarchFiles.Length).Select(i => shownTtarchFiles[i]).ToArray()
+                : null;
+            var selected2 = arc2 != null && shownTtarch2Files != null
+                ? indexes.Where(i => i >= 0 && i < shownTtarch2Files.Length).Select(i => shownTtarch2Files[i]).ToArray()
+                : null;
+
+            if ((selected1 == null || selected1.Length == 0) && (selected2 == null || selected2.Length == 0)) return;
+
+            byte[] archiveKey = (byte[])MainMenu.gamelist[gameListCB.SelectedIndex].key.Clone();
+            bool decryptLua = decryptLuaCB.Checked;
+            string tempRoot = Path.Combine(DragTempRoot, Guid.NewGuid().ToString("N"));
+
+            preparingFileDrag = true;
+            UseWaitCursor = true;
+
+            DragExtractionResult extraction;
+            try
+            {
+                Directory.CreateDirectory(tempRoot);
+                extraction = await Task.Run(() => arc1 != null
+                    ? ExtractTtarchFilesForDrag(arc1, selected1, archiveKey, decryptLua, tempRoot)
+                    : ExtractTtarch2FilesForDrag(arc2, selected2, archiveKey, decryptLua, tempRoot));
+            }
+            catch (Exception ex)
+            {
+                extraction = new DragExtractionResult();
+                extraction.Errors.Add(ex.GetType().Name + ": " + ex.Message);
+            }
+            finally
+            {
+                UseWaitCursor = false;
+                preparingFileDrag = false;
+            }
+
+            if (extraction.Files.Count > 0 && Control.MouseButtons.HasFlag(MouseButtons.Left))
+            {
+                var data = new DataObject();
+                data.SetData(DataFormats.FileDrop, true, extraction.Files.ToArray());
+                DragDropEffects effect = filesDataGridView.DoDragDrop(data, DragDropEffects.Copy);
+                ScheduleDragFolderCleanup(tempRoot, effect == DragDropEffects.None ? 0 : 120000);
+            }
+            else
+            {
+                ScheduleDragFolderCleanup(tempRoot, 0);
+            }
+
+            if (extraction.Errors.Count > 0)
+            {
+                MessageBox.Show(
+                    Loc.T("ArchiveUnpacker.msgFailedExtractList", "The following files could not be extracted:") + "\n\n" + string.Join("\n", extraction.Errors),
+                    Loc.T("ArchiveUnpacker.titleFilesNotExtracted", "Files not extracted"),
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+            }
+        }
+
+        private DragExtractionResult ExtractTtarchFilesForDrag(
+            ClassesStructs.TtarchClass archive,
+            ClassesStructs.TtarchClass.ttarchFiles[] files,
+            byte[] archiveKey,
+            bool decryptLua,
+            string tempRoot)
+        {
+            var result = new DragExtractionResult();
+            SetMinimum(0);
+            SetMaximum(files.Length);
+
+            using (FileStream fs = OpenArchiveReadStream(archive.filePath))
+            using (BinaryReader br = new BinaryReader(fs))
+            {
+                int chunkSize = archive.chunkSize * 1024;
+
+                for (int i = 0; i < files.Length; i++)
+                {
+                    string name = files[i].fileName;
+                    try
+                    {
+                        byte[] bytes = getTtarchFile(archive, files[i], archiveKey, chunkSize, br);
+                        if (bytes == null) throw new InvalidDataException("Could not read the archive entry.");
+
+                        if (decryptLua && name.EndsWith(".lenc", StringComparison.OrdinalIgnoreCase))
+                        {
+                            name = name.Substring(0, name.Length - 4) + "lua";
+                            bytes = Methods.decryptLua(bytes, archiveKey, archive.version);
+                        }
+
+                        result.Files.Add(WriteDragFile(tempRoot, name, bytes));
+                    }
+                    catch (Exception ex)
+                    {
+                        result.Errors.Add(name + " (" + ex.GetType().Name + ": " + ex.Message + ")");
+                    }
+
+                    Progress(i + 1);
+                }
+            }
+
+            return result;
+        }
+
+        private DragExtractionResult ExtractTtarch2FilesForDrag(
+            ClassesStructs.Ttarch2Class archive,
+            ClassesStructs.Ttarch2Class.Ttarch2files[] files,
+            byte[] archiveKey,
+            bool decryptLua,
+            string tempRoot)
+        {
+            var result = new DragExtractionResult();
+            SetMinimum(0);
+            SetMaximum(files.Length);
+
+            using (FileStream fs = OpenArchiveReadStream(archive.fileName))
+            using (BinaryReader br = new BinaryReader(fs))
+            {
+                for (int i = 0; i < files.Length; i++)
+                {
+                    string name = files[i].fileName;
+                    try
+                    {
+                        byte[] bytes = getTtarch2File(archive, files[i], archiveKey, br);
+                        if (bytes == null) throw new InvalidDataException("Could not read the archive entry.");
+
+                        if (decryptLua && (name.EndsWith(".lenc", StringComparison.OrdinalIgnoreCase)
+                            || name.EndsWith(".lua", StringComparison.OrdinalIgnoreCase)))
+                        {
+                            if (name.EndsWith(".lenc", StringComparison.OrdinalIgnoreCase))
+                                name = name.Substring(0, name.Length - 4) + "lua";
+                            bytes = Methods.decryptLua(bytes, archiveKey, 7);
+                        }
+
+                        result.Files.Add(WriteDragFile(tempRoot, name, bytes));
+                    }
+                    catch (Exception ex)
+                    {
+                        result.Errors.Add(name + " (" + ex.GetType().Name + ": " + ex.Message + ")");
+                    }
+
+                    Progress(i + 1);
+                }
+            }
+
+            return result;
+        }
+
+        private static string WriteDragFile(string tempRoot, string archiveName, byte[] bytes)
+        {
+            string root = Path.GetFullPath(tempRoot).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+            string relative = (archiveName ?? "").Replace('/', Path.DirectorySeparatorChar).TrimStart(Path.DirectorySeparatorChar);
+            string outputPath = Path.GetFullPath(Path.Combine(root, relative));
+
+            if (!outputPath.StartsWith(root, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidDataException("Archive entry points outside the extraction folder.");
+
+            string directory = Path.GetDirectoryName(outputPath);
+            if (!string.IsNullOrEmpty(directory)) Directory.CreateDirectory(ToLongPath(directory));
+            File.WriteAllBytes(ToLongPath(outputPath), bytes);
+            return outputPath;
+        }
+
+        private static async void ScheduleDragFolderCleanup(string path, int delayMilliseconds)
+        {
+            if (delayMilliseconds > 0) await Task.Delay(delayMilliseconds);
+            try { if (Directory.Exists(path)) Directory.Delete(ToLongPath(path), true); }
+            catch { }
+        }
+
+        private static void CleanupStaleDragFolders()
+        {
+            try
+            {
+                if (!Directory.Exists(DragTempRoot)) return;
+
+                foreach (string directory in Directory.GetDirectories(DragTempRoot))
+                {
+                    try
+                    {
+                        if (Directory.GetCreationTimeUtc(directory) < DateTime.UtcNow.AddDays(-1))
+                            Directory.Delete(ToLongPath(directory), true);
+                    }
+                    catch { }
+                }
+            }
+            catch { }
+        }
+
+        #endregion
 
         #region Preview panel
 
@@ -2138,7 +2536,7 @@ namespace TTG_Tools
 
                     if (arc1 != null)
                     {
-                        using (FileStream fs = new FileStream(arc1.filePath, FileMode.Open, FileAccess.Read))
+                        using (FileStream fs = OpenArchiveReadStream(arc1.filePath))
                         using (BinaryReader br = new BinaryReader(fs))
                         {
                             bytes = getTtarchFile(arc1, file1, archKey, arc1.chunkSize * 1024, br);
@@ -2146,7 +2544,7 @@ namespace TTG_Tools
                     }
                     else
                     {
-                        using (FileStream fs = new FileStream(arc2.fileName, FileMode.Open, FileAccess.Read))
+                        using (FileStream fs = OpenArchiveReadStream(arc2.fileName))
                         using (BinaryReader br = new BinaryReader(fs))
                         {
                             bytes = getTtarch2File(arc2, file2, archKey, br);
@@ -2219,6 +2617,52 @@ namespace TTG_Tools
             previewInfoLabel.Text = string.IsNullOrEmpty(result.Info) ? baseInfo : baseInfo + "  |  " + result.Info;
         }
 
+        private void previewTextBox_LinkClicked(object sender, LinkClickedEventArgs e)
+        {
+            if (string.IsNullOrWhiteSpace(e.LinkText)) return;
+
+            try
+            {
+                Process.Start(new ProcessStartInfo(e.LinkText) { UseShellExecute = true });
+            }
+            catch
+            {
+                // Keep the preview passive if Windows cannot resolve the link.
+            }
+        }
+
+        private int[] GetSelectedFileIndexes()
+        {
+            var indexes = new List<int>();
+
+            foreach (DataGridViewRow row in filesDataGridView.SelectedRows)
+            {
+                object cellValue = row.Cells[0].Value;
+                int number;
+
+                if (cellValue != null && int.TryParse(cellValue.ToString(), out number) && number > 0)
+                    indexes.Add(number - 1);
+            }
+
+            return indexes.Distinct().OrderBy(i => i).ToArray();
+        }
+
+        private void RestoreSelectedFileIndexes(int[] indexes)
+        {
+            if (indexes == null || indexes.Length == 0) return;
+
+            var wanted = new HashSet<int>(indexes);
+            filesDataGridView.ClearSelection();
+
+            foreach (DataGridViewRow row in filesDataGridView.Rows)
+            {
+                object cellValue = row.Cells[0].Value;
+                int number;
+                if (cellValue != null && int.TryParse(cellValue.ToString(), out number) && wanted.Contains(number - 1))
+                    row.Selected = true;
+            }
+        }
+
         private void SwapPreviewImage(System.Drawing.Image image)
         {
             var old = previewPictureBox.Image;
@@ -2238,5 +2682,17 @@ namespace TTG_Tools
         }
 
         #endregion
+    }
+
+    internal sealed class DragAwareDataGridView : DataGridView
+    {
+        public event MouseEventHandler PreviewMouseDown;
+
+        protected override void OnMouseDown(MouseEventArgs e)
+        {
+            MouseEventHandler handler = PreviewMouseDown;
+            if (handler != null) handler(this, e);
+            base.OnMouseDown(e);
+        }
     }
 }
