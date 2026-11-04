@@ -34,6 +34,12 @@ namespace TTG_Tools.Graphics
 
         public static byte[] DecodePvrContentToRgba(byte[] pvrContent, out int width, out int height, bool rgba4444NibbleOrder)
         {
+            return DecodePvrContentToRgba(pvrContent, out width, out height, rgba4444NibbleOrder, false);
+        }
+
+        // pvrtcII: PS Vita (platform 9) PVRTC words are PVRTC-II, see PvrtcDecoder.
+        public static byte[] DecodePvrContentToRgba(byte[] pvrContent, out int width, out int height, bool rgba4444NibbleOrder, bool pvrtcII)
+        {
             width = 0; height = 0;
             if (pvrContent == null || pvrContent.Length < 52) return null;
             if (!(pvrContent[0] == 'P' && pvrContent[1] == 'V' && pvrContent[2] == 'R' && pvrContent[3] == 3)) return null;
@@ -51,10 +57,10 @@ namespace TTG_Tools.Graphics
 
             switch (pixelFormat)
             {
-                case (ulong)pvr.HeaderFormat.PVRTC2bppRGB:  return PVR.PvrtcDecoder.Decode(data, w, h, true, true);
-                case (ulong)pvr.HeaderFormat.PVRTC2bppRGBA: return PVR.PvrtcDecoder.Decode(data, w, h, true, false);
-                case (ulong)pvr.HeaderFormat.PVRTC4bppRGB:  return PVR.PvrtcDecoder.Decode(data, w, h, false, true);
-                case (ulong)pvr.HeaderFormat.PVRTC4bppRGBA: return PVR.PvrtcDecoder.Decode(data, w, h, false, false);
+                case (ulong)pvr.HeaderFormat.PVRTC2bppRGB:  return PVR.PvrtcDecoder.Decode(data, w, h, true, true, pvrtcII);
+                case (ulong)pvr.HeaderFormat.PVRTC2bppRGBA: return PVR.PvrtcDecoder.Decode(data, w, h, true, false, pvrtcII);
+                case (ulong)pvr.HeaderFormat.PVRTC4bppRGB:  return PVR.PvrtcDecoder.Decode(data, w, h, false, true, pvrtcII);
+                case (ulong)pvr.HeaderFormat.PVRTC4bppRGBA: return PVR.PvrtcDecoder.Decode(data, w, h, false, false, pvrtcII);
                 case 0x404040461626772UL: // rgba4444 (edited PNG re-injected as ARGB4444)
                     return DecodeUncompressedToRgba(data, w, h, 0x04, rgba4444NibbleOrder);
                 case 0x105050561626772UL: // rgba5551 (old iOS font atlases: 5-5-5-1, alpha in low bit)
@@ -179,6 +185,15 @@ namespace TTG_Tools.Graphics
                         case 0x51: name = "PVRTC 4bpp RGB"; break;
                         case 0x52: name = "PVRTC 2bpp RGBA"; break;
                         case 0x53: name = "PVRTC 4bpp RGBA"; break;
+                        //Texture arrays (ArrayMembers > 1, e.g. Batman lightmap atlases) also go into a PVR.
+                        case 0x40: name = "DXT1 / BC1"; break;
+                        case 0x41: name = "DXT3 / BC2"; break;
+                        case 0x42: name = "DXT5 / BC3"; break;
+                        case 0x43: name = "BC4"; break;
+                        case 0x44: name = "BC5"; break;
+                        case 0x45: name = "BC6"; break;
+                        case 0x46: name = "BC7"; break;
+                        case 0x70: name = "ETC1"; break;
                     }
                 }
             }
@@ -1122,6 +1137,17 @@ namespace TTG_Tools.Graphics
             }
         }
 
+        private static bool MipSizesMatch(ClassesStructs.TextureClass.NewT3Texture tex)
+        {
+            long sum = 0;
+            foreach (var t in tex.Tex.Textures)
+            {
+                if (t.MipSize < 0) return false;
+                sum += t.MipSize;
+            }
+            return sum == tex.Tex.TexSize;
+        }
+
         private static void ReadNewD3dtxHeader(ref ClassesStructs.TextureClass.NewT3Texture tex, int i, ref int poz, byte[] binContent, string checkHeader)
         {
             byte[] tmp = null;
@@ -1539,7 +1565,8 @@ namespace TTG_Tools.Graphics
                         && tex.Tex.Textures[0].Block != null)
                     {
                         byte[] rgba = PVR.PvrtcDecoder.Decode(tex.Tex.Textures[0].Block, tex.Width, tex.Height,
-                            PVR.PvrtcDecoder.Is2Bpp(tex.TextureFormat), PVR.PvrtcDecoder.IsOpaque(tex.TextureFormat));
+                            PVR.PvrtcDecoder.Is2Bpp(tex.TextureFormat), PVR.PvrtcDecoder.IsOpaque(tex.TextureFormat),
+                            tex.platform.platform == 9);
                         if (rgba != null)
                         {
                             byte[] png = DDS.DdsPngConverter.RgbaToPng(rgba, tex.Width, tex.Height);
@@ -2996,9 +3023,47 @@ namespace TTG_Tools.Graphics
             }
             else
             {
-                for (int i = tex.Tex.MipCount - 1; i >= 0; i--)
+                int entriesStart = poz;
+                bool entriesOk;
+
+                try
                 {
-                    ReadNewD3dtxHeader(ref tex, i, ref poz, binContent, checkHeader);
+                    for (int i = tex.Tex.MipCount - 1; i >= 0; i--)
+                    {
+                        ReadNewD3dtxHeader(ref tex, i, ref poz, binContent, checkHeader);
+                    }
+
+                    entriesOk = MipSizesMatch(tex);
+                }
+                catch
+                {
+                    if (tex.platform.platform != 4) throw;
+                    entriesOk = false;
+                }
+
+                //Poker Night 2 (Xbox 360) stores compact 3-int entries (CurrentMip, MipSize,
+                //BlockSize) — the first one flagged 0x100 for the packed mip tail — while the
+                //Xbox branch above expects SubTexNum/One as well and runs past the file end.
+                //Fall back to the compact layout when it is the one whose sizes add up.
+                if (!entriesOk && tex.platform.platform == 4)
+                {
+                    int compactPoz = entriesStart;
+                    var saved = (ClassesStructs.TextureClass.NewT3Texture.TextureStruct[])tex.Tex.Textures.Clone();
+
+                    for (int i = tex.Tex.MipCount - 1; i >= 0; i--)
+                    {
+                        tex.Tex.Textures[i].CurrentMip = BitConverter.ToInt32(binContent, compactPoz);
+                        tex.Tex.Textures[i].MipSize = BitConverter.ToInt32(binContent, compactPoz + 4);
+                        tex.Tex.Textures[i].BlockSize = BitConverter.ToInt32(binContent, compactPoz + 8);
+                        compactPoz += 12;
+                    }
+
+                    if (MipSizesMatch(tex))
+                    {
+                        poz = compactPoz;
+                        tex.HasOneValueTex = false;
+                    }
+                    else tex.Tex.Textures = saved;
                 }
             }
 

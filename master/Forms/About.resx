@@ -187,6 +187,28 @@ Maybe some games doesn't work.
 ===
 [Version history]
 
+v.1.16.3 (04.11.2026)
++ Archive Unpacker:
+Added an audio player to the preview: .aud (Ogg Vorbis), .vox (Speex) and FMOD sound banks (FSB4 and FSB5 with MP3 or Vorbis) play with a waveform and a seek bar.
+Texture previews now show transparency on a checkerboard background, and the information line no longer covers the bottom of the image.
+Containers with several images (Wii textures and fonts, texture arrays such as Batman lightmaps) can be browsed page by page.
+.log files and other plain text files are now shown as text.
+Previews are much faster: large localization files (.langdb, .landb, .dlog) load up to 20 times faster, and selecting another file no longer waits for the previous preview.
+The game is now detected from the Lua scripts when a container is not encrypted (for example The Wolf Among Us).
+Fixed opening archives of Tales of Monkey Island for Wii (episodes 2, 4 and 5), Sam &amp; Max for Wii, Jurassic Park for Xbox 360, the CSI: 3 Dimensions of Murder patches and Batman: The Telltale Series.
+Extracted files are now fully decrypted, so they work when placed loose in the game folder.
+Fixed the tool looking frozen when an error appeared while opening another archive.
+Fixed opening an archive dropped on the text preview.
++ Archive Packer:
+Compressed version 8 archives now use the same compression as each game (zlib for the 2009 games, deflate from 2010 on). Fixes crashes with Tales of Monkey Island Episode 1 (Steam).
++ Auto(De)Packer:
+Fixed the colors of PlayStation Vita textures (PVRTC-II).
+Fixed Xbox 360 textures of older games (Wallace &amp; Gromit's Grand Adventures, Poker Night 2, Sam &amp; Max and The Wolf Among Us).
+Added extraction of the Wii fonts of CSI: Fatal Conspiracy and CSI: Hard Evidence.
++ TTG Tools:
+Audio playback uses NAudio, NVorbis and NSpeex (licenses in the ThirdPartyLicenses folder).
+All new texts are translated into the 13 interface languages.
+
 v.1.16.2 (03.11.2026)
 + Archive Unpacker:
 Improved the Archive Unpacker interface with a cleaner Telltale Explorer-inspired layout, a better organized file list, integrated previews for supported images, textures, fonts, text, localization, Lua and script files, sortable file columns, and cleaner filters.

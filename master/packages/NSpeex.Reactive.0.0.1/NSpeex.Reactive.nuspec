@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2013/01/nuspec.xsd">
+  <metadata minClientVersion="2.5">
+    <id>NSpeex.Reactive</id>
+    <version>0.0.1</version>
+    <title>NSpeex and Observer/Observable helper</title>
+    <authors>Yuka Abuno</authors>
+    <owners>Yuka Abuno</owners>
+    <licenseUrl>https://github.com/yuka1984/NSpeex/blob/master/LICENSE.txt</licenseUrl>
+    <projectUrl>https://github.com/yuka1984/NSpeex</projectUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>NSpeexLibrary and Observer/Observable Helper</description>
+    <summary>NSpeexLibrary and Observer/Observable Helper</summary>
+    <tags>xamarin NSpeex</tags>
+    <dependencies>
+      <dependency id="Rx-Main" version="2.2.5" />
+    </dependencies>
+  </metadata>
+</package>

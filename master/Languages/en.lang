@@ -378,4 +378,5 @@ ArchiveUnpacker.previewLoading = Loading preview...
 ArchiveUnpacker.previewTooBig = File is too large to preview.
 ArchiveUnpacker.previewNone = No preview available for this file.
 ArchiveUnpacker.previewBytes = bytes
+ArchiveUnpacker.previewPage = Page {0} of {1}
 FontEditor.titleOpened = Font Editor. Opened file

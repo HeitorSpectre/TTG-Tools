@@ -363,7 +363,7 @@ namespace TTG_Tools.Graphics
         {
             result = null;
             byte[] data; int version; int offSizes; List<int> tplOffsets; bool alt;
-            if (!TryParseContainer(inputPath, out data, out version, out offSizes, out tplOffsets, out alt)) return false;
+            if (!TryParseContainer(inputPath, out data, out version, out offSizes, out tplOffsets, out alt, true)) return false;
 
             string name = Path.GetFileNameWithoutExtension(inputPath);
             string ext = Path.GetExtension(inputPath).ToLowerInvariant();
@@ -383,7 +383,7 @@ namespace TTG_Tools.Graphics
                 return true;
             }
 
-            if (ext == ".font")
+            if (ext == ".font" && offSizes >= 0)
             {
                 var res = ReadTplResolution(data, tplOffsets[0]);
                 if (res.HasValue)
@@ -650,7 +650,7 @@ namespace TTG_Tools.Graphics
 
                 if (i == 0 && offSizes >= 0 && offSizes + 4 <= data.Length)
                     storedSize = BitConverter.ToInt32(data, offSizes);
-                else if (i == 1 && (version == 4 || version == 7) && !(version == 4 && alt) && offSizes + 8 <= data.Length)
+                else if (i == 1 && offSizes >= 0 && (version == 4 || version == 7) && !(version == 4 && alt) && offSizes + 8 <= data.Length)
                     storedSize = BitConverter.ToInt32(data, offSizes + 4);
 
                 if (storedSize > 0 && storedSize <= data.Length - offset)
@@ -1500,15 +1500,29 @@ namespace TTG_Tools.Graphics
 
         private static bool TryParseContainer(string path, out byte[] data, out int version, out int offSizes, out List<int> tplOffsets, out bool alt)
         {
+            return TryParseContainer(path, out data, out version, out offSizes, out tplOffsets, out alt, false);
+        }
+
+        //readOnlyFallback: other ERTM layouts (CSI Fatal Conspiracy / Hard Evidence Wii fonts are
+        //version 6) still embed plain TPL images. For extraction/preview they are located by the
+        //TPL magic alone and sized from the TPL headers (offSizes = -1). Repacking keeps the strict
+        //path, because the stored size fields of those layouts are unknown.
+        private static bool TryParseContainer(string path, out byte[] data, out int version, out int offSizes, out List<int> tplOffsets, out bool alt, bool readOnlyFallback)
+        {
             data = File.ReadAllBytes(path);
             version = 0;
             offSizes = 0;
             tplOffsets = new List<int>();
             alt = false;
 
-            if (data.Length < 8 || !Slice(data, 0, 4).SequenceEqual(HeaderMagic)) return false;
+            if (data.Length < 8) return false;
 
-            version = BitConverter.ToInt32(data, 4);
+            //CSI Hard Evidence Wii fonts use the "NIBM" (MBIN) meta header instead of ERTM.
+            bool ertm = Slice(data, 0, 4).SequenceEqual(HeaderMagic);
+            bool mbin = data[0] == 'N' && data[1] == 'I' && data[2] == 'B' && data[3] == 'M';
+            if (!ertm && !(readOnlyFallback && mbin)) return false;
+
+            version = ertm ? BitConverter.ToInt32(data, 4) : -1;
             if (version == 4)
             {
                 int @base = 64;
@@ -1531,6 +1545,13 @@ namespace TTG_Tools.Graphics
                 int idx = IndexOf(data, dxt);
                 if (idx < 0) return false;
                 offSizes = idx + (version == 7 ? 0x21 : 0x1D);
+            }
+            else if (readOnlyFallback)
+            {
+                offSizes = -1;
+                byte[] bytes = data;
+                tplOffsets = FindAll(bytes, TplMagic).Where(o => ReadTplResolution(bytes, o).HasValue).ToList();
+                return tplOffsets.Count > 0;
             }
             else return false;
 

@@ -87,8 +87,10 @@ namespace TTG_Tools.Graphics.Swizzles
             // Para formatos baseados em blocos (DXT), a dimensão mínima é de 1 bloco.
             // A divisão de inteiros pode resultar em 0 para mipmaps < 4 pixels, o que é incorreto.
             // Usamos Math.Max(1, ...) para garantir que mesmo um mipmap de 1x1 ocupe um bloco.
-            int widthInBlocks = blockPixelSize > 1 ? Math.Max(1, imageWidth / blockPixelSize) : imageWidth / blockPixelSize;
-            int heightInBlocks = blockPixelSize > 1 ? Math.Max(1, imageHeight / blockPixelSize) : imageHeight / blockPixelSize;
+            // Non-multiple-of-4 sizes (e.g. The Wolf Among Us ui_cursor, 139x140) round UP: a
+            // partial block is still a whole block in the data and in the DDS that follows.
+            int widthInBlocks = blockPixelSize > 1 ? Math.Max(1, (imageWidth + blockPixelSize - 1) / blockPixelSize) : imageWidth / blockPixelSize;
+            int heightInBlocks = blockPixelSize > 1 ? Math.Max(1, (imageHeight + blockPixelSize - 1) / blockPixelSize) : imageHeight / blockPixelSize;
             // ==========================================================
             // FIM DA CORREÇÃO
             // ==========================================================

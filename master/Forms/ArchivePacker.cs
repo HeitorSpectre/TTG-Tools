@@ -1440,6 +1440,32 @@ namespace TTG_Tools
             if (loadingSettings) return;
             MainMenu.settings.encKeyIndex = comboGameList.SelectedIndex;
             Settings.SaveConfig(MainMenu.settings);
+
+            if (ttarchRB.Checked && compressionCB.Items.Count == 2)
+                compressionCB.SelectedIndex = DefaultTtarchCompression(SelectedVersion(), comboGameList.SelectedIndex);
+        }
+
+        //Compressed .ttarch v8 is zlib in the 2009 builds and raw deflate from 2010 on (checked on
+        //every PC dump: Tales of Monkey Island 101 Steam re-release, Sam & Max 30x, Puzzle Agent,
+        //CSI: Fatal Conspiracy, Poker Night, Back to the Future are deflate; Wallace & Gromit,
+        //Tales of Monkey Island 102-105, CSI: Deadly Intent are zlib). A container built with the
+        //other one is rejected by the game, which is how edited ToMI 101 (Steam) packs crashed.
+        //Version 7 is always zlib. Returns the compressionCB index (0 = Zlib, 1 = Deflate).
+        private static int DefaultTtarchCompression(int version, int gameIndex)
+        {
+            if (version != 8 || gameIndex < 0 || gameIndex >= MainMenu.gamelist.Count) return 0;
+
+            string name = MainMenu.gamelist[gameIndex].gamename;
+            string[] deflateGames =
+            {
+                "Tales of Monkey Island: Episode 1", "Sam & Max 30", "Puzzle Agent",
+                "CSI: Fatal Conspiracy", "Poker Night at the Inventory", "Back To The Future"
+            };
+
+            foreach (string prefix in deflateGames)
+                if (name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) return 1;
+
+            return 0;
         }
 
         private void newEngineLua_CheckedChanged(object sender, EventArgs e)
@@ -1504,7 +1530,7 @@ namespace TTG_Tools
 
                 compressionCB.Items.Add("Zlib");
                 compressionCB.Items.Add("Deflate");
-                compressionCB.SelectedIndex = 0;
+                compressionCB.SelectedIndex = DefaultTtarchCompression(SelectedVersion(), comboGameList.SelectedIndex);
 
                 int version = SelectedVersion();
                 compressionCB.Visible = version == 7 || version == 8;

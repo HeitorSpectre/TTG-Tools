@@ -33,7 +33,8 @@ namespace TTG_Tools
             previewTextBox.DetectUrls = true;
             previewTextBox.LinkClicked += previewTextBox_LinkClicked;
 
-            previewPictureBox.Resize += (s, e) => AdjustPreviewSizeMode();
+            SetupPreviewPanel();
+            WireArchiveDropTargets(this);
             ShowPreviewMessage("");
             CleanupStaleDragFolders();
         }
@@ -413,7 +414,7 @@ namespace TTG_Tools
             long decBufSize = chunkSize > 0 ? (long)chunkSize : bytes.Length;
             byte[] outBuf = new byte[decBufSize];
 
-            int size = (int)OodleTools.Imports.OodleLZ_Decompress(bytes, bytes.Length, outBuf, decBufSize, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3);
+            int size = (int)OodleTools.Imports.OodleLZ_Decompress(bytes, bytes.Length, outBuf, decBufSize, 1, 0, 0, 0, 0, 0, 0, 0, 0, 3); //fuzzSafe: wrong-key garbage must fail, not crash the process
             if (size <= 0) return null;
 
             byte[] tmp = new byte[size];
@@ -484,9 +485,11 @@ namespace TTG_Tools
 
                 //Auto-detect which game this archive belongs to by finding the key that decrypts it.
                 //Skipped when the user opted for a custom key, so manual choice is always honored.
+                bool gameDetected = false;
                 if (!useCustomKeyCB.Checked)
                 {
                     int detected = await Task.Run(() => TryDetectGameIndex(fi.FullName));
+                    gameDetected = detected >= 0;
 
                     if (detected >= 0 && detected < gameListCB.Items.Count && detected != gameListCB.SelectedIndex)
                     {
@@ -535,12 +538,106 @@ namespace TTG_Tools
                 }
 
                 Text = Loc.T("ArchiveUnpacker.titleOpened", "Archive Unpacker. Opened file:") + " " + fi.Name;
+
+                //Unencrypted containers (e.g. The Wolf Among Us .ttarch2) can't be identified from
+                //their header, so the previous profile's game stayed selected and the encrypted Lua
+                //scripts inside wouldn't decrypt. Identify the game from one of those scripts.
+                if (!gameDetected && !useCustomKeyCB.Checked) await DetectGameFromLuaAsync();
             }
             catch (Exception ex)
             {
                 Text = Loc.T("ArchiveUnpacker.$this", "Archive Unpacker");
                 MessageBox.Show(Loc.T("ArchiveUnpacker.msgFailedOpen", "Failed to open archive.") + " " + ex.Message, Loc.T("Common.error", "Error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
+        }
+
+        private static bool IsLuaFileName(string name)
+        {
+            string ext = Methods.GetExtension(name).ToLower();
+            return ext == ".lua" || ext == ".lenc";
+        }
+
+        //Decrypts a copy of an encrypted Lua script with one key and checks the result is real Lua:
+        //compiled chunks restart with "\x1bLua" + version 0x50-0x52, format 0, little endian; source
+        //scripts come out as readable text.
+        private static bool LuaDecryptsWith(byte[] encrypted, byte[] key, int version)
+        {
+            try
+            {
+                byte[] d = Methods.decryptLua((byte[])encrypted.Clone(), key, version);
+                if (d == null || d.Length < 8) return false;
+
+                if (d[0] == 0x1B && d[1] == 'L' && d[2] == 'u' && d[3] == 'a')
+                    return d[4] >= 0x50 && d[4] <= 0x52 && d[5] == 0 && d[6] == 1;
+
+                int sample = Math.Min(d.Length, 512), printable = 0;
+                for (int i = 0; i < sample; i++)
+                {
+                    byte c = d[i];
+                    if (c == 9 || c == 10 || c == 13 || (c >= 0x20 && c < 0x7F)) printable++;
+                }
+                return printable >= sample * 95 / 100;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        //The selected game first (keeps the user's choice when it already works), then the rest.
+        private static int FindLuaGameIndex(byte[] encrypted, int version, int preferred)
+        {
+            if (preferred >= 0 && preferred < MainMenu.gamelist.Count && LuaDecryptsWith(encrypted, MainMenu.gamelist[preferred].key, version)) return preferred;
+
+            for (int g = 0; g < MainMenu.gamelist.Count; g++)
+            {
+                if (g != preferred && LuaDecryptsWith(encrypted, MainMenu.gamelist[g].key, version)) return g;
+            }
+
+            return -1;
+        }
+
+        private async Task DetectGameFromLuaAsync()
+        {
+            var arc1 = ttarch;
+            var arc2 = ttarch2;
+            var file1 = default(ClassesStructs.TtarchClass.ttarchFiles);
+            var file2 = default(ClassesStructs.Ttarch2Class.Ttarch2files);
+            bool found = false;
+            int version = 7;
+
+            if (arc1 != null && arc1.files != null)
+            {
+                version = arc1.version;
+                foreach (var f in arc1.files) if (IsLuaFileName(f.fileName)) { file1 = f; found = true; break; }
+            }
+            else if (arc2 != null && arc2.files != null)
+            {
+                foreach (var f in arc2.files) if (IsLuaFileName(f.fileName)) { file2 = f; found = true; break; }
+            }
+
+            if (!found) return;
+
+            int selected = gameListCB.SelectedIndex;
+            byte[] currentKey = MainMenu.gamelist[selected].key;
+
+            int game = await Task.Run(() =>
+            {
+                try
+                {
+                    byte[] bytes = ReadPreviewBytes(arc1, file1, arc2, file2, currentKey);
+                    if (bytes == null || !Methods.isLuaEncrypted(bytes)) return -1;
+                    return FindLuaGameIndex(bytes, version, selected);
+                }
+                catch
+                {
+                    return -1;
+                }
+            });
+
+            //Still the same archive? Then switch to the game whose key decrypts its scripts.
+            if (game >= 0 && game != gameListCB.SelectedIndex && (arc1 == null || arc1 == ttarch) && (arc2 == null || arc2 == ttarch2))
+                gameListCB.SelectedIndex = game;
         }
 
         private void populateFileFormats(List<string> formats)
@@ -885,7 +982,7 @@ namespace TTG_Tools
                 retBytes = new byte[decBufSize];
             }
 
-            int size = (int)OodleTools.Imports.OodleLZ_Decompress(bytes, bufSize, retBytes, decBufSize, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3);
+            int size = (int)OodleTools.Imports.OodleLZ_Decompress(bytes, bufSize, retBytes, decBufSize, 1, 0, 0, 0, 0, 0, 0, 0, 0, 3); //fuzzSafe
 
             byte[] tmp = new byte[size];
             Array.Copy(retBytes, 0, tmp, 0, tmp.Length);
@@ -947,7 +1044,32 @@ namespace TTG_Tools
         private static void SkipV8Flags(BinaryReader br)
         {
             long pos = br.BaseStream.Position;
-            br.ReadByte();
+            byte flag = br.ReadByte();
+
+            //Tales of Monkey Island Wii 102/104/105: flag 1 is followed by a table of
+            //[int count] + count * [u64 name CRC + u32 value] before the header sizes. Reading the
+            //first entry as the header size gave a negative compressed size ("Non-negative number
+            //required"). Accept the table only when what follows it looks like real header sizes.
+            if (flag == 1 && br.BaseStream.Position + 4 <= br.BaseStream.Length)
+            {
+                int count = br.ReadInt32();
+                long after = br.BaseStream.Position + (long)count * 12;
+
+                if (count > 0 && count < 1000000 && after + 8 <= br.BaseStream.Length)
+                {
+                    br.BaseStream.Seek(after, SeekOrigin.Begin);
+                    int headerSize = br.ReadInt32();
+                    int second = br.ReadInt32();
+
+                    if (headerSize > 0 && second > 0 && after + 8 + Math.Min(headerSize, second) <= br.BaseStream.Length)
+                    {
+                        br.BaseStream.Seek(after, SeekOrigin.Begin);
+                        return;
+                    }
+                }
+
+                br.BaseStream.Seek(pos + 1, SeekOrigin.Begin);
+            }
 
             if (br.BaseStream.Position + 4 <= br.BaseStream.Length && br.ReadInt32() == 0)
             {
@@ -1004,7 +1126,11 @@ namespace TTG_Tools
                 }
 
                 int filesCount = br.ReadInt32();
-                if (filesCount <= 0 || filesCount > 5000000) return -1;
+                if (filesCount < 0 || filesCount > 5000000) return -1;
+
+                //An empty placeholder archive (CSI 3DoM Disc2.ttarch, 16 bytes) is only the table
+                //plus the files offset/size pair.
+                if (filesCount == 0 && br.BaseStream.Position + 8 != len) return -1;
 
                 for (int f = 0; f < filesCount; f++)
                 {
@@ -1032,7 +1158,18 @@ namespace TTG_Tools
                 BinaryReader br = new BinaryReader(fs);
                 ttarch.version = br.ReadInt32();
 
-                if (IsHeaderlessTtarch(ttarch.version))
+                //A headerless archive starts with its folder count, which can be 1..9 too
+                //(CSI: 3 Dimensions of Murder APatch1 = 7, APatch1A = 1) and was then read as a
+                //version. A complete plain directory/file table from offset 0 settles it.
+                bool plainTable = false;
+                if (!IsHeaderlessTtarch(ttarch.version))
+                {
+                    br.BaseStream.Seek(0, SeekOrigin.Begin);
+                    plainTable = GetPlainTtarchHeaderEnd(br) > 0;
+                    br.BaseStream.Seek(4, SeekOrigin.Begin);
+                }
+
+                if (IsHeaderlessTtarch(ttarch.version) || plainTable)
                 {
                     //Bone / Sam & Max 2006 demo era: no version block at all
                     byte[] oldHeader;
@@ -1078,6 +1215,12 @@ namespace TTG_Tools
                             ttarch.compressedBlocks[k] = br.ReadInt32();
                         }
                     }
+                    else if (countCompressedBlocks > 0)
+                    {
+                        //Jurassic Park Xbox "sknm" archives are not compressed but still list their
+                        //(raw 64 KB) chunks; the data stays contiguous, so just skip the list.
+                        br.BaseStream.Seek((long)countCompressedBlocks * 4, SeekOrigin.Current);
+                    }
 
                     uint arcSize = br.ReadUInt32(); //Size of block with files
 
@@ -1085,6 +1228,18 @@ namespace TTG_Tools
                     {
                         int priority = br.ReadInt32();
                         int priority2 = br.ReadInt32();
+
+                        //Some v5/v6 archives (Sam & Max 200 Wii "fontfix") already carry the two
+                        //v7 X-mode ints (0/1 each) before the header size. A header size is
+                        //never 0 or 1, so a 0/1 here can only be those flags.
+                        if ((ttarch.version == 5 || ttarch.version == 6) && br.BaseStream.Position + 12 <= br.BaseStream.Length)
+                        {
+                            long flagsPos = br.BaseStream.Position;
+                            int flagA = br.ReadInt32();
+                            int flagB = br.ReadInt32();
+
+                            if (!((flagA == 0 || flagA == 1) && (flagB == 0 || flagB == 1))) br.BaseStream.Seek(flagsPos, SeekOrigin.Begin);
+                        }
 
                         if(ttarch.version >= 7)
                         {
@@ -1156,7 +1311,8 @@ namespace TTG_Tools
             }
             catch(Exception ex)
             {
-                MessageBox.Show(Loc.T("ArchiveUnpacker.msgUnknownErrorEx", "Unknown error. Please try another archive or change encryption key.\r\nGot exception:") + "\r\n" + ex.Message, Loc.T("ArchiveUnpacker.titleSomethingWrong", "Something goes wrong"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+                if (cliErrorSink != null) cliErrorSink(ex.ToString());
+                else ShowArchiveMessage(Loc.T("ArchiveUnpacker.msgUnknownErrorEx", "Unknown error. Please try another archive or change encryption key.\r\nGot exception:") + "\r\n" + ex.Message, Loc.T("ArchiveUnpacker.titleSomethingWrong", "Something goes wrong"), MessageBoxIcon.Error);
                 ttarch = null;
             }
         }
@@ -1258,7 +1414,7 @@ namespace TTG_Tools
                     {
                         br.Close();
                         fs.Close();
-                        MessageBox.Show(string.Format(Loc.T("ArchiveUnpacker.msgOodleMissing", "This archive is compressed with Oodle, but {0} wasn't found.\r\nCopy {0} from the folder of a newer Telltale PC game (e.g. Batman, The Walking Dead: The Telltale Definitive Series) into the TTG Tools folder and open the archive again."), OodleTools.Imports.DllName), Loc.T("ArchiveUnpacker.titleOodleMissing", "Oodle library not found"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        ShowArchiveMessage(string.Format(Loc.T("ArchiveUnpacker.msgOodleMissing", "This archive is compressed with Oodle, but {0} wasn't found.\r\nCopy {0} from the folder of a newer Telltale PC game (e.g. Batman, The Walking Dead: The Telltale Definitive Series) into the TTG Tools folder and open the archive again."), OodleTools.Imports.DllName), Loc.T("ArchiveUnpacker.titleOodleMissing", "Oodle library not found"), MessageBoxIcon.Warning);
                         ttarch2 = null;
                         return;
                     }
@@ -1492,9 +1648,10 @@ namespace TTG_Tools
                 br.Close();
                 fs.Close();
             }
-            catch
+            catch (Exception ex)
             {
-                MessageBox.Show(Loc.T("ArchiveUnpacker.msgUnknownError", "Unknown error. Please try another archive or change encryption key."), Loc.T("ArchiveUnpacker.titleSomethingWrong", "Something goes wrong"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+                if (cliErrorSink != null) cliErrorSink(ex.ToString());
+                else ShowArchiveMessage(Loc.T("ArchiveUnpacker.msgUnknownError", "Unknown error. Please try another archive or change encryption key."), Loc.T("ArchiveUnpacker.titleSomethingWrong", "Something goes wrong"), MessageBoxIcon.Error);
                 ttarch2 = null;
             }
         }
@@ -1797,6 +1954,83 @@ namespace TTG_Tools
             }
         }
 
+        //Header reading and preview extraction run on worker threads. A MessageBox shown there has
+        //no owner and can open BEHIND the window: the open never finishes until it is closed, so
+        //the window looked frozen and a newly dropped archive "didn't switch". Show it on the UI
+        //thread, owned by the Archive Unpacker window.
+        private static void ShowArchiveMessage(string text, string title, MessageBoxIcon icon)
+        {
+            Form owner = null;
+            try { owner = Application.OpenForms.OfType<ArchiveUnpacker>().FirstOrDefault(); } catch { }
+
+            if (owner != null && !owner.IsDisposed && owner.IsHandleCreated)
+            {
+                if (owner.InvokeRequired) owner.Invoke(new Action(() => MessageBox.Show(owner, text, title, MessageBoxButtons.OK, icon)));
+                else MessageBox.Show(owner, text, title, MessageBoxButtons.OK, icon);
+                return;
+            }
+
+            MessageBox.Show(text, title, MessageBoxButtons.OK, icon);
+        }
+
+        //Set by the --open-all CLI so header-reading failures are logged instead of shown.
+        private static Action<string> cliErrorSink;
+
+        //--open-all <folder> <log>: reads the header/file table of every archive below a folder
+        //(with the same key auto-detection as the GUI) and logs the ones that fail.
+        public static void OpenAllCli(string folder, string logPath)
+        {
+            var log = new List<string>();
+            int ok = 0, fail = 0;
+            var inst = (ArchiveUnpacker)System.Runtime.Serialization.FormatterServices.GetUninitializedObject(typeof(ArchiveUnpacker));
+            var read1 = typeof(ArchiveUnpacker).GetMethod("ReadHeaderTtarch", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var read2 = typeof(ArchiveUnpacker).GetMethod("ReadHeaderTtarch2", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+            foreach (string path in Directory.GetFiles(folder, "*.*", SearchOption.AllDirectories))
+            {
+                string ext = Path.GetExtension(path).ToLowerInvariant();
+                if (ext != ".ttarch" && ext != ".ttarch2") continue;
+
+                string error = null;
+                cliErrorSink = e => error = e;
+                File.WriteAllText(logPath + ".current", path); //names the culprit if a native crash kills the run
+
+                try
+                {
+                    int detected = TryDetectGameIndex(path);
+                    byte[] key = MainMenu.gamelist[detected >= 0 ? detected : 0].key;
+
+                    if (ext == ".ttarch")
+                    {
+                        ttarch = new ClassesStructs.TtarchClass();
+                        read1.Invoke(inst, new object[] { path, key });
+                        if (ttarch == null && error == null) error = "null archive";
+                    }
+                    else
+                    {
+                        ttarch2 = new ClassesStructs.Ttarch2Class();
+                        read2.Invoke(inst, new object[] { path, key });
+                        if (ttarch2 == null && error == null) error = "null archive";
+                    }
+                }
+                catch (Exception ex)
+                {
+                    error = (ex.InnerException ?? ex).ToString();
+                }
+
+                if (error == null) ok++;
+                else
+                {
+                    fail++;
+                    log.Add("FAIL " + path + Environment.NewLine + "    " + error);
+                }
+            }
+
+            cliErrorSink = null;
+            log.Add("OK " + ok + " / FAIL " + fail);
+            File.WriteAllLines(logPath, log.ToArray());
+        }
+
         public static void ExtractTtarchCli(string archivePath, string outputDir, byte[] key)
         {
             ttarch = new ClassesStructs.TtarchClass();
@@ -1829,7 +2063,6 @@ namespace TTG_Tools
             {
                 br.BaseStream.Seek(file.fileOffset + ttarch.filesOffset, SeekOrigin.Begin);
                 result = br.ReadBytes(file.fileSize);
-                Methods.meta_crypt(result, key, ttarch.version, true);
             }
             else
             {
@@ -1888,7 +2121,24 @@ namespace TTG_Tools
                 }
             }
 
+            DecryptMetaStream(result, key, ttarch.version);
             return result;
+        }
+
+        //Files inside old archives may be meta-encrypted (Tales of Monkey Island 102+ PC stores
+        //every resource that way). They used to be decrypted only from uncompressed archives and
+        //kept their "encrypted" magic, so an extracted .font/.d3dtx dropped loose in the game folder
+        //was decrypted a second time by the engine and crashed it. Decrypt in both cases and give
+        //the result the plain magic the content now has: MBES -> MBIN, every other variant -> ERTM.
+        private static void DecryptMetaStream(byte[] data, byte[] key, int version)
+        {
+            if (data == null || data.Length < 4) return;
+
+            uint magic = BitConverter.ToUInt32(data, 0);
+            if (Methods.meta_crypt(data, key, version, true) != 1) return;
+
+            uint plain = magic == 0x4D424553 ? 0x4D42494Eu : 0x4D545245u;
+            Array.Copy(BitConverter.GetBytes(plain), 0, data, 0, 4);
         }
 
         private static byte[] getTtarch2File(Ttarch2Class ttarch2, Ttarch2Class.Ttarch2files file, byte[] key, BinaryReader br)
@@ -1902,14 +2152,14 @@ namespace TTG_Tools
 
                 if (index > ttarch2.compressedBlocks.Length)
                 {
-                    MessageBox.Show(Loc.T("ArchiveUnpacker.msgOffsetWrong", "Something wrong with offset in compressed archive"), Loc.T("Common.error", "Error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    ShowArchiveMessage(Loc.T("ArchiveUnpacker.msgOffsetWrong", "Something wrong with offset in compressed archive"), Loc.T("Common.error", "Error"), MessageBoxIcon.Error);
 
                     return null;
                 }
 
                 if (index2 > ttarch2.compressedBlocks.Length)
                 {
-                    MessageBox.Show(Loc.T("ArchiveUnpacker.msgOffsetWrong", "Something wrong with offset in compressed archive"), Loc.T("Common.error", "Error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    ShowArchiveMessage(Loc.T("ArchiveUnpacker.msgOffsetWrong", "Something wrong with offset in compressed archive"), Loc.T("Common.error", "Error"), MessageBoxIcon.Error);
 
                     return null;
                 }
@@ -2201,6 +2451,29 @@ namespace TTG_Tools
             e.Effect = DragDropEffects.None;
         }
 
+        //Only the form itself was a drop target. OLE hands a drop on a plain child window to the
+        //nearest registered ancestor (the form), but the RichTextBox text preview registers its
+        //own OLE target and swallowed a .ttarch dropped on it, so "sometimes it doesn't open".
+        //Route its drops to the same handlers. Other children must NOT get AllowDrop: registering
+        //them made the audio player's handle creation fail ("DragDrop registration did not succeed").
+        private void WireArchiveDropTargets(Control parent)
+        {
+            foreach (Control c in parent.Controls)
+            {
+                RichTextBox rtb = c as RichTextBox;
+                if (rtb != null)
+                {
+                    rtb.EnableAutoDragDrop = false;
+                    rtb.AllowDrop = true;
+                    rtb.DragEnter += ArchiveUnpacker_DragEnter;
+                    rtb.DragOver += ArchiveUnpacker_DragEnter;
+                    rtb.DragDrop += ArchiveUnpacker_DragDrop;
+                }
+
+                WireArchiveDropTargets(c);
+            }
+        }
+
         private async void ArchiveUnpacker_DragDrop(object sender, DragEventArgs e)
         {
             if (!e.Data.GetDataPresent(DataFormats.FileDrop)) return;
@@ -2459,7 +2732,7 @@ namespace TTG_Tools
 
         //Bumped on every preview request; a finished background build only gets displayed when its
         //sequence still matches, so rapid selection changes never show a stale preview.
-        private int previewSeq;
+        private volatile int previewSeq; //read by preview worker threads to notice they were superseded
 
         private const long MaxPreviewFileSize = 64L * 1024 * 1024;
 
@@ -2530,31 +2803,26 @@ namespace TTG_Tools
 
             try
             {
+                int luaGame = -1;
+                bool tryOtherKeys = !useCustomKeyCB.Checked;
+                int selectedGame = gameListCB.SelectedIndex;
+
                 result = await Task.Run(() =>
                 {
-                    byte[] bytes = null;
-
-                    if (arc1 != null)
-                    {
-                        using (FileStream fs = OpenArchiveReadStream(arc1.filePath))
-                        using (BinaryReader br = new BinaryReader(fs))
-                        {
-                            bytes = getTtarchFile(arc1, file1, archKey, arc1.chunkSize * 1024, br);
-                        }
-                    }
-                    else
-                    {
-                        using (FileStream fs = OpenArchiveReadStream(arc2.fileName))
-                        using (BinaryReader br = new BinaryReader(fs))
-                        {
-                            bytes = getTtarch2File(arc2, file2, archKey, br);
-                        }
-                    }
-
+                    byte[] bytes = ReadPreviewBytes(arc1, file1, arc2, file2, archKey);
                     if (bytes == null) return null;
 
-                    return PreviewBuilder.Build(fileName, bytes, archKey, luaVersion);
+                    byte[] previewKey = archKey;
+                    if (tryOtherKeys && IsLuaFileName(fileName) && Methods.isLuaEncrypted(bytes) && !LuaDecryptsWith(bytes, archKey, luaVersion))
+                    {
+                        luaGame = FindLuaGameIndex(bytes, luaVersion, selectedGame);
+                        if (luaGame >= 0) previewKey = MainMenu.gamelist[luaGame].key;
+                    }
+
+                    return PreviewBuilder.Build(fileName, bytes, previewKey, luaVersion, () => seq != previewSeq);
                 });
+
+                if (luaGame >= 0 && luaGame != gameListCB.SelectedIndex && seq == previewSeq) gameListCB.SelectedIndex = luaGame;
             }
             catch
             {
@@ -2564,15 +2832,109 @@ namespace TTG_Tools
             if (seq != previewSeq)
             {
                 if (result != null && result.Image != null) result.Image.Dispose();
+                if (result != null && result.Pages != null) foreach (var page in result.Pages) if (page != result.Image) page.Dispose();
                 return;
             }
 
             ShowPreviewResult(result, fileName, fileSize);
         }
 
+        private static byte[] ReadPreviewBytes(ClassesStructs.TtarchClass arc1, ClassesStructs.TtarchClass.ttarchFiles file1,
+            ClassesStructs.Ttarch2Class arc2, ClassesStructs.Ttarch2Class.Ttarch2files file2, byte[] archKey)
+        {
+            if (arc1 != null)
+            {
+                using (FileStream fs = OpenArchiveReadStream(arc1.filePath))
+                using (BinaryReader br = new BinaryReader(fs))
+                {
+                    return getTtarchFile(arc1, file1, archKey, arc1.chunkSize * 1024, br);
+                }
+            }
+
+            using (FileStream fs = OpenArchiveReadStream(arc2.fileName))
+            using (BinaryReader br = new BinaryReader(fs))
+            {
+                return getTtarch2File(arc2, file2, archKey, br);
+            }
+        }
+
+        //Used by the --preview-all CLI: builds the preview of every shown file synchronously,
+        //exactly like the panel does, without going through grid selection.
+        //Used by the --formats CLI: extension counts plus the raw bytes of the first file of each.
+        internal Dictionary<string, KeyValuePair<int, byte[]>> SampleFormatsForTest()
+        {
+            var result = new Dictionary<string, KeyValuePair<int, byte[]>>(StringComparer.OrdinalIgnoreCase);
+            if ((ttarch == null || shownTtarchFiles == null) && (ttarch2 == null || shownTtarch2Files == null)) return result;
+
+            byte[] archKey = MainMenu.gamelist[gameListCB.SelectedIndex].key;
+            int count = ttarch != null ? shownTtarchFiles.Length : shownTtarch2Files.Length;
+
+            for (int i = 0; i < count; i++)
+            {
+                string name = ttarch != null ? shownTtarchFiles[i].fileName : shownTtarch2Files[i].fileName;
+                string ext = Methods.GetExtension(name).ToLower();
+                KeyValuePair<int, byte[]> entry;
+
+                if (result.TryGetValue(ext, out entry))
+                {
+                    result[ext] = new KeyValuePair<int, byte[]>(entry.Key + 1, entry.Value);
+                    continue;
+                }
+
+                byte[] bytes = null;
+                try
+                {
+                    bytes = ReadPreviewBytes(ttarch, ttarch != null ? shownTtarchFiles[i] : default(ClassesStructs.TtarchClass.ttarchFiles),
+                        ttarch2, ttarch2 != null ? shownTtarch2Files[i] : default(ClassesStructs.Ttarch2Class.Ttarch2files), archKey);
+                }
+                catch { }
+
+                result[ext] = new KeyValuePair<int, byte[]>(1, bytes);
+            }
+
+            return result;
+        }
+
+        internal void BuildAllPreviewsForTest(string extFilter, Action<string, byte[], PreviewBuilder.PreviewResult> onResult, int limit = 0)
+        {
+            int done = 0;
+
+            if ((ttarch == null || shownTtarchFiles == null) && (ttarch2 == null || shownTtarch2Files == null)) return; //archive did not open
+
+            byte[] archKey = MainMenu.gamelist[gameListCB.SelectedIndex].key;
+            int count = ttarch != null ? shownTtarchFiles.Length : shownTtarch2Files.Length;
+
+            for (int i = 0; i < count; i++)
+            {
+                string name = ttarch != null ? shownTtarchFiles[i].fileName : shownTtarch2Files[i].fileName;
+                if (extFilter != null && !name.EndsWith(extFilter, StringComparison.OrdinalIgnoreCase)) continue;
+                if (limit > 0 && done++ >= limit) break;
+
+                PreviewBuilder.PreviewResult res;
+                byte[] bytes = null;
+
+                //Names the culprit if a native decoder crash kills the sweep.
+                File.WriteAllText(Path.Combine(Path.GetTempPath(), "ttg_preview_current.txt"), name);
+
+                try
+                {
+                    bytes = ReadPreviewBytes(ttarch, ttarch != null ? shownTtarchFiles[i] : default(ClassesStructs.TtarchClass.ttarchFiles),
+                        ttarch2, ttarch2 != null ? shownTtarch2Files[i] : default(ClassesStructs.Ttarch2Class.Ttarch2files), archKey);
+                    res = bytes == null ? null : PreviewBuilder.Build(name, bytes, archKey, ttarch != null ? ttarch.version : 7);
+                }
+                catch (Exception ex)
+                {
+                    res = new PreviewBuilder.PreviewResult { Kind = PreviewBuilder.PreviewKind.None, Info = "EXCEPTION " + ex.Message };
+                }
+
+                onResult(name, bytes, res);
+            }
+        }
+
         private void ShowPreviewMessage(string message)
         {
-            SwapPreviewImage(null);
+            SwapPreviewImage(null, null);
+            HideAudioPlayer();
             previewPictureBox.Visible = true;
             previewTextBox.Visible = false;
             previewTextBox.Text = "";
@@ -2585,29 +2947,40 @@ namespace TTG_Tools
 
             if (result == null || result.Kind == PreviewBuilder.PreviewKind.None)
             {
-                ShowPreviewMessage("");
+                //Say why when the builder knows (e.g. "FSB5 codec XMA not supported"), first line only.
+                string why = result != null && !string.IsNullOrEmpty(result.Info) ? result.Info.Split('\n')[0].Trim() : "";
+                ShowPreviewMessage(why.Length > 0 && why.Length <= 140 ? baseInfo + "  |  " + why : "");
                 return;
             }
 
-            if (result.Kind == PreviewBuilder.PreviewKind.Image)
+            if (result.Kind != PreviewBuilder.PreviewKind.Audio) HideAudioPlayer();
+
+            if (result.Kind == PreviewBuilder.PreviewKind.Audio)
             {
-                SwapPreviewImage(result.Image);
+                SwapPreviewImage(null, null);
+                previewTextBox.Visible = false;
+                previewTextBox.Text = "";
+                previewPictureBox.Visible = false;
+                EnsureAudioPlayer();
+                previewAudio.LoadAudio(result.Audio.Pcm, result.Audio.SampleRate, result.Audio.Channels);
+                previewAudio.Visible = true;
+                previewAudio.BringToFront();
+            }
+            else if (result.Kind == PreviewBuilder.PreviewKind.Image)
+            {
+                SwapPreviewImage(result.Image, result.Pages);
                 previewTextBox.Visible = false;
                 previewTextBox.Text = "";
                 previewPictureBox.Visible = true;
                 previewPictureBox.BringToFront();
-                previewInfoLabel.BringToFront();
-                AdjustPreviewSizeMode();
             }
             else
             {
-                SwapPreviewImage(null);
+                SwapPreviewImage(null, null);
                 previewTextBox.Visible = true;
                 previewPictureBox.Visible = false;
-                previewTextBox.BringToFront();
-                previewInfoLabel.BringToFront();
-                previewTextBox.Clear();
-                previewTextBox.AppendText(result.Text ?? "");
+                previewTextBox.BringToFront(); //the footer panel stays at the back, so it still docks first
+                previewTextBox.Text = result.Text ?? "";
                 previewTextBox.SelectionStart = 0;
                 previewTextBox.SelectionLength = 0;
                 previewTextBox.ScrollToCaret();
@@ -2663,22 +3036,171 @@ namespace TTG_Tools
             }
         }
 
-        private void SwapPreviewImage(System.Drawing.Image image)
+        //The image is painted by hand (not through PictureBox.Image) so transparent pixels sit on a
+        //checkerboard, like image editors show them, instead of the panel color.
+        private Bitmap previewImage;
+        private List<Bitmap> previewPages;
+        private int previewPageIndex;
+        private Panel previewFooterPanel;
+        private Button previewPrevButton;
+        private Button previewNextButton;
+        private Label previewPageLabel;
+        private TextureBrush checkerBrush;
+        private AudioPlayerPanel previewAudio;
+
+        //The info label used to be docked straight into the panel, and the BringToFront calls made
+        //the Fill controls dock first, so the label was painted over the bottom of the image. It
+        //now lives in a footer panel that is docked before (behind) the image and text boxes.
+        private void SetupPreviewPanel()
         {
-            var old = previewPictureBox.Image;
-            previewPictureBox.Image = image;
-            if (old != null) old.Dispose();
+            Control host = previewInfoLabel.Parent;
+
+            previewFooterPanel = new Panel { Dock = DockStyle.Bottom, Height = 24 };
+            previewPrevButton = new Button { Text = "◀", Width = 28, Dock = DockStyle.Right, FlatStyle = FlatStyle.System };
+            previewNextButton = new Button { Text = "▶", Width = 28, Dock = DockStyle.Right, FlatStyle = FlatStyle.System };
+            previewPageLabel = new Label { AutoSize = false, Width = 110, Dock = DockStyle.Right, TextAlign = ContentAlignment.MiddleCenter };
+            previewPrevButton.Click += (s, e) => ShowPreviewPage(previewPageIndex - 1);
+            previewNextButton.Click += (s, e) => ShowPreviewPage(previewPageIndex + 1);
+
+            host.Controls.Remove(previewInfoLabel);
+            previewInfoLabel.Dock = DockStyle.Fill;
+            previewInfoLabel.AutoEllipsis = true;
+
+            //Docking runs from the back of the z-order: Fill (info) must be added first so the
+            //right-docked page controls claim their space before it.
+            previewFooterPanel.Controls.Add(previewInfoLabel);
+            previewFooterPanel.Controls.Add(previewPrevButton);
+            previewFooterPanel.Controls.Add(previewPageLabel);
+            previewFooterPanel.Controls.Add(previewNextButton);
+            host.Controls.Add(previewFooterPanel);
+            previewFooterPanel.SendToBack();
+            SetPageControlsVisible(false);
+
+
+            previewPictureBox.Image = null;
+            //Create the RichTextBox handle now. Created lazily by the first "Visible = true" in
+            //ShowPreviewResult, the text assigned right after it was dropped and the first text
+            //preview of the window stayed blank.
+            IntPtr textBoxHandle = previewTextBox.Handle;
+            previewPictureBox.Paint += previewPictureBox_Paint;
+            previewPictureBox.Resize += (s, e) => previewPictureBox.Invalidate();
+
+            Bitmap tile = new Bitmap(16, 16);
+            using (var g = System.Drawing.Graphics.FromImage(tile))
+            {
+                //Mid-gray squares like Paint.NET: white glyphs and textures stay readable on both.
+                g.Clear(Color.FromArgb(191, 191, 191));
+                using (var dark = new SolidBrush(Color.FromArgb(143, 143, 143)))
+                {
+                    g.FillRectangle(dark, 0, 0, 8, 8);
+                    g.FillRectangle(dark, 8, 8, 8, 8);
+                }
+            }
+            checkerBrush = new TextureBrush(tile);
         }
 
-        //Small images (font atlases, icons) look blurry when Zoom scales them up, so only zoom
-        //when the image is actually bigger than the panel.
-        private void AdjustPreviewSizeMode()
+        //Created on first use, when the window already exists: built in the constructor (before
+        //the form handle), its child windows ended up on WinForms' parking window and the player
+        //stayed blank.
+        private void EnsureAudioPlayer()
         {
-            var img = previewPictureBox.Image;
+            if (previewAudio != null) return;
+
+            previewAudio = new AudioPlayerPanel { Dock = DockStyle.Fill };
+            previewFooterPanel.Parent.Controls.Add(previewAudio);
+            previewAudio.BringToFront();
+            previewFooterPanel.SendToBack();
+        }
+
+        private void HideAudioPlayer()
+        {
+            if (previewAudio == null) return;
+            previewAudio.Unload();
+            previewAudio.Visible = false;
+        }
+
+        private void SetPageControlsVisible(bool visible)
+        {
+            previewPrevButton.Visible = visible;
+            previewNextButton.Visible = visible;
+            previewPageLabel.Visible = visible;
+        }
+
+        private void SwapPreviewImage(Bitmap image, List<Bitmap> pages)
+        {
+            var oldImage = previewImage;
+            var oldPages = previewPages;
+
+            previewImage = image;
+            previewPages = pages != null && pages.Count > 1 ? pages : null;
+            previewPageIndex = 0;
+
+            if (oldPages != null)
+            {
+                foreach (Bitmap p in oldPages) if (p != image) p.Dispose();
+            }
+            else if (oldImage != null && oldImage != image)
+            {
+                oldImage.Dispose();
+            }
+
+            //A single-page list is not kept; drop its extra references.
+            if (pages != null && previewPages == null)
+            {
+                foreach (Bitmap p in pages) if (p != image) p.Dispose();
+            }
+
+            UpdatePageControls();
+            previewPictureBox.Invalidate();
+        }
+
+        private void ShowPreviewPage(int index)
+        {
+            if (previewPages == null || index < 0 || index >= previewPages.Count) return;
+
+            previewPageIndex = index;
+            previewImage = previewPages[index];
+            UpdatePageControls();
+
+            //Keep the "W x H" part of the info line in sync with the page shown.
+            previewInfoLabel.Text = System.Text.RegularExpressions.Regex.Replace(previewInfoLabel.Text, @"\|  \d+ x \d+", "|  " + previewImage.Width + " x " + previewImage.Height);
+
+            previewPictureBox.Invalidate();
+        }
+
+        private void UpdatePageControls()
+        {
+            bool multi = previewPages != null;
+            SetPageControlsVisible(multi);
+            if (!multi) return;
+
+            previewPageLabel.Text = string.Format(Loc.T("ArchiveUnpacker.previewPage", "Page {0} of {1}"), previewPageIndex + 1, previewPages.Count);
+            previewPrevButton.Enabled = previewPageIndex > 0;
+            previewNextButton.Enabled = previewPageIndex < previewPages.Count - 1;
+        }
+
+        //Small images (font atlases, icons) look blurry when scaled up, so they are drawn 1:1 and
+        //centered; only images bigger than the panel are shrunk to fit, keeping the aspect ratio.
+        private void previewPictureBox_Paint(object sender, PaintEventArgs e)
+        {
+            Bitmap img = previewImage;
             if (img == null) return;
 
-            bool fits = img.Width <= previewPictureBox.ClientSize.Width && img.Height <= previewPictureBox.ClientSize.Height;
-            previewPictureBox.SizeMode = fits ? PictureBoxSizeMode.CenterImage : PictureBoxSizeMode.Zoom;
+            Size area = previewPictureBox.ClientSize;
+            if (area.Width <= 0 || area.Height <= 0) return;
+
+            double scale = Math.Min(1.0, Math.Min((double)area.Width / img.Width, (double)area.Height / img.Height));
+            int w = Math.Max(1, (int)Math.Round(img.Width * scale));
+            int h = Math.Max(1, (int)Math.Round(img.Height * scale));
+            var dest = new Rectangle((area.Width - w) / 2, (area.Height - h) / 2, w, h);
+
+            checkerBrush.ResetTransform();
+            checkerBrush.TranslateTransform(dest.X, dest.Y);
+            e.Graphics.FillRectangle(checkerBrush, dest);
+
+            e.Graphics.InterpolationMode = scale < 1.0 ? System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic : System.Drawing.Drawing2D.InterpolationMode.NearestNeighbor;
+            e.Graphics.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.Half;
+            e.Graphics.DrawImage(img, dest);
         }
 
         #endregion

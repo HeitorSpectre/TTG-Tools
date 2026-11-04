@@ -53,6 +53,12 @@ namespace TTG_Tools
                         line += " (" + res.Image.Width + "x" + res.Image.Height + ")";
                         res.Image.Dispose();
                     }
+                    else if (res != null && res.Audio != null)
+                    {
+                        using (var w = new NAudio.Wave.WaveFileWriter(Path.Combine(outDir, name + ".wav"), new NAudio.Wave.WaveFormat(res.Audio.SampleRate, 16, res.Audio.Channels)))
+                            w.Write(res.Audio.Pcm, 0, res.Audio.Pcm.Length);
+                        line += " (" + res.Audio.Pcm.Length + " PCM bytes)";
+                    }
                     else if (res != null && res.Text != null)
                     {
                         File.WriteAllText(Path.Combine(outDir, name + ".txt"), res.Text);
@@ -76,6 +82,14 @@ namespace TTG_Tools
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
+            //Headless runs must not stop on the "unhandled exception, Continue?" dialog.
+            Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
+            Application.ThreadException += (s, e) =>
+            {
+                File.AppendAllText(Path.Combine(Path.GetTempPath(), "ttg_test_exception.txt"),
+                    "thread " + Thread.CurrentThread.ManagedThreadId + " " + Thread.CurrentThread.GetApartmentState() + Environment.NewLine + e.Exception + Environment.NewLine);
+                System.Diagnostics.Process.GetCurrentProcess().Kill();
+            };
 
             Settings cfg = Settings.LoadConfigOrNull();
             if (cfg != null) MainMenu.settings = cfg;
@@ -111,11 +125,29 @@ namespace TTG_Tools
             form.Show();
 
             MethodInfo open = typeof(ArchiveUnpacker).GetMethod("OpenArchiveFile", BindingFlags.Instance | BindingFlags.NonPublic);
-            Task opening = (Task)open.Invoke(form, new object[] { archivePath });
-            Pump(() => opening.IsCompleted, 180000);
-
             DataGridView grid = (DataGridView)GetField(form, "filesDataGridView");
             Label info = (Label)GetField(form, "previewInfoLabel");
+
+            //"a.ttarch|b.ttarch": opens them one after another in the same window, like dropping a
+            //second archive on top of the first, and logs how long each switch took.
+            string[] sequence = archivePath.Split('|');
+            for (int a = 0; a < sequence.Length - 1; a++)
+            {
+                var swPrev = System.Diagnostics.Stopwatch.StartNew();
+                Task prev = (Task)open.Invoke(form, new object[] { sequence[a] });
+                Pump(() => prev.IsCompleted, 180000);
+                log.Add("Opened first: " + sequence[a] + " -> " + form.Text + " | rows " + grid.RowCount + " | " + swPrev.ElapsedMilliseconds + " ms");
+
+                //Select a row so a preview is in flight when the next archive arrives.
+                if (grid.RowCount > 0) { grid.CurrentCell = grid[1, 0]; grid.Rows[0].Selected = true; }
+                Pump(() => false, 300);
+            }
+            archivePath = sequence[sequence.Length - 1];
+
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            Task opening = (Task)open.Invoke(form, new object[] { archivePath });
+            Pump(() => opening.IsCompleted, 180000);
+            log.Add("Open time: " + sw.ElapsedMilliseconds + " ms (completed=" + opening.IsCompleted + ")");
 
             log.Add("Archive: " + archivePath);
             log.Add("Title:   " + form.Text);
@@ -153,12 +185,146 @@ namespace TTG_Tools
                 string name = Convert.ToString(grid[1, row].Value);
                 log.Add(ext + ": row " + (row + 1) + " (" + name + ") -> " + info.Text);
                 Capture(form, Path.Combine(outDir, string.Format("{0:D2}_{1}.png", shot++, ext.TrimStart('.'))));
+
+                //Audio previews: press play and capture the player mid-playback.
+                var player = (AudioPlayerPanel)GetField(form, "previewAudio");
+                if (player != null && player.Visible)
+                {
+                    player.TogglePlay();
+                    Pump(() => false, 1500);
+                    Capture(form, Path.Combine(outDir, string.Format("{0:D2}_{1}_playing.png", shot++, ext.TrimStart('.'))));
+                    player.Stop();
+                }
+
+                //Multi-page previews (Wii): step through the remaining pages with the ▶ button.
+                Button next = (Button)GetField(form, "previewNextButton");
+                for (int page = 2; next.Visible && next.Enabled && page <= 8; page++)
+                {
+                    next.PerformClick();
+                    Pump(() => false, 300);
+                    log.Add("    page " + page + " -> " + info.Text);
+                    Capture(form, Path.Combine(outDir, string.Format("{0:D2}_{1}_page{2}.png", shot++, ext.TrimStart('.'), page)));
+                }
             }
 
             File.WriteAllLines(Path.Combine(outDir, "log.txt"), log.ToArray());
             form.Close();
             return 0;
         }
+
+        //Previews EVERY file of one extension inside an archive (no screenshots, just the
+        //decoded bitmaps), to sweep a whole game dump for failing textures:
+        //  "TTG Tools.exe" --preview-all <archive> <outputDir> [ext] [save 0|1|2=also raw files]
+        public static int RunAll(string[] args)
+        {
+            string archivePath = args[1];
+            string outDir = args[2];
+            string ext = args.Length >= 4 ? args[3] : ".d3dtx";
+            bool save = args.Length < 5 || args[4] != "0";
+            bool dumpRaw = args.Length >= 5 && args[4] == "2";
+            int limit = args.Length >= 6 ? int.Parse(args[5]) : 0;
+
+            Directory.CreateDirectory(outDir);
+            InitEnvironment();
+
+            ArchiveUnpacker form = new ArchiveUnpacker();
+            form.Show();
+
+            MethodInfo open = typeof(ArchiveUnpacker).GetMethod("OpenArchiveFile", BindingFlags.Instance | BindingFlags.NonPublic);
+            Task opening = (Task)open.Invoke(form, new object[] { archivePath });
+            Pump(() => opening.IsCompleted, 180000);
+
+            var log = new List<string>();
+            int ok = 0, fail = 0;
+            log.Add("Archive: " + archivePath + " | " + form.Text);
+
+            form.BuildAllPreviewsForTest(ext, (name, bytes, res) =>
+            {
+                string line = name + " -> ";
+                if (dumpRaw && bytes != null) File.WriteAllBytes(Path.Combine(outDir, Path.GetFileName(name.Replace('/', '\\'))), bytes);
+
+                if (res == null || res.Kind == PreviewBuilder.PreviewKind.None)
+                {
+                    fail++;
+                    line += "NONE" + (res != null && res.Info != null ? " " + res.Info : "");
+                }
+                else
+                {
+                    ok++;
+                    line += res.Kind + (res.Info != null ? " [" + res.Info + "]" : "");
+                    if (res.Pages != null) line += " pages=" + res.Pages.Count;
+
+                    if (res.Image != null)
+                    {
+                        if (save) res.Image.Save(Path.Combine(outDir, Path.GetFileName(name.Replace('/', '\\')) + ".png"), System.Drawing.Imaging.ImageFormat.Png);
+                        if (save && res.Pages != null)
+                            for (int p = 1; p < res.Pages.Count; p++)
+                                res.Pages[p].Save(Path.Combine(outDir, Path.GetFileName(name.Replace('/', '\\')) + "_page" + (p + 1) + ".png"), System.Drawing.Imaging.ImageFormat.Png);
+                        res.Image.Dispose();
+                    }
+                }
+
+                log.Add(line);
+            }, limit);
+
+            log.Add("OK " + ok + " / FAIL " + fail);
+            File.WriteAllLines(Path.Combine(outDir, "log.txt"), log.ToArray());
+            Console.WriteLine("OK " + ok + " / FAIL " + fail);
+            form.Close();
+            return 0;
+        }
+
+        //"TTG Tools.exe" --formats <archive> <outDir>: extension counts + one raw sample of each.
+        public static int RunFormats(string[] args)
+        {
+            Directory.CreateDirectory(args[2]);
+            InitEnvironment();
+
+            ArchiveUnpacker form = new ArchiveUnpacker();
+            form.Show();
+            MethodInfo open = typeof(ArchiveUnpacker).GetMethod("OpenArchiveFile", BindingFlags.Instance | BindingFlags.NonPublic);
+            Task opening = (Task)open.Invoke(form, new object[] { args[1] });
+            Pump(() => opening.IsCompleted, 180000);
+
+            var log = new List<string>();
+            foreach (var kv in form.SampleFormatsForTest())
+            {
+                log.Add(kv.Key + " " + kv.Value.Key);
+                if (kv.Value.Value != null) File.WriteAllBytes(Path.Combine(args[2], "sample" + kv.Key), kv.Value.Value);
+            }
+
+            File.WriteAllLines(Path.Combine(args[2], "formats.txt"), log.ToArray());
+            form.Close();
+            return 0;
+        }
+
+                //--audio-ui-test <audioFile> <png>: the player alone in a window, captured after a short play.
+        public static int RunAudioUi(string[] args)
+        {
+            InitEnvironment();
+            byte[] data = File.ReadAllBytes(args[1]);
+            string err;
+            var audio = AudioDecoder.Decode(data, Path.GetExtension(args[1]).ToLower(), null, out err);
+            var f = new Form { Width = 520, Height = 360, StartPosition = FormStartPosition.Manual, Location = new Point(0, 0), TopMost = true };
+            var p = new AudioPlayerPanel { Dock = DockStyle.Fill };
+            f.Controls.Add(p);
+            f.Show();
+            p.LoadAudio(audio.Pcm, audio.SampleRate, audio.Channels);
+            p.TogglePlay();
+            Pump(() => false, 1500);
+            Capture(f, args[2]);
+            p.Stop();
+            f.Close();
+            return 0;
+        }
+
+                public static int RunOpenAll(string[] args)
+        {
+            InitEnvironment();
+            ArchiveUnpacker.OpenAllCli(args[1], args[2]);
+            return 0;
+        }
+
 
         private static object GetField(object obj, string name)
         {
@@ -170,6 +336,14 @@ namespace TTG_Tools
         //smoke test, while the biggest one exercises the real decoder.
         private static int FindRow(DataGridView grid, string ext)
         {
+            //A full file name ("font.font") selects that exact file instead of the largest one.
+            if (!ext.StartsWith("."))
+            {
+                for (int i = 0; i < grid.RowCount; i++)
+                    if (string.Equals(Convert.ToString(grid[1, i].Value), ext, StringComparison.OrdinalIgnoreCase)) return i;
+                return -1;
+            }
+
             int best = -1;
             long bestSize = -1;
 

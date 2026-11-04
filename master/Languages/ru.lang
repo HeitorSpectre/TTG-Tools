@@ -372,4 +372,5 @@ ArchiveUnpacker.previewLoading = Загрузка предпросмотра...
 ArchiveUnpacker.previewTooBig = Файл слишком большой для предпросмотра.
 ArchiveUnpacker.previewNone = Предпросмотр для этого файла недоступен.
 ArchiveUnpacker.previewBytes = байт
+ArchiveUnpacker.previewPage = Страница {0} из {1}
 FontEditor.titleOpened = Редактор шрифтов. Открыт файл

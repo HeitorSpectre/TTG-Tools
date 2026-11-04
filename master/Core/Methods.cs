@@ -1340,46 +1340,48 @@ namespace TTG_Tools
             return -1;
         }
 
+        //Groups strings that read the same (ignoring {comments}, [tags], punctuation and case):
+        //each group follows its first member, members keep their order, and exact duplicates are
+        //dropped. Same result as the previous pairwise version, but the comparison key is built
+        //once per string instead of once per pair: that version ran a regex n^2 times and took
+        //minutes on big files (TWD Vita credits .landb), freezing the Archive Unpacker preview.
         public static ClassesStructs.Text.CommonTextClass SortString(ClassesStructs.Text.CommonTextClass text)
         {
-            string firstStr = "", secondStr = "";
             ClassesStructs.Text.CommonTextClass newText = new ClassesStructs.Text.CommonTextClass();
             newText.txtList = new System.Collections.Generic.List<ClassesStructs.Text.CommonText>();
 
-            ClassesStructs.Text.CommonText tmpTxt;
+            var groups = new Dictionary<string, List<int>>();
+            var order = new List<string>();
 
             for (int i = 0; i < text.txtList.Count; i++)
             {
-                firstStr = DeleteCommentary(text.txtList[i].actorSpeechOriginal, "{", "}");
-                firstStr = DeleteCommentary(firstStr, "[", "]");
-                firstStr = Regex.Replace(firstStr, @"[^\w]", "");
+                string key = DeleteCommentary(text.txtList[i].actorSpeechOriginal, "{", "}");
+                key = DeleteCommentary(key, "[", "]");
+                key = Regex.Replace(key, @"[^\w]", "").ToLower();
 
-                tmpTxt.isBothSpeeches = text.txtList[i].isBothSpeeches;
-                tmpTxt.strNumber = text.txtList[i].strNumber;
-                tmpTxt.actorName = text.txtList[i].actorName;
-                tmpTxt.actorSpeechOriginal = text.txtList[i].actorSpeechOriginal;
-                tmpTxt.actorSpeechTranslation = text.txtList[i].actorSpeechTranslation;
-                tmpTxt.flags = text.txtList[i].flags;
-
-                newText.txtList.Add(tmpTxt);
-
-                for (int j = i + 1; j < text.txtList.Count; j++)
+                List<int> members;
+                if (!groups.TryGetValue(key, out members))
                 {
-                    secondStr = DeleteCommentary(text.txtList[j].actorSpeechOriginal, "{", "}");
-                    secondStr = DeleteCommentary(secondStr, "[", "]");
-                    secondStr = Regex.Replace(secondStr, @"[^\w]", "");
+                    members = new List<int>();
+                    groups[key] = members;
+                    order.Add(key);
+                }
 
-                    if (firstStr.ToLower() == secondStr.ToLower())
-                    {
-                        tmpTxt.isBothSpeeches = text.txtList[j].isBothSpeeches;
-                        tmpTxt.strNumber = text.txtList[j].strNumber;
-                        tmpTxt.actorName = text.txtList[j].actorName;
-                        tmpTxt.actorSpeechOriginal = text.txtList[j].actorSpeechOriginal;
-                        tmpTxt.actorSpeechTranslation = text.txtList[j].actorSpeechTranslation;
-                        tmpTxt.flags = text.txtList[j].flags;
+                members.Add(i);
+            }
 
-                        newText.txtList.Add(tmpTxt);
-                    }
+            foreach (string key in order)
+            {
+                foreach (int i in groups[key])
+                {
+                    ClassesStructs.Text.CommonText tmpTxt;
+                    tmpTxt.isBothSpeeches = text.txtList[i].isBothSpeeches;
+                    tmpTxt.strNumber = text.txtList[i].strNumber;
+                    tmpTxt.actorName = text.txtList[i].actorName;
+                    tmpTxt.actorSpeechOriginal = text.txtList[i].actorSpeechOriginal;
+                    tmpTxt.actorSpeechTranslation = text.txtList[i].actorSpeechTranslation;
+                    tmpTxt.flags = text.txtList[i].flags;
+                    newText.txtList.Add(tmpTxt);
                 }
             }
 

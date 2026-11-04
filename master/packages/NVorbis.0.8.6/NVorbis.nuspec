@@ -1,0 +1,21 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2012/06/nuspec.xsd">
+  <metadata>
+    <id>NVorbis</id>
+    <version>0.8.6</version>
+    <authors>Andrew Ward</authors>
+    <owners>Andrew Ward</owners>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <licenseUrl>https://github.com/ioctlLR/NVorbis/blob/master/LICENSE</licenseUrl>
+    <projectUrl>https://github.com/ioctlLR/NVorbis</projectUrl>
+    <description>A fully managed implementation of a Xiph.org Foundation Ogg Vorbis decoder.</description>
+    <releaseNotes>- .Net Standard 2.0 support.</releaseNotes>
+    <copyright>Copyright © Andrew Ward 2018</copyright>
+    <tags>ogg vorbis xiph audio c# sound .NET</tags>
+    <repository type="git" url="https://github.com/ioctlLR/NVorbis" />
+    <dependencies>
+      <group targetFramework=".NETFramework3.5" />
+      <group targetFramework=".NETStandard2.0" />
+    </dependencies>
+  </metadata>
+</package>

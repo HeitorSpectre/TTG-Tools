@@ -36,7 +36,30 @@ namespace TTG_Tools.Graphics.PVR
         // minimum PVRTC size (8x8 for 4bpp, 16x8 for 2bpp) are decoded padded then cropped.
         public static byte[] Decode(byte[] compressedData, int width, int height, bool do2bppMode, bool forceOpaque)
         {
+            return Decode(compressedData, width, height, do2bppMode, forceOpaque, false);
+        }
+
+        // PS Vita stores PVRTC-II (PVRTC2) words, not PVRTC-I. Both share the block layout, but in
+        // PVRTC-II bit 31 of the colour word is the opacity flag for BOTH colours and bit 15 is the
+        // "hard transition" flag instead of colour A's own opacity flag. Decoding Vita data as
+        // PVRTC-I therefore reads most colour A values as translucent ARGB3443 and produces false
+        // colours (fog came out purple/green, backgrounds noisy). Copying bit 31 into bit 15 gives
+        // the PVRTC-I decoder the right colours; the rare hard-transition blocks (~5%) are then
+        // interpolated like regular blocks, which is visually indistinguishable at preview scale.
+        public static byte[] Decode(byte[] compressedData, int width, int height, bool do2bppMode, bool forceOpaque, bool pvrtcII)
+        {
             if (compressedData == null || width <= 0 || height <= 0) return null;
+
+            if (pvrtcII)
+            {
+                byte[] remapped = (byte[])compressedData.Clone();
+                for (int i = 4; i + 3 < remapped.Length; i += 8)
+                {
+                    if ((remapped[i + 3] & 0x80) != 0) remapped[i + 1] |= 0x80;
+                    else remapped[i + 1] &= 0x7F;
+                }
+                compressedData = remapped;
+            }
 
             try
             {

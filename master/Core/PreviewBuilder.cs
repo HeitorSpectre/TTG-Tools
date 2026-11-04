@@ -23,7 +23,8 @@ namespace TTG_Tools
         {
             None,       // recognized, but no preview could be produced
             Image,
-            Text
+            Text,
+            Audio
         }
 
         public class PreviewResult
@@ -32,6 +33,12 @@ namespace TTG_Tools
             public Bitmap Image;
             public string Text;
             public string Info; // short technical note, e.g. "1024 x 1024"
+
+            //Containers that hold several images (Wii multi-page textures/fonts). Image is always
+            //Pages[0] when set; the panel lets the user flip through the rest.
+            public System.Collections.Generic.List<Bitmap> Pages;
+
+            public AudioDecoder.DecodedAudio Audio;
         }
 
         //Workers write through MainMenu.settings.pathForOutputFolder (a global), so previews must
@@ -42,6 +49,16 @@ namespace TTG_Tools
 
         public static PreviewResult Build(string fileName, byte[] data, byte[] key, int version)
         {
+            return Build(fileName, data, key, version, null);
+        }
+
+        //isStale: true once the user has selected another file. Builds waiting for the shared
+        //worker lock then give up instead of queueing behind a slow one, which made every later
+        //texture/landb preview hang on "Loading preview..." until the app was restarted.
+        public static PreviewResult Build(string fileName, byte[] data, byte[] key, int version, Func<bool> isStale)
+        {
+            currentIsStale = isStale;
+
             try
             {
                 if (data == null || data.Length == 0) return new PreviewResult { Kind = PreviewKind.None };
@@ -68,6 +85,14 @@ namespace TTG_Tools
                     case ".font":
                         return FontPreview(fileName, data, key, version);
 
+                    case ".aud":
+                    case ".vox":
+                    case ".fsb":
+                    case ".wav":
+                    case ".ogg":
+                    case ".mp3":
+                        return AudioPreview(data, ext, key);
+
                     case ".txt":
                     case ".xml":
                     case ".html":
@@ -77,7 +102,32 @@ namespace TTG_Tools
                     case ".json":
                     case ".ini":
                     case ".yaml":
+                    case ".yml":
                     case ".vers":
+                    case ".log":
+                    case ".cfg":
+                    case ".csv":
+                    case ".tsv":
+                    case ".md":
+                    case ".text":
+                    case ".srt":
+                    case ".bat":
+                    case ".cmd":
+                    case ".sh":
+                    case ".py":
+                    case ".inf":
+                    case ".nfo":
+                    case ".rtf":
+                    case ".xsl":
+                    case ".svg":
+                    case ".shader":
+                    case ".fx":
+                    case ".hlsl":
+                    case ".glsl":
+                    case ".h":
+                    case ".c":
+                    case ".cpp":
+                    case ".cs":
                         return TextPreview(data);
 
                     case ".lua":
@@ -91,6 +141,8 @@ namespace TTG_Tools
                         return WorkerTextPreview(fileName, data, ext, key, version);
 
                     default:
+                        //Unknown extensions that are clearly plain text still get a text preview.
+                        if (LooksLikePlainText(data)) return TextPreview(data);
                         return new PreviewResult { Kind = PreviewKind.None };
                 }
             }
@@ -98,6 +150,92 @@ namespace TTG_Tools
             {
                 return new PreviewResult { Kind = PreviewKind.None };
             }
+            finally
+            {
+                currentIsStale = null;
+            }
+        }
+
+        [ThreadStatic] private static Func<bool> currentIsStale;
+
+        private static bool IsStale()
+        {
+            Func<bool> f = currentIsStale;
+            return f != null && f();
+        }
+
+        //Takes the worker lock, polling so a superseded preview can bail out while it waits.
+        private static IDisposable AcquireWorkerLock()
+        {
+            while (!System.Threading.Monitor.TryEnter(workerLock, 50))
+            {
+                if (IsStale()) throw new OperationCanceledException();
+            }
+
+            if (IsStale())
+            {
+                System.Threading.Monitor.Exit(workerLock);
+                throw new OperationCanceledException();
+            }
+
+            return new WorkerLockScope();
+        }
+
+        private sealed class WorkerLockScope : IDisposable
+        {
+            private bool released;
+
+            public void Dispose()
+            {
+                if (released) return;
+                released = true;
+                System.Threading.Monitor.Exit(workerLock);
+            }
+        }
+
+        //Strict sniff for files of unknown type: no NULs and almost only printable ASCII,
+        //whitespace or UTF-8 multibyte sequences in the first 4 KB. Telltale binaries all carry
+        //NULs or meta headers early, so they never pass.
+        private static bool LooksLikePlainText(byte[] data)
+        {
+            if (data.Length < 2) return false;
+
+            int sample = Math.Min(data.Length, 4096);
+            int bad = 0;
+
+            for (int i = 0; i < sample; i++)
+            {
+                byte b = data[i];
+                if (b == 0) return false;
+                if (b == 9 || b == 10 || b == 13 || (b >= 0x20 && b < 0x7F)) continue;
+                if (b >= 0x80) continue; //UTF-8 / ANSI letters; DecodeText re-validates
+                bad++;
+            }
+
+            if (bad > sample / 100) return false;
+
+            string header = Encoding.ASCII.GetString(data, 0, Math.Min(4, data.Length));
+            return header != "ERTM" && header != "5VSM" && header != "6VSM" && header != "NIBM" && header != "MBES" && header != "MBIN";
+        }
+
+        private static PreviewResult AudioPreview(byte[] data, string ext, byte[] key)
+        {
+            string error;
+            AudioDecoder.DecodedAudio audio = AudioDecoder.Decode(data, ext, key, out error);
+
+            if (audio == null || audio.Pcm == null || audio.Pcm.Length == 0)
+                return new PreviewResult { Kind = PreviewKind.None, Info = error };
+
+            double seconds = (double)audio.Pcm.Length / (audio.SampleRate * audio.Channels * 2);
+            TimeSpan t = TimeSpan.FromSeconds(seconds);
+
+            return new PreviewResult
+            {
+                Kind = PreviewKind.Audio,
+                Audio = audio,
+                Info = audio.Codec + "  |  " + audio.SampleRate + " Hz  |  " + (audio.Channels == 1 ? "mono" : audio.Channels + " ch")
+                    + "  |  " + (int)t.TotalMinutes + ":" + t.Seconds.ToString("00")
+            };
         }
 
         #region Temp folder plumbing
@@ -117,7 +255,7 @@ namespace TTG_Tools
 
         private static void RunWithTexturePreviewSettings(Action action)
         {
-            lock (workerLock)
+            using (AcquireWorkerLock())
             {
                 bool savedExtractPng = MainMenu.settings != null && MainMenu.settings.extractTexturesAsPng;
 
@@ -149,16 +287,23 @@ namespace TTG_Tools
 
                 byte[] keyCopy = key != null ? (byte[])key.Clone() : null;
 
-                RunWithTexturePreviewSettings(() => Graphics.TextureWorker.DoWork(inputPath, tempOut, true, false, ref keyCopy, version));
+                string workerMessage = null;
+                RunWithTexturePreviewSettings(() => workerMessage = Graphics.TextureWorker.DoWork(inputPath, tempOut, true, false, ref keyCopy, version));
 
-                PreviewResult res = LoadImageFromDir(tempOut);
-                if (res != null) return res;
+                PreviewResult res = LoadImageFromDir(tempOut, Path.GetFileNameWithoutExtension(inputPath));
+                if (res != null)
+                {
+                    string format = ExtractFormatNote(workerMessage);
+                    if (format != null) res.Info += "  |  " + format;
+                    return res;
+                }
 
                 //Worker produced nothing usable; try any embedded DDS texture before giving up.
                 res = EmbeddedDdsPreview(data);
                 if (res != null) return res;
 
-                return new PreviewResult { Kind = PreviewKind.None };
+                //The worker's message explains the failure (shown by the --preview-all sweep).
+                return new PreviewResult { Kind = PreviewKind.None, Info = workerMessage };
             }
             finally
             {
@@ -167,34 +312,144 @@ namespace TTG_Tools
             }
         }
 
+        //TextureWorker reports "... Texture format: <name>. Mip count: ..." — surface the format
+        //name in the preview info line.
+        private static string ExtractFormatNote(string workerMessage)
+        {
+            if (string.IsNullOrEmpty(workerMessage)) return null;
+
+            const string marker = "Texture format: ";
+            int start = workerMessage.IndexOf(marker, StringComparison.Ordinal);
+            if (start < 0) return null;
+
+            start += marker.Length;
+            int end = workerMessage.IndexOf(". ", start, StringComparison.Ordinal);
+            if (end < 0) end = workerMessage.Length;
+
+            string format = workerMessage.Substring(start, end - start).Trim().TrimEnd('.');
+            return format.Length > 0 && format.Length < 60 ? format : null;
+        }
+
         //Scans a worker output folder for a displayable texture, preferring formats losslessly
-        //rendered by GDI+ before the DDS/TGA decoders.
-        private static PreviewResult LoadImageFromDir(string dir)
+        //rendered by GDI+ before the DDS/TGA decoders. Workers that split a container into
+        //several images (Wii: "name.tga", "name_1.tga"..., "name_alpha.tga") produce a
+        //multi-page result the panel can flip through.
+        private static PreviewResult LoadImageFromDir(string dir, string baseName = null)
         {
             if (!Directory.Exists(dir)) return null;
 
-            string[] priority = { ".png", ".bmp", ".jpg", ".dds", ".tga" };
+            string[] priority = { ".png", ".bmp", ".jpg", ".dds", ".tga", ".pvr" };
 
             foreach (string wanted in priority)
             {
-                foreach (string file in Directory.GetFiles(dir, "*" + wanted, SearchOption.AllDirectories))
+                var files = new System.Collections.Generic.List<string>(Directory.GetFiles(dir, "*" + wanted, SearchOption.AllDirectories));
+                if (files.Count == 0) continue;
+
+                files.Sort((a, b) => PageOrder(a, baseName).CompareTo(PageOrder(b, baseName)));
+                bool hasBase = baseName != null && files.Exists(f => string.Equals(Path.GetFileNameWithoutExtension(f), baseName, StringComparison.OrdinalIgnoreCase));
+
+                var pages = new System.Collections.Generic.List<Bitmap>();
+
+                foreach (string file in files)
                 {
+                    //Wii fonts write page 0 twice ("name.tga" and "name_0.tga").
+                    if (hasBase && string.Equals(Path.GetFileNameWithoutExtension(file), baseName + "_0", StringComparison.OrdinalIgnoreCase)) continue;
+
                     try
                     {
                         byte[] bytes = File.ReadAllBytes(file);
                         PreviewResult res;
 
+                        if (wanted == ".pvr")
+                        {
+                            pages.AddRange(PvrSurfaces(bytes));
+                            continue;
+                        }
+
                         if (wanted == ".dds") res = DdsPreview(bytes);
                         else if (wanted == ".tga") res = TgaPreview(bytes);
                         else res = DirectImagePreview(bytes, wanted);
 
-                        if (res != null && res.Kind == PreviewKind.Image) return res;
+                        if (res != null && res.Kind == PreviewKind.Image) pages.Add(res.Image);
                     }
                     catch { }
                 }
+
+                if (pages.Count == 0) continue;
+
+                PreviewResult result = ImageResult(pages[0]);
+                if (pages.Count > 1) result.Pages = pages;
+                return result;
             }
 
             return null;
+        }
+
+        //PVR3 containers: PVRTC/uncompressed through the shared decoder, block-compressed texture
+        //arrays (Batman lightmap atlases: DXT5 x 3 array members, PC and Switch) one page per
+        //array member. PVR3 stores mip 0 of every surface first, back to back.
+        private static System.Collections.Generic.List<Bitmap> PvrSurfaces(byte[] pvr)
+        {
+            var list = new System.Collections.Generic.List<Bitmap>();
+            if (pvr == null || pvr.Length < 52 || pvr[0] != 'P' || pvr[1] != 'V' || pvr[2] != 'R' || pvr[3] != 3) return list;
+
+            ulong pixelFormat = BitConverter.ToUInt64(pvr, 8);
+            int height = (int)BitConverter.ToUInt32(pvr, 24);
+            int width = (int)BitConverter.ToUInt32(pvr, 28);
+            int surfaces = Math.Max(1, (int)BitConverter.ToUInt32(pvr, 36));
+            int faces = Math.Max(1, (int)BitConverter.ToUInt32(pvr, 40));
+            int dataOffset = 52 + (int)BitConverter.ToUInt32(pvr, 48);
+
+            string fourCc = null;
+            int blockBytes = 16;
+            switch (pixelFormat)
+            {
+                case 7: fourCc = "DXT1"; blockBytes = 8; break;
+                case 9: fourCc = "DXT3"; break;
+                case 11: fourCc = "DXT5"; break;
+                case 12: fourCc = "ATI1"; blockBytes = 8; break;
+                case 13: fourCc = "ATI2"; break;
+            }
+
+            if (fourCc == null)
+            {
+                int w, h;
+                byte[] rgba = Graphics.TextureWorker.DecodePvrContentToRgba(pvr, out w, out h);
+                if (rgba != null) list.Add(BitmapFromRgba(rgba, w, h));
+                return list;
+            }
+
+            int surfaceSize = ((width + 3) / 4) * ((height + 3) / 4) * blockBytes;
+
+            for (int s = 0; s < surfaces * faces; s++)
+            {
+                int offset = dataOffset + s * surfaceSize;
+                if (offset + surfaceSize > pvr.Length) break;
+
+                byte[] dds = new byte[128 + surfaceSize];
+                BuildDdsHeader(dds, width, height, fourCc);
+                Array.Copy(pvr, offset, dds, 128, surfaceSize);
+
+                PreviewResult res = DdsPreview(dds);
+                if (res != null && res.Image != null) list.Add(res.Image);
+            }
+
+            return list;
+        }
+
+        //Sort key: the base image first, then numbered pages, then the separate alpha page. Only
+        //the part after "<baseName>_" counts, so names that end in digits themselves
+        //("avantgarde_lt_book_60") are not mistaken for page numbers.
+        private static long PageOrder(string file, string baseName)
+        {
+            string stem = Path.GetFileNameWithoutExtension(file);
+            if (baseName == null || !stem.StartsWith(baseName + "_", StringComparison.OrdinalIgnoreCase)) return 0;
+
+            string suffix = stem.Substring(baseName.Length + 1);
+            int n;
+            if (int.TryParse(suffix, out n) && n >= 0) return 1 + n;
+            if (suffix.Equals("alpha", StringComparison.OrdinalIgnoreCase)) return int.MaxValue;
+            return 0;
         }
 
         #endregion
@@ -257,8 +512,11 @@ namespace TTG_Tools
                 uint aMask = BitConverter.ToUInt32(dds, 104);
 
                 const uint DDPF_ALPHA = 0x2, DDPF_RGB = 0x40, DDPF_LUMINANCE = 0x20000;
+                const uint DDPF_BUMPLUMINANCE = 0x40000, DDPF_BUMPDUDV = 0x80000;
 
-                bool isRgb = (pfFlags & DDPF_RGB) != 0;
+                //Old Xbox 360 bump maps (Sam & Max) embed 32-bit DDS flagged as bump luminance/DuDv with
+                //plain R/G/B masks; show them like RGB.
+                bool isRgb = (pfFlags & (DDPF_RGB | DDPF_BUMPLUMINANCE | DDPF_BUMPDUDV)) != 0 && (rMask | gMask | bMask) != 0;
                 bool isLum = (pfFlags & DDPF_LUMINANCE) != 0;
                 bool isAlphaOnly = (pfFlags & DDPF_ALPHA) != 0 && !isRgb && !isLum;
 
@@ -408,54 +666,15 @@ namespace TTG_Tools
             }
         }
 
+        //Transparency is kept: the preview panel paints a checkerboard behind the image.
         private static PreviewResult ImageResult(Bitmap bmp)
         {
-            if (HasVisibleTransparency(bmp))
-            {
-                Bitmap blackBmp = CompositeOnSolidBackground(bmp, Color.Black);
-                bmp.Dispose();
-                bmp = blackBmp;
-            }
-
             return new PreviewResult
             {
                 Kind = PreviewKind.Image,
                 Image = bmp,
                 Info = bmp.Width + " x " + bmp.Height
             };
-        }
-
-        private static bool HasVisibleTransparency(Bitmap bmp)
-        {
-            try
-            {
-                int stepX = Math.Max(1, bmp.Width / 64);
-                int stepY = Math.Max(1, bmp.Height / 64);
-
-                for (int y = 0; y < bmp.Height; y += stepY)
-                {
-                    for (int x = 0; x < bmp.Width; x += stepX)
-                    {
-                        if (bmp.GetPixel(x, y).A < 250) return true;
-                    }
-                }
-            }
-            catch { }
-
-            return false;
-        }
-
-        private static Bitmap CompositeOnSolidBackground(Bitmap source, Color color)
-        {
-            Bitmap result = new Bitmap(source.Width, source.Height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
-
-            using (var g = System.Drawing.Graphics.FromImage(result))
-            {
-                g.Clear(color);
-                g.DrawImageUnscaled(source, 0, 0);
-            }
-
-            return result;
         }
 
         #endregion
@@ -485,17 +704,18 @@ namespace TTG_Tools
 
                 byte[] keyCopy = key != null ? (byte[])key.Clone() : null;
 
-                try { RunWithTexturePreviewSettings(() => Graphics.TextureWorker.DoWork(inputPath, tempOut, true, false, ref keyCopy, version)); }
-                catch { }
+                string workerMessage = null;
+                try { RunWithTexturePreviewSettings(() => workerMessage = Graphics.TextureWorker.DoWork(inputPath, tempOut, true, false, ref keyCopy, version)); }
+                catch (Exception ex) { workerMessage = ex.Message; }
 
-                res = LoadImageFromDir(tempOut);
+                res = LoadImageFromDir(tempOut, Path.GetFileNameWithoutExtension(inputPath));
                 if (res != null) return res;
 
                 //Vector fonts carry an embedded TTF instead of an atlas — render a type specimen.
                 res = VectorFontPreview(inputPath, tempOut);
                 if (res != null) return res;
 
-                return new PreviewResult { Kind = PreviewKind.None };
+                return new PreviewResult { Kind = PreviewKind.None, Info = workerMessage };
             }
             finally
             {
@@ -715,7 +935,7 @@ namespace TTG_Tools
                             if (tex == null || tex.Tex.Content == null || tex.Tex.Content.Length == 0) continue;
                             if (tex.Width < 4 || tex.Width > 16384 || tex.Height < 4 || tex.Height > 16384) continue;
 
-                            PreviewResult res = DecodeFontTexContent(tex.Tex.Content, tex.TextureFormat, tex.Width, tex.Height);
+                            PreviewResult res = DecodeFontTexContent(tex.Tex.Content, tex.TextureFormat, tex.Width, tex.Height, tex.platform.platform == 9);
                             if (res != null) return res;
                         }
                         catch { }
@@ -728,12 +948,12 @@ namespace TTG_Tools
 
         //Decodes a font atlas payload: PVR (iOS), a full DDS blob, headerless BCn (a minimal DDS
         //header is synthesized), raw RGBA or 8-bit luminance/alpha.
-        private static PreviewResult DecodeFontTexContent(byte[] content, uint format, int width, int height)
+        private static PreviewResult DecodeFontTexContent(byte[] content, uint format, int width, int height, bool vita = false)
         {
             try
             {
                 int pvrW, pvrH;
-                byte[] pvrRgba = Graphics.TextureWorker.DecodePvrContentToRgba(content, out pvrW, out pvrH);
+                byte[] pvrRgba = Graphics.TextureWorker.DecodePvrContentToRgba(content, out pvrW, out pvrH, false, vita);
 
                 if (pvrRgba != null)
                 {
@@ -890,7 +1110,7 @@ namespace TTG_Tools
         {
             try
             {
-                lock (workerLock)
+                using (AcquireWorkerLock())
                 {
                     string savedOutput = MainMenu.settings.pathForOutputFolder;
 
@@ -1072,7 +1292,12 @@ namespace TTG_Tools
                 p.BeginErrorReadLine();
                 if (captureStdout) p.BeginOutputReadLine();
 
-                p.WaitForExit(30000);
+                //Poll instead of one 30 s wait so a superseded Lua decompile is killed right away.
+                var waited = System.Diagnostics.Stopwatch.StartNew();
+                while (!p.WaitForExit(100))
+                {
+                    if (IsStale() || waited.ElapsedMilliseconds > 30000) break;
+                }
                 exitCode = p.HasExited ? p.ExitCode : -1;
                 if (!p.HasExited) try { p.Kill(); } catch { }
 
@@ -1097,7 +1322,7 @@ namespace TTG_Tools
 
                 byte[] keyCopy = key != null ? (byte[])key.Clone() : null;
 
-                lock (workerLock)
+                using (AcquireWorkerLock())
                 {
                     string savedOutput = MainMenu.settings.pathForOutputFolder;
 

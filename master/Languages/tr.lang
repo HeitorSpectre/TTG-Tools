@@ -372,4 +372,5 @@ ArchiveUnpacker.previewLoading = Önizleme yükleniyor...
 ArchiveUnpacker.previewTooBig = Dosya önizleme için çok büyük.
 ArchiveUnpacker.previewNone = Bu dosya için önizleme yok.
 ArchiveUnpacker.previewBytes = bayt
+ArchiveUnpacker.previewPage = Sayfa {0} / {1}
 FontEditor.titleOpened = Yazı tipi düzenleyici. Açılan dosya

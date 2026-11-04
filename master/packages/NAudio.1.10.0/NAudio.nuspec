@@ -1,0 +1,30 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">
+  <metadata>
+    <id>NAudio</id>
+    <version>1.10.0</version>
+    <authors>Mark Heath &amp; Contributors</authors>
+    <owners>Mark Heath &amp; Contributors</owners>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <licenseUrl>https://github.com/naudio/NAudio/blob/master/license.txt</licenseUrl>
+    <projectUrl>https://github.com/naudio/NAudio</projectUrl>
+    <description>NAudio, an audio library for .NET</description>
+    <copyright>© Mark Heath 2020</copyright>
+    <tags>C# .NET audio sound</tags>
+    <repository url="https://github.com/naudio/NAudio" />
+    <dependencies>
+      <group targetFramework=".NETFramework3.5" />
+      <group targetFramework="UAP10.0" />
+      <group targetFramework=".NETCoreApp3.0">
+        <dependency id="Microsoft.Win32.Registry" version="4.7.0" exclude="Build,Analyzers" />
+        <dependency id="System.Resources.Extensions" version="4.7.0" exclude="Build,Analyzers" />
+      </group>
+      <group targetFramework=".NETStandard2.0">
+        <dependency id="Microsoft.Win32.Registry" version="4.7.0" exclude="Build,Analyzers" />
+      </group>
+    </dependencies>
+    <frameworkAssemblies>
+      <frameworkAssembly assemblyName="System.Windows.Forms" targetFramework=".NETFramework3.5" />
+    </frameworkAssemblies>
+  </metadata>
+</package>

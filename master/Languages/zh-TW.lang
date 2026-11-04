@@ -378,4 +378,5 @@ ArchiveUnpacker.previewLoading = 正在載入預覽...
 ArchiveUnpacker.previewTooBig = 檔案太大，無法預覽。
 ArchiveUnpacker.previewNone = 此檔案沒有可用的預覽。
 ArchiveUnpacker.previewBytes = 位元組
+ArchiveUnpacker.previewPage = 第 {0} 頁，共 {1} 頁
 FontEditor.titleOpened = 字體編輯器。打開的文件

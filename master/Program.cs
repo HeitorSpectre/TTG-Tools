@@ -34,6 +34,33 @@ namespace TTG_Tools
                 Settings.EnsureConfigAvailable();
                 return PreviewTest.Run(args);
             }
+            if (args.Length >= 3 && args[0] == "--audio-ui-test")
+            {
+                ApplyDefaultFont();
+                Settings.EnsureConfigAvailable();
+                return PreviewTest.RunAudioUi(args);
+            }
+            if (args.Length >= 3 && args[0] == "--formats")
+            {
+                // --formats <archive> <outputDir>
+                ApplyDefaultFont();
+                Settings.EnsureConfigAvailable();
+                return PreviewTest.RunFormats(args);
+            }
+            if (args.Length >= 3 && args[0] == "--open-all")
+            {
+                // --open-all <folder> <logFile>
+                ApplyDefaultFont();
+                Settings.EnsureConfigAvailable();
+                return PreviewTest.RunOpenAll(args);
+            }
+            if (args.Length >= 3 && args[0] == "--preview-all")
+            {
+                // --preview-all <archive> <outputDir> [ext] [save 0|1]
+                ApplyDefaultFont();
+                Settings.EnsureConfigAvailable();
+                return PreviewTest.RunAll(args);
+            }
             if (args.Length >= 3 && args[0] == "--preview-file")
             {
                 // --preview-file <fileOrFolder> <outputDir>

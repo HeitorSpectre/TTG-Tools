@@ -378,4 +378,5 @@ ArchiveUnpacker.previewLoading = プレビューを読み込み中...
 ArchiveUnpacker.previewTooBig = ファイルが大きすぎてプレビューできません。
 ArchiveUnpacker.previewNone = このファイルのプレビューはありません。
 ArchiveUnpacker.previewBytes = バイト
+ArchiveUnpacker.previewPage = ページ {0} / {1}
 FontEditor.titleOpened = フォントエディター。開いたファイル

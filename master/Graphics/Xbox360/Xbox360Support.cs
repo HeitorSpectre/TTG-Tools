@@ -117,6 +117,16 @@ namespace TTG_Tools.Graphics.Xbox360
                 // is Xbox 360 Type 2 regardless of where the header parser
                 // looked.
                 long sig = FindFetchConstant(bytes);
+
+                // Older Xbox 360 games (Wallace & Gromit, CSI, Sam & Max...) have no
+                // mSamplerState block, so the TWD-shaped header parser above throws or
+                // lands on garbage. The fetch constant alone carries the format and
+                // dimensions, so build the description from it.
+                if (sig >= 0 && parsed == null)
+                {
+                    parsed = new D3dtx { FilePath = inputPath, FileLength = bytes.Length, Name = Path.GetFileName(inputPath) };
+                }
+
                 if (sig >= 0 && parsed != null)
                 {
                     // Re-classify by forcing the located payload offset.

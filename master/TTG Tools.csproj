@@ -77,6 +77,15 @@
     <Reference Include="WindowsAPICodePack.Shell, Version=1.1.5.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>packages\WindowsAPICodePack-Shell.1.1.5\lib\net40\WindowsAPICodePack.Shell.dll</HintPath>
     </Reference>
+    <Reference Include="NAudio, Version=1.10.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>packages\NAudio.1.10.0\lib\net35\NAudio.dll</HintPath>
+    </Reference>
+    <Reference Include="NSpeex">
+      <HintPath>packages\NSpeex.Reactive.0.0.1\lib\net4\NSpeex.dll</HintPath>
+    </Reference>
+    <Reference Include="NVorbis, Version=0.8.6.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>packages\NVorbis.0.8.6\lib\net35\NVorbis.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Data" />
     <Reference Include="System.Data.Linq" />
@@ -169,6 +178,10 @@
     <Compile Include="Forms\FontEditor.Designer.cs">
       <DependentUpon>FontEditor.cs</DependentUpon>
     </Compile>
+    <Compile Include="Controls\AudioPlayerPanel.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Core\AudioDecoder.cs" />
     <Compile Include="Controls\BufferedPanel.cs">
       <SubType>Component</SubType>
     </Compile>
@@ -284,6 +297,22 @@
     </Content>
     <Content Include="Tools\Oodle\oo2core_5_win64.dll">
       <Link>oo2core_5_win64.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="ThirdPartyLicenses\NAudio-LICENSE.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="ThirdPartyLicenses\NVorbis-LICENSE.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="ThirdPartyLicenses\NSpeex-LICENSE.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <EmbeddedResource Include="Resources\fsb5_vorbis_headers.gz">
+      <LogicalName>TTG_Tools.fsb5_vorbis_headers.gz</LogicalName>
+      <WithCulture>false</WithCulture>
+    </EmbeddedResource>
+    <Content Include="ThirdPartyLicenses\python-fsb5-LICENSE.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="ThirdPartyLicenses\DirectXTex-LICENSE.txt">
